@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+:root {
+	--c-primary: #2563eb;
+	--c-primary-600: #1d4ed8;
+	--c-warm: #f59e0b;
+	--c-soft: #eef2ff;
+}
+
+html {
+	scroll-behavior: smooth;
+}

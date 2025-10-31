@@ -1,0 +1,19 @@
+app = "colombia-en-datos-webapp"
+primary_region = "bog"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"

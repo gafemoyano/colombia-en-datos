@@ -1,0 +1,668 @@
+[
+  {
+    "category": "Economía y Sociedad",
+    "subcategory": "Empleo",
+    "indicators": [
+      {
+        "code": "PET_SHARE",
+        "title": "% población en edad de trabajar",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "LF",
+        "title": "Fuerza de trabajo",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "LF_POT",
+        "title": "Fuerza de trabajo potencial",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "MCSFT",
+        "title": "MCSFT",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "UNEMP",
+        "title": "Población desocupada",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "PET",
+        "title": "Población en edad de trabajar (PET)",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "NILF",
+        "title": "Población fuera de la fuerza de trabajo",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "EMP",
+        "title": "Población ocupada",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "UNDEREMP",
+        "title": "Población subocupada",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "POP",
+        "title": "Población total",
+        "unit": "THS_PERSONS",
+        "updated": "2025-06"
+      },
+      {
+        "code": "UNEMP_RATE",
+        "title": "Tasa de Desocupación (TD)",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "EMP_RATE",
+        "title": "Tasa de Ocupación (TO)",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "UNDEREMP_RATE",
+        "title": "Tasa de Subocupación (TS)",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "PART_RATE",
+        "title": "Tasa Global de Participación (TGP)",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "TCDFTP",
+        "title": "TCDFTP",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      },
+      {
+        "code": "TCSD",
+        "title": "TCSD",
+        "unit": "PERCENT",
+        "updated": "2025-06"
+      }
+    ]
+  },
+  {
+    "category": "Economía y Sociedad",
+    "subcategory": "Empresas (EMICRON)",
+    "indicators": [
+      {
+        "code": "\"EMP\"",
+        "title": "\"EMP\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"EMP_RATE\"",
+        "title": "\"EMP_RATE\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"LF\"",
+        "title": "\"LF\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"LF_POT\"",
+        "title": "\"LF_POT\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"MCSFT\"",
+        "title": "\"MCSFT\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NILF\"",
+        "title": "\"NILF\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_AGRIC\"",
+        "title": "\"NUM_SME_AGRIC\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_ARTS_ENTERTAINMENT\"",
+        "title": "\"NUM_SME_ARTS_ENTERTAINMENT\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CARS_REPAIRING\"",
+        "title": "\"NUM_SME_CARS_REPAIRING\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CHAMBER_NO\"",
+        "title": "\"NUM_SME_CHAMBER_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CHAMBER_YES\"",
+        "title": "\"NUM_SME_CHAMBER_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CIT\"",
+        "title": "\"NUM_SME_CIT\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CONSTRUCTION\"",
+        "title": "\"NUM_SME_CONSTRUCTION\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CONTRIBUTION_HEALTHONLY\"",
+        "title": "\"NUM_SME_CONTRIBUTION_HEALTHONLY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CONTRIBUTION_HEALTHPENSION\"",
+        "title": "\"NUM_SME_CONTRIBUTION_HEALTHPENSION\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CONTRIBUTION_NOCONTRIBUTION\"",
+        "title": "\"NUM_SME_CONTRIBUTION_NOCONTRIBUTION\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CONTRIBUTION_PENSIONONLY\"",
+        "title": "\"NUM_SME_CONTRIBUTION_PENSIONONLY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_CTA_PROP\"",
+        "title": "\"NUM_SME_CTA_PROP\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_EDUCATION\"",
+        "title": "\"NUM_SME_EDUCATION\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_EMMPLOYEES\"",
+        "title": "\"NUM_SME_EMMPLOYEES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_FEMALE\"",
+        "title": "\"NUM_SME_FEMALE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_FINANCE_RSTATE\"",
+        "title": "\"NUM_SME_FINANCE_RSTATE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASELECTRONICS_NO\"",
+        "title": "\"NUM_SME_HASELECTRONICS_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASELECTRONICS_YES\"",
+        "title": "\"NUM_SME_HASELECTRONICS_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASMOBILE_NO\"",
+        "title": "\"NUM_SME_HASMOBILE_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASMOBILE_YES\"",
+        "title": "\"NUM_SME_HASMOBILE_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASSOCIALMEDIA_NO\"",
+        "title": "\"NUM_SME_HASSOCIALMEDIA_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASSOCIALMEDIA_YES\"",
+        "title": "\"NUM_SME_HASSOCIALMEDIA_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASWEBPAGE_NO\"",
+        "title": "\"NUM_SME_HASWEBPAGE_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HASWEBPAGE_YES\"",
+        "title": "\"NUM_SME_HASWEBPAGE_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HEALTH\"",
+        "title": "\"NUM_SME_HEALTH\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_HOTELS_RESTAURANTS\"",
+        "title": "\"NUM_SME_HOTELS_RESTAURANTS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_INDUSTRY\"",
+        "title": "\"NUM_SME_INDUSTRY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_CONTRUCTIONSITE\"",
+        "title": "\"NUM_SME_LOCATION_CONTRUCTIONSITE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_DOORSALES\"",
+        "title": "\"NUM_SME_LOCATION_DOORSALES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_FARM\"",
+        "title": "\"NUM_SME_LOCATION_FARM\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_HOME\"",
+        "title": "\"NUM_SME_LOCATION_HOME\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_ONPREMISE\"",
+        "title": "\"NUM_SME_LOCATION_ONPREMISE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_ONVEHICLE\"",
+        "title": "\"NUM_SME_LOCATION_ONVEHICLE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_OTHER\"",
+        "title": "\"NUM_SME_LOCATION_OTHER\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_LOCATION_STREETVENDING\"",
+        "title": "\"NUM_SME_LOCATION_STREETVENDING\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_MALE\"",
+        "title": "\"NUM_SME_MALE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_MINING\"",
+        "title": "\"NUM_SME_MINING\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_NO_SECTOR\"",
+        "title": "\"NUM_SME_NO_SECTOR\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_ONEEMPLOYEE\"",
+        "title": "\"NUM_SME_ONEEMPLOYEE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_OWNERS\"",
+        "title": "\"NUM_SME_OWNERS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PARTNERS\"",
+        "title": "\"NUM_SME_PARTNERS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PATRON\"",
+        "title": "\"NUM_SME_PATRON\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_BANKLOAN\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_BANKLOAN\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_DONTKNOW\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_DONTKNOW\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_FAMILYLOAN\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_FAMILYLOAN\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_NONEED\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_NONEED\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_OTHER\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_OTHER\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_SAVINGS\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_SAVINGS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_SEED\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_SEED\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_PRIMARYSOURCE_SHARKLOAN\"",
+        "title": "\"NUM_SME_PRIMARYSOURCE_SHARKLOAN\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_CAREER\"",
+        "title": "\"NUM_SME_REASON_CAREER\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_COMPLEMENT_INCOME\"",
+        "title": "\"NUM_SME_REASON_COMPLEMENT_INCOME\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_LOW_EMPLOYABILITY\"",
+        "title": "\"NUM_SME_REASON_LOW_EMPLOYABILITY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_NO_OTHER_INCOME\"",
+        "title": "\"NUM_SME_REASON_NO_OTHER_INCOME\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_OPPORTUNITY\"",
+        "title": "\"NUM_SME_REASON_OPPORTUNITY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_OTHER\"",
+        "title": "\"NUM_SME_REASON_OTHER\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REASON_TRADITION\"",
+        "title": "\"NUM_SME_REASON_TRADITION\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REGISTRY_BOOK\"",
+        "title": "\"NUM_SME_REGISTRY_BOOK\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REGISTRY_FINSTATEMENTS\"",
+        "title": "\"NUM_SME_REGISTRY_FINSTATEMENTS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REGISTRY_NOREGISTRY\"",
+        "title": "\"NUM_SME_REGISTRY_NOREGISTRY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REGISTRY_OTHER\"",
+        "title": "\"NUM_SME_REGISTRY_OTHER\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_REGISTRY_PNL\"",
+        "title": "\"NUM_SME_REGISTRY_PNL\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_RUT_NO\"",
+        "title": "\"NUM_SME_RUT_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_RUT_YES\"",
+        "title": "\"NUM_SME_RUT_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_STARTED_ALONE\"",
+        "title": "\"NUM_SME_STARTED_ALONE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_STARTED_BY_FAMILY\"",
+        "title": "\"NUM_SME_STARTED_BY_FAMILY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_STARTED_BY_OTHER_PEOPLE\"",
+        "title": "\"NUM_SME_STARTED_BY_OTHER_PEOPLE\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_STARTED_BY_OTHERS\"",
+        "title": "\"NUM_SME_STARTED_BY_OTHERS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_STARTED_WITH_FAMILY\"",
+        "title": "\"NUM_SME_STARTED_WITH_FAMILY\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_STARTED_WITH_OTHERS\"",
+        "title": "\"NUM_SME_STARTED_WITH_OTHERS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_TOTAL\"",
+        "title": "\"NUM_SME_TOTAL\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_TRANSPORTATION_LOGISTICS\"",
+        "title": "\"NUM_SME_TRANSPORTATION_LOGISTICS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_UPTONINEEMPLOYEES\"",
+        "title": "\"NUM_SME_UPTONINEEMPLOYEES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_UPTOTHREEEMPLOYEES\"",
+        "title": "\"NUM_SME_UPTOTHREEEMPLOYEES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_USESINTERNET_NO\"",
+        "title": "\"NUM_SME_USESINTERNET_NO\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_USESINTERNET_YES\"",
+        "title": "\"NUM_SME_USESINTERNET_YES\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"NUM_SME_VOLUNTEERS\"",
+        "title": "\"NUM_SME_VOLUNTEERS\"",
+        "unit": "NUMBER",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"PART_RATE\"",
+        "title": "\"PART_RATE\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"PET\"",
+        "title": "\"PET\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"PET_SHARE\"",
+        "title": "\"PET_SHARE\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"POP\"",
+        "title": "\"POP\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"TCDFTP\"",
+        "title": "\"TCDFTP\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"TCSD\"",
+        "title": "\"TCSD\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"UNDEREMP\"",
+        "title": "\"UNDEREMP\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"UNDEREMP_RATE\"",
+        "title": "\"UNDEREMP_RATE\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"UNEMP\"",
+        "title": "\"UNEMP\"",
+        "unit": "THS_PERSONS",
+        "updated": "2025-09"
+      },
+      {
+        "code": "\"UNEMP_RATE\"",
+        "title": "\"UNEMP_RATE\"",
+        "unit": "PERCENT",
+        "updated": "2025-09"
+      }
+    ]
+  }
+]

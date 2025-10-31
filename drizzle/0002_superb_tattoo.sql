@@ -1,0 +1,1 @@
+ALTER TABLE "categories" ALTER COLUMN "code" SET DATA TYPE varchar(255);

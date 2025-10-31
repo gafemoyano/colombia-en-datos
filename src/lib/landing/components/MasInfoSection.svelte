@@ -1,0 +1,295 @@
+<script lang="ts">
+	type Status = 'idle' | 'loading' | 'success' | 'error';
+	const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	const FORMSPREE = import.meta.env.VITE_FORMSPREE_ENDPOINT?.trim();
+
+	let status: Status = 'idle';
+	let errors: Record<string, string> = {};
+	let form = {
+		email: '',
+		motivo: '',
+		entidadRol: '',
+		visitante: '',
+		acepta: false,
+		interesFinanciar: false,
+		_gotcha: ''
+	};
+
+	const visitorOptions = [
+		{ label: 'Investigador(a)', value: 'Investigador' },
+		{ label: 'Funcionario/a público/a', value: 'Gobierno' },
+		{ label: 'Consultor(a)', value: 'Consultor' },
+		{ label: 'Estudiante', value: 'Estudiante' },
+		{ label: 'Periodista / Sociedad civil', value: 'Sociedad civil' },
+		{ label: 'Otro', value: 'Otro' }
+	];
+
+	function clearError(field: string) {
+		if (!(field in errors)) return;
+		const { [field]: _removed, ...rest } = errors;
+		errors = rest;
+	}
+
+	function validate() {
+		const nextErrors: Record<string, string> = {};
+		if (!form.email.trim()) nextErrors.email = 'Por favor escribe tu correo.';
+		else if (!emailRe.test(form.email)) nextErrors.email = 'Revisa el formato del correo.';
+
+		if (!form.motivo.trim()) nextErrors.motivo = 'Cuéntanos por qué te interesa.';
+		else if (form.motivo.trim().length < 10) nextErrors.motivo = 'Agrega un poco más de detalle.';
+
+		if (!form.visitante) nextErrors.visitante = 'Selecciona el tipo de visitante.';
+		if (!form.acepta) nextErrors.acepta = 'Debes aceptar la política de privacidad para continuar.';
+		if (form._gotcha) nextErrors._gotcha = 'Solicitud inválida.';
+
+		errors = nextErrors;
+		return Object.keys(nextErrors).length === 0;
+	}
+
+	function resetForm() {
+		form = {
+			email: '',
+			motivo: '',
+			entidadRol: '',
+			visitante: '',
+			acepta: false,
+			interesFinanciar: false,
+			_gotcha: ''
+		};
+	}
+
+	async function handleSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		if (!validate()) return;
+
+		status = 'loading';
+		try {
+			if (!FORMSPREE) {
+				await new Promise((resolve) => setTimeout(resolve, 1200));
+				status = 'success';
+				resetForm();
+				return;
+			}
+
+			const payload = {
+				email: form.email,
+				motivo: form.motivo,
+				entidadRol: form.entidadRol || '(no especificado)',
+				visitante: form.visitante,
+				acepta: form.acepta ? 'sí' : 'no',
+				interesFinanciar: form.interesFinanciar ? 'sí' : 'no',
+				_subject: 'Nueva solicitud de información - Colombia en Datos',
+				_gotcha: form._gotcha,
+				_page: typeof window !== 'undefined' ? window.location.href : ''
+			};
+
+			const response = await fetch('/api/contact', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) throw new Error('Fallo en el envío');
+
+			status = 'success';
+			resetForm();
+		} catch (error) {
+			console.error(error);
+			status = 'error';
+		} finally {
+			setTimeout(() => {
+				status = 'idle';
+			}, 3000);
+		}
+	}
+</script>
+
+<section id="mas-info" class="min-h-[100svh] pt-24 flex items-center scroll-mt-24" aria-labelledby="masinfo-title">
+	<div class="mx-auto max-w-3xl px-4 sm:px-6">
+		<div class="rounded-2xl border border-zinc-200/70 bg-white/70 backdrop-blur p-6 sm:p-8 shadow-sm">
+			<header class="mb-6">
+				<h2 id="masinfo-title" class="text-2xl sm:text-3xl font-semibold tracking-tight">
+					¿Quieres tomar decisiones más precisas?
+				</h2>
+				<p class="mt-2 text-zinc-600">
+					Escríbenos y cuéntanos qué necesitas. No es una suscripción a una newsletter, es una solicitud para
+					ponernos en contacto.
+				</p>
+			</header>
+
+			<form class="space-y-6" on:submit|preventDefault={handleSubmit} novalidate>
+				<div aria-live="polite" class="text-sm">
+					{#if status === 'loading'}
+						<p class="text-zinc-600">Enviando tu solicitud...</p>
+					{:else if status === 'success'}
+						<p class="text-green-700">Listo. Recibimos tu solicitud. Te contactaremos pronto.</p>
+					{:else if status === 'error'}
+						<p class="text-red-700">Tuvimos un problema al enviar. Intenta de nuevo.</p>
+					{/if}
+					{#if !FORMSPREE}
+						<p class="mt-1 text-xs text-amber-700">
+							Modo demo activo (la solicitud no se envía realmente en esta instancia).
+						</p>
+					{/if}
+				</div>
+
+				<div class="hidden" aria-hidden="true">
+					<label for="_gotcha" class="sr-only">No completar</label>
+					<input
+						id="_gotcha"
+						name="_gotcha"
+						type="text"
+						tabindex="-1"
+						autocomplete="off"
+						bind:value={form._gotcha}
+						on:input={() => clearError('_gotcha')}
+					/>
+				</div>
+
+				<div>
+					<label for="email" class="block text-sm font-medium">Correo electrónico*</label>
+					<input
+						id="email"
+						name="email"
+						type="email"
+						inputmode="email"
+						autocomplete="email"
+						class="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-black/10"
+						placeholder="tucorreo@ejemplo.com"
+						bind:value={form.email}
+						aria-invalid={errors.email ? 'true' : 'false'}
+						aria-describedby={errors.email ? 'email-error' : undefined}
+						on:input={() => clearError('email')}
+					/>
+					{#if errors.email}
+						<p id="email-error" role="alert" class="mt-1 text-sm text-red-700">
+							{errors.email}
+						</p>
+					{/if}
+				</div>
+
+				<div>
+					<label for="motivo" class="block text-sm font-medium">Motivo de interés*</label>
+					<textarea
+						id="motivo"
+						name="motivo"
+						rows="5"
+						class="mt-1 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-black/10"
+						placeholder="Ej. Comparar municipios, descargar series normalizadas (per cápita/100 mil), documentar metodología."
+						bind:value={form.motivo}
+						aria-invalid={errors.motivo ? 'true' : 'false'}
+						aria-describedby={errors.motivo ? 'motivo-error' : undefined}
+						on:input={() => clearError('motivo')}
+					></textarea>
+					{#if errors.motivo}
+						<p id="motivo-error" role="alert" class="mt-1 text-sm text-red-700">
+							{errors.motivo}
+						</p>
+					{/if}
+				</div>
+
+				<div class="grid gap-4 sm:grid-cols-2">
+					<div>
+						<label for="entidadRol" class="block text-sm font-medium">Tipo de entidad (opcional)</label>
+						<select
+							id="entidadRol"
+							name="entidadRol"
+							class="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 shadow-inner focus:outline-none focus:ring-2 focus:ring-black/10"
+							bind:value={form.entidadRol}
+						>
+							<option value="">Selecciona una opción</option>
+							<option>Entidad de gobierno</option>
+							<option>ONG - Sociedad Civil</option>
+							<option>Empresa / Consultora</option>
+							<option>Universidad - Docente/Investigación</option>
+							<option>Organismo Multilateral</option>
+							<option>Medios de comunicación</option>
+							<option>Otro</option>
+						</select>
+					</div>
+
+					<div>
+						<fieldset class="mt-0">
+							<legend class="block text-sm font-medium">Tipo de visitante*</legend>
+							<div class="mt-2 grid grid-cols-6 gap-6 sm:grid-cols-2">
+								{#each visitorOptions as option (option.value)}
+									<label
+										class={`flex items-center gap-2 rounded-lg border px-3 py-2 cursor-pointer ${
+											form.visitante === option.value
+												? 'border-black/60 bg-black/[0.03]'
+												: 'border-zinc-300'
+										}`}
+									>
+										<input
+											type="radio"
+											name="visitante"
+											value={option.value}
+											bind:group={form.visitante}
+											class="accent-black"
+											aria-describedby={errors.visitante ? 'visitante-error' : undefined}
+											on:change={() => clearError('visitante')}
+										/>
+										<span class="text-sm">{option.label}</span>
+									</label>
+								{/each}
+							</div>
+							{#if errors.visitante}
+								<p id="visitante-error" role="alert" class="mt-1 text-sm text-red-700">
+									{errors.visitante}
+								</p>
+							{/if}
+						</fieldset>
+					</div>
+				</div>
+
+				<div class="flex items-start gap-3">
+					<input
+						id="interesFinanciar"
+						name="interesFinanciar"
+						type="checkbox"
+						class="mt-1 size-5 rounded border-zinc-300 accent-black"
+						bind:checked={form.interesFinanciar}
+					/>
+					<label for="interesFinanciar" class="text-sm">Me interesa financiar este proyecto.</label>
+				</div>
+
+				<div class="flex items-start gap-3">
+					<input
+						id="acepta"
+						name="acepta"
+						type="checkbox"
+						class="mt-1 size-5 rounded border-zinc-300 accent-black"
+						bind:checked={form.acepta}
+						aria-invalid={errors.acepta ? 'true' : 'false'}
+						aria-describedby={errors.acepta ? 'acepta-error' : undefined}
+						on:change={() => clearError('acepta')}
+					/>
+					<label for="acepta" class="text-sm">
+						Acepto la política de privacidad y el uso de mis datos para ser contactado sobre esta solicitud.
+					</label>
+				</div>
+				{#if errors.acepta}
+					<p id="acepta-error" role="alert" class="mt-1 text-sm text-red-700">
+						{errors.acepta}
+					</p>
+				{/if}
+
+				<div class="pt-2">
+					<button
+						type="submit"
+						class="inline-flex items-center justify-center rounded-xl bg-black px-5 py-3 text-white font-medium shadow hover:opacity-95 disabled:opacity-50"
+						disabled={status === 'loading'}
+					>
+						{status === 'loading' ? 'Enviando...' : 'Enviar solicitud'}
+					</button>
+					<p class="mt-2 text-xs text-zinc-500">
+						Visualiza en un clic. Descarga al instante. API simple cuando se necesite.
+					</p>
+				</div>
+			</form>
+		</div>
+	</div>
+</section>
