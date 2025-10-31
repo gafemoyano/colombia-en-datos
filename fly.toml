@@ -1,19 +1,29 @@
-app = "colombia-en-datos-webapp"
-primary_region = "bog"
+# fly.toml app configuration file generated for colombia-en-datos-webapp-dark-dust-4694 on 2025-10-30T20:41:09-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'colombia-en-datos-webapp-dark-dust-4694'
+primary_region = 'iad'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  PORT = "8080"
-  NODE_ENV = "production"
+  DATA_PATH = '/data'
+  NODE_ENV = 'production'
+  PORT = '8080'
+
+[[mounts]]
+  source = 'indicator_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = false
+  auto_stop_machines = 'off'
   auto_start_machines = true
-  processes = ["app"]
+  processes = ['app']
 
 [[vm]]
-  size = "shared-cpu-1x"
+  size = 'shared-cpu-1x'

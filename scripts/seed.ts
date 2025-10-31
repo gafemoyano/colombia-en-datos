@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { seedIndicators } from '../src/lib/server/seed-indicators';
 import { join } from 'path';
 
-const dataPath = join(process.cwd(), 'data');
+const dataPath = process.env.DATA_PATH ? process.env.DATA_PATH : join(process.cwd(), 'data');
 
 console.log('Starting indicator seeding...');
 console.log('Data path:', dataPath);

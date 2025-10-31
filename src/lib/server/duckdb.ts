@@ -1,5 +1,5 @@
 import duckdb from 'duckdb';
-import { db as pgDb } from '$lib/db/client';
+import { getDb } from '$lib/db/client';
 import { indicators, indicatorFiles, categories, areas } from '$lib/db/schema';
 import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 
@@ -60,6 +60,7 @@ function runQuery<T = any>(db: duckdb.Database, query: string): Promise<T[]> {
 }
 
 export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<IndicatorData[]> {
+	const pgDb = getDb();
 	const {
 		indicators: indicatorCodes,
 		refArea = 'CO',
@@ -208,6 +209,7 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 export async function getAvailableIndicators(): Promise<
 	Array<{ code: string; name: string; frequency: string; area: string }>
 > {
+	const pgDb = getDb();
 	const allIndicators = await pgDb
 		.select({
 			code: indicators.code,
@@ -248,6 +250,7 @@ export async function getAvailableIndicators(): Promise<
 }
 
 export async function getIndicatorsByFrequency(frequency: string): Promise<string[]> {
+	const pgDb = getDb();
 	const results = await pgDb.select().from(indicators).where(eq(indicators.frequency, frequency));
 	return results.map((i) => i.code);
 }
@@ -279,6 +282,7 @@ export async function getDimensionsForIndicator(
 ): Promise<string[]> {
 	console.log(`[DuckDB] Getting dimensions for ${indicatorCode}, freq=${freq}, refArea=${refArea}`);
 
+	const pgDb = getDb();
 	const indicatorRecord = await pgDb
 		.select()
 		.from(indicators)
@@ -343,6 +347,7 @@ export async function getIndicatorMetadata(
 ): Promise<IndicatorMetadata | null> {
 	console.log(`[DuckDB] Getting metadata for ${indicatorCode}, freq=${freq}, refArea=${refArea}`);
 
+	const pgDb = getDb();
 	const indicatorRecord = await pgDb
 		.select()
 		.from(indicators)
