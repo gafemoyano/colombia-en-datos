@@ -1,48 +1,49 @@
-import { pgTable, serial, varchar, text, timestamp, jsonb, integer } from 'drizzle-orm/pg-core';
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
-export const areas = pgTable('areas', {
-	id: serial('id').primaryKey(),
-	code: varchar('code', { length: 50 }).notNull().unique(),
-	name: varchar('name', { length: 255 }).notNull(),
+export const areas = sqliteTable('areas', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	code: text('code', { length: 50 }).notNull().unique(),
+	name: text('name', { length: 255 }).notNull(),
 	description: text('description'),
-	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
+	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull(),
+	updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });
 
-export const categories = pgTable('categories', {
-	id: serial('id').primaryKey(),
+export const categories = sqliteTable('categories', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
 	areaId: integer('area_id')
 		.references(() => areas.id)
 		.notNull(),
-	code: varchar('code', { length: 255 }).notNull(),
-	name: varchar('name', { length: 255 }).notNull(),
+	code: text('code', { length: 255 }).notNull(),
+	name: text('name', { length: 255 }).notNull(),
 	description: text('description'),
-	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
+	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull(),
+	updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });
 
-export const indicators = pgTable('indicators', {
-	id: serial('id').primaryKey(),
+export const indicators = sqliteTable('indicators', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
 	categoryId: integer('category_id')
 		.references(() => categories.id)
 		.notNull(),
-	code: varchar('code', { length: 100 }).notNull().unique(),
-	name: varchar('name', { length: 255 }).notNull(),
+	code: text('code', { length: 100 }).notNull().unique(),
+	name: text('name', { length: 255 }).notNull(),
 	description: text('description'),
-	frequency: varchar('frequency', { length: 1 }).notNull(),
-	source: varchar('source', { length: 255 }),
-	metadata: jsonb('metadata'),
-	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
+	frequency: text('frequency', { length: 1 }).notNull(),
+	source: text('source', { length: 255 }),
+	metadata: text('metadata', { mode: 'json' }),
+	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull(),
+	updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });
 
-export const indicatorFiles = pgTable('indicator_files', {
-	id: serial('id').primaryKey(),
+export const indicatorFiles = sqliteTable('indicator_files', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
 	indicatorId: integer('indicator_id')
 		.references(() => indicators.id)
 		.notNull(),
-	refArea: varchar('ref_area', { length: 50 }).notNull(),
+	refArea: text('ref_area', { length: 50 }).notNull(),
 	year: integer('year').notNull(),
 	filePath: text('file_path').notNull(),
-	createdAt: timestamp('created_at').defaultNow().notNull()
+	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });

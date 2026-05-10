@@ -1,9 +1,10 @@
-import { pgTable, serial, varchar, timestamp } from 'drizzle-orm/pg-core';
+import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
-export const departamentos = pgTable('departamentos', {
-	id: serial('id').primaryKey(),
-	code: varchar('code', { length: 10 }).notNull().unique(),
-	name: varchar('name', { length: 255 }).notNull(),
-	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
+export const departamentos = sqliteTable('departamentos', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	code: text('code', { length: 10 }).notNull().unique(),
+	name: text('name', { length: 255 }).notNull(),
+	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull(),
+	updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });

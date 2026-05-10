@@ -18,7 +18,7 @@ export async function seedDepartamentos() {
 		const [code, name] = line.split(';').map((s) => s.trim());
 		if (!code || !name) continue;
 
-		await db.insert(departamentos).values({ code, name }).onConflictDoNothing();
+		await db.insert(departamentos).values({ code, name }).onConflictDoNothing({ target: departamentos.code });
 
 		count++;
 		console.log(`Seeded: ${code} - ${name}`);

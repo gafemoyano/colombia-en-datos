@@ -7,7 +7,7 @@ A modern web application for visualizing Colombian demographic, economic, and st
 - **Framework**: SvelteKit with TypeScript
 - **Styling**: Tailwind CSS
 - **Charts**: Plotly.js
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: SQLite with Drizzle ORM
 - **Analytics**: DuckDB for querying parquet datasets
 - **Testing**: Vitest
 - **Code Quality**: ESLint, Prettier
@@ -15,7 +15,6 @@ A modern web application for visualizing Colombian demographic, economic, and st
 ## Prerequisites
 
 - Node.js 22.12 or higher
-- PostgreSQL database
 - npm or pnpm
 
 ## Getting Started
@@ -34,10 +33,10 @@ Copy `.env.example` to `.env` and configure:
 cp .env.example .env
 ```
 
-Edit `.env` with your database credentials:
+Edit `.env` with your paths:
 
 ```
-DATABASE_URL=postgresql://user:password@localhost:5432/colombia_en_datos
+DATABASE_URL=./drizzle/db.sqlite
 DUCKDB_PATH=../data
 ```
 
@@ -48,7 +47,13 @@ npm run db:generate
 npm run db:migrate
 ```
 
-4. Start the development server:
+4. Seed the database:
+
+```sh
+npm run db:seed
+```
+
+5. Start the development server:
 
 ```sh
 npm run dev
@@ -91,7 +96,8 @@ src/
 │   └── +page.svelte
 └── app.css             # Global styles
 
-drizzle/                # Database migrations
+drizzle/                # Database migrations & SQLite file
+data/                   # Parquet time series files
 ```
 
 ## Features
@@ -100,11 +106,13 @@ drizzle/                # Database migrations
 - Real-time data visualization with Plotly
 - Responsive design with Tailwind CSS
 - Server-side data access with DuckDB
-- PostgreSQL for application metadata
+- SQLite for application metadata
 - Type-safe database queries with Drizzle ORM
 
 ## Deployment
 
-To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+The application is configured for deployment on Fly.io with Docker.
 
-For Docker deployment, ensure PostgreSQL and data volumes are properly configured.
+- SQLite database lives on a persistent volume alongside parquet data
+- No external database dependencies required
+- See `fly.toml` and `Dockerfile` for configuration

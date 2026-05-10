@@ -11,6 +11,7 @@ primary_region = 'iad'
 
 [env]
   DATA_PATH = '/data'
+  DATABASE_URL = '/data/db.sqlite'
   NODE_ENV = 'production'
   PORT = '8080'
 

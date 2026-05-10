@@ -1,10 +1,9 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import Database from 'better-sqlite3';
 import { env } from '$env/dynamic/private';
 import * as schema from './schema';
 
 let cachedDb: ReturnType<typeof drizzle> | null = null;
-let cachedClient: ReturnType<typeof postgres> | null = null;
 
 export function getDb() {
 	if (cachedDb) {
@@ -16,7 +15,7 @@ export function getDb() {
 		throw new Error('DATABASE_URL environment variable is not set');
 	}
 
-	cachedClient = postgres(databaseUrl);
-	cachedDb = drizzle(cachedClient, { schema });
+	const sqlite = new Database(databaseUrl);
+	cachedDb = drizzle(sqlite, { schema });
 	return cachedDb;
 }

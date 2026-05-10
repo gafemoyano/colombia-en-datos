@@ -1,19 +1,20 @@
-import { pgTable, serial, varchar, integer, timestamp, primaryKey } from 'drizzle-orm/pg-core';
+import { sqliteTable, integer, text, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { indicators } from './indicators';
 
-export const collections = pgTable('collections', {
-	id: serial('id').primaryKey(),
+export const collections = sqliteTable('collections', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
 	userId: integer('user_id')
 		.references(() => users.id)
 		.notNull(),
-	name: varchar('name', { length: 255 }).notNull(),
-	description: varchar('description', { length: 500 }),
-	createdAt: timestamp('created_at').defaultNow().notNull(),
-	updatedAt: timestamp('updated_at').defaultNow().notNull()
+	name: text('name', { length: 255 }).notNull(),
+	description: text('description', { length: 500 }),
+	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull(),
+	updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });
 
-export const collectionIndicators = pgTable(
+export const collectionIndicators = sqliteTable(
 	'collection_indicators',
 	{
 		collectionId: integer('collection_id')
@@ -22,7 +23,7 @@ export const collectionIndicators = pgTable(
 		indicatorId: integer('indicator_id')
 			.references(() => indicators.id)
 			.notNull(),
-		createdAt: timestamp('created_at').defaultNow().notNull()
+		createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 	},
 	(table) => ({
 		pk: primaryKey({ columns: [table.collectionId, table.indicatorId] })

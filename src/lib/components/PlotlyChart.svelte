@@ -14,17 +14,17 @@
 	let container: HTMLDivElement;
 	let plotlyModule: typeof PlotlyTypes | null = null;
 
-	const defaultLayout: Partial<PlotlyTypes.Layout> = {
+	const defaultLayout = $derived<Partial<PlotlyTypes.Layout>>({
 		autosize: true,
 		margin: { l: 50, r: 50, t: 50, b: 50 },
 		...layout
-	};
+	});
 
-	const defaultConfig: Partial<PlotlyTypes.Config> = {
+	const defaultConfig = $derived<Partial<PlotlyTypes.Config>>({
 		responsive: true,
 		displayModeBar: true,
 		...config
-	};
+	});
 
 	onMount(async () => {
 		plotlyModule = await import('plotly.js-dist-min');
