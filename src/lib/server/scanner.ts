@@ -1,5 +1,5 @@
 import { readdir } from 'fs/promises';
-import { join } from 'path';
+import { join, relative, resolve } from 'path';
 
 export interface ParquetFile {
 	area: string;
@@ -124,14 +124,15 @@ async function scanAreaWithoutCategory(areaPath: string, area: string): Promise<
 }
 
 export async function scanDataDirectory(dataPath: string): Promise<ParquetFile[]> {
+	const rootPath = resolve(dataPath);
 	const results: ParquetFile[] = [];
 
-	const areas = await readdir(dataPath, { withFileTypes: true });
+	const areas = await readdir(rootPath, { withFileTypes: true });
 
 	for (const areaEntry of areas) {
 		if (!areaEntry.isDirectory()) continue;
 		const folderName = areaEntry.name;
-		const areaPath = join(dataPath, folderName);
+		const areaPath = join(rootPath, folderName);
 
 		// Map folder name to area code (e.g., encuesta_calidad_vida -> calidad_vida)
 		const area = AREA_NAME_MAPPING[folderName] || folderName;
@@ -155,5 +156,8 @@ export async function scanDataDirectory(dataPath: string): Promise<ParquetFile[]
 		}
 	}
 
-	return results;
+	return results.map((file) => ({
+		...file,
+		filePath: relative(rootPath, file.filePath)
+	}));
 }

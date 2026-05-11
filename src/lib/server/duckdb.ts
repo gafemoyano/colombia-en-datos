@@ -2,6 +2,8 @@ import duckdb from 'duckdb';
 import { getDb } from '$lib/db/client';
 import { indicators, indicatorFiles, categories, areas } from '$lib/db/schema';
 import { eq, and, gte, lte, inArray } from 'drizzle-orm';
+import { env } from '$env/dynamic/private';
+import { isAbsolute, join } from 'path';
 
 export interface IndicatorData {
 	time: string;
@@ -57,6 +59,18 @@ function runQuery<T = any>(db: duckdb.Database, query: string): Promise<T[]> {
 			}
 		});
 	});
+}
+
+function getDataPath(): string {
+	return env.DATA_PATH || env.DUCKDB_PATH || join(process.cwd(), 'data');
+}
+
+function resolveParquetPath(filePath: string): string {
+	if (isAbsolute(filePath)) {
+		return filePath;
+	}
+
+	return join(getDataPath(), filePath);
 }
 
 export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<IndicatorData[]> {
@@ -129,6 +143,7 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 		const indicatorCode = indicatorIdToCode.get(file.indicatorId);
 		if (!indicatorCode) continue;
 
+		const resolvedFilePath = resolveParquetPath(file.filePath);
 		const cols = await getParquetColumns(file.filePath);
 		const colsUpper = new Set(cols.map((c) => c.toUpperCase()));
 
@@ -170,7 +185,7 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 		const whereClause = whereConditions.length > 0 ? ` WHERE ${whereConditions.join(' AND ')}` : '';
 		const query = `
 			SELECT ${selectCols.join(', ')}
-			FROM read_parquet('${file.filePath}')
+			FROM read_parquet('${resolvedFilePath}')
 			${whereClause}
 			ORDER BY TIME_PERIOD
 		`;
@@ -179,7 +194,7 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 
 		try {
 			const rows = await runQuery<any>(duckDb, query);
-			console.log(`[DuckDB] ${indicatorCode}: Retrieved ${rows.length} rows from ${file.filePath}`);
+			console.log(`[DuckDB] ${indicatorCode}: Retrieved ${rows.length} rows from ${resolvedFilePath}`);
 
 			for (const row of rows) {
 				const dataPoint: IndicatorData = {
@@ -195,7 +210,7 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 				allData.push(dataPoint);
 			}
 		} catch (error) {
-			console.error(`[DuckDB] Error querying ${file.filePath}:`, error);
+			console.error(`[DuckDB] Error querying ${resolvedFilePath}:`, error);
 		}
 	}
 
@@ -256,10 +271,11 @@ export async function getIndicatorsByFrequency(frequency: string): Promise<strin
 }
 
 export async function getParquetColumns(filePath: string): Promise<string[]> {
+	const resolvedFilePath = resolveParquetPath(filePath);
 	const duckDb = await getDuckDB();
-	const query = `SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('${filePath}'))`;
+	const query = `SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('${resolvedFilePath}'))`;
 
-	console.log(`[DuckDB] Getting columns from ${filePath}`);
+	console.log(`[DuckDB] Getting columns from ${resolvedFilePath}`);
 
 	return new Promise((resolve, reject) => {
 		duckDb.all(query, (err: Error | null, rows: any) => {
@@ -383,12 +399,13 @@ export async function getIndicatorMetadata(
 	}
 
 	const duckDb = await getDuckDB();
+	const resolvedFilePath = resolveParquetPath(files[0].filePath);
 	const query = `
 		SELECT
 			UNIT,
 			CAST(UNIT_MULT AS INTEGER) as UNIT_MULT,
 			CAST(DECIMALS AS INTEGER) as DECIMALS
-		FROM read_parquet('${files[0].filePath}')
+		FROM read_parquet('${resolvedFilePath}')
 		LIMIT 1
 	`;
 
