@@ -2,6 +2,7 @@
 node_modules
 build
 drizzle/*.sqlite
+drizzle/db.sqlite
 *.log
 .env
 .env.*

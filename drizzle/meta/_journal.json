@@ -8,6 +8,13 @@
       "when": 1778453033210,
       "tag": "0000_clean_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778458341809,
+      "tag": "0001_melted_talisman",
+      "breakpoints": true
     }
   ]
 }

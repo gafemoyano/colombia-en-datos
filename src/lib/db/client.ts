@@ -1,5 +1,5 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
+import { createClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/libsql';
 import { env } from '$env/dynamic/private';
 import * as schema from './schema';
 
@@ -15,7 +15,11 @@ export function getDb() {
 		throw new Error('DATABASE_URL environment variable is not set');
 	}
 
-	const sqlite = new Database(databaseUrl);
-	cachedDb = drizzle(sqlite, { schema });
+	const client = createClient({
+		url: databaseUrl,
+		authToken: env.TURSO_AUTH_TOKEN
+	});
+
+	cachedDb = drizzle(client, { schema });
 	return cachedDb;
 }

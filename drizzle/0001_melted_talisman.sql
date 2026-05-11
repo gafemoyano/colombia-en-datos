@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `indicator_files_unique` ON `indicator_files` (`indicator_id`,`ref_area`,`year`,`file_path`);

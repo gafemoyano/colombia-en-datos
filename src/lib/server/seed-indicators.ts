@@ -109,7 +109,6 @@ export async function seedIndicators(dataPath: string) {
 	}
 
 	console.log('Seeding indicator files...');
-	let fileCount = 0;
 
 	// Deduplicate by indicator+refArea+year+filePath combination
 	const uniqueFileRecords = new Map<string, (typeof files)[0]>();
@@ -118,21 +117,41 @@ export async function seedIndicators(dataPath: string) {
 		uniqueFileRecords.set(key, file);
 	}
 
-	console.log(`Inserting ${uniqueFileRecords.size} unique indicator-file combinations...`);
+	const fileRows = Array.from(uniqueFileRecords.values())
+		.map((file) => {
+			const indicatorId = indicatorMap.get(file.indicator);
+			if (!indicatorId) return null;
 
-	for (const file of uniqueFileRecords.values()) {
-		const indicatorId = indicatorMap.get(file.indicator);
-		if (!indicatorId) continue;
+			return {
+				indicatorId,
+				refArea: file.refArea,
+				year: file.year,
+				filePath: file.filePath
+			};
+		})
+		.filter((row): row is NonNullable<typeof row> => row !== null);
 
-		await db.insert(indicatorFiles).values({
-			indicatorId,
-			refArea: file.refArea,
-			year: file.year,
-			filePath: file.filePath
-		});
-		fileCount++;
+	console.log(`Inserting ${fileRows.length} unique indicator-file combinations...`);
+
+	const batchSize = 500;
+	for (let i = 0; i < fileRows.length; i += batchSize) {
+		const batch = fileRows.slice(i, i + batchSize);
+
+		await db
+			.insert(indicatorFiles)
+			.values(batch)
+			.onConflictDoNothing({
+				target: [
+					indicatorFiles.indicatorId,
+					indicatorFiles.refArea,
+					indicatorFiles.year,
+					indicatorFiles.filePath
+				]
+			});
+
+		console.log(`Indicator files batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(fileRows.length / batchSize)}`);
 	}
 
-	console.log(`Seeded ${fileCount} indicator files`);
+	console.log(`Processed ${fileRows.length} indicator files`);
 	console.log('Seeding complete!');
 }

@@ -11,9 +11,11 @@ primary_region = 'iad'
 
 [env]
   DATA_PATH = '/data'
-  DATABASE_URL = '/data/db.sqlite'
   NODE_ENV = 'production'
   PORT = '8080'
+
+# Set these as Fly secrets:
+#   fly secrets set DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..."
 
 [[mounts]]
   source = 'indicator_data'

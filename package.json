@@ -27,7 +27,6 @@
 		"@sveltejs/vite-plugin-svelte": "^6.2.0",
 		"@tailwindcss/postcss": "^4.1.14",
 		"@tailwindcss/vite": "^4.1.14",
-		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^24.8.1",
 		"@types/plotly.js": "^3.0.7",
 		"@typescript-eslint/eslint-plugin": "^8.46.1",
@@ -51,7 +50,7 @@
 		"vitest": "^3.2.4"
 	},
 	"dependencies": {
-		"better-sqlite3": "^12.9.0",
+		"@libsql/client": "^0.15.15",
 		"dotenv": "^17.2.3",
 		"drizzle-orm": "^0.44.6",
 		"duckdb": "^1.4.1",

@@ -1,4 +1,4 @@
-import { sqliteTable, integer, text } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, integer, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 export const areas = sqliteTable('areas', {
@@ -37,13 +37,24 @@ export const indicators = sqliteTable('indicators', {
 	updatedAt: text('updated_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
 });
 
-export const indicatorFiles = sqliteTable('indicator_files', {
-	id: integer('id').primaryKey({ autoIncrement: true }),
-	indicatorId: integer('indicator_id')
-		.references(() => indicators.id)
-		.notNull(),
-	refArea: text('ref_area', { length: 50 }).notNull(),
-	year: integer('year').notNull(),
-	filePath: text('file_path').notNull(),
-	createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
-});
+export const indicatorFiles = sqliteTable(
+	'indicator_files',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		indicatorId: integer('indicator_id')
+			.references(() => indicators.id)
+			.notNull(),
+		refArea: text('ref_area', { length: 50 }).notNull(),
+		year: integer('year').notNull(),
+		filePath: text('file_path').notNull(),
+		createdAt: text('created_at').default(sql`(CURRENT_TIMESTAMP)`).notNull()
+	},
+	(table) => ({
+		indicatorFilesUnique: uniqueIndex('indicator_files_unique').on(
+			table.indicatorId,
+			table.refArea,
+			table.year,
+			table.filePath
+		)
+	})
+);
