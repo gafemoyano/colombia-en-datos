@@ -1,0 +1,2732 @@
+{
+  "_schema": {
+    "dimensions": {
+      "TIME_PERIOD": {
+        "role": "TIME",
+        "type": "string",
+        "format": "YYYY[-MM]"
+      },
+      "FREQ": {
+        "role": "FREQ"
+      },
+      "REF_AREA": {
+        "role": "REF_AREA"
+      }
+    },
+    "attributes": {
+      "UNIT": {
+        "role": "ATTR"
+      },
+      "UNIT_MULT": {
+        "role": "ATTR",
+        "type": "int"
+      }
+    },
+    "measures": {
+      "OBS_VALUE": {
+        "type": "number"
+      }
+    }
+  },
+  "indicators": {
+    "PET_SHARE": {
+      "title": "% población en edad de trabajar",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Población constituida por todas las personas de 15 años y más. Se divide en fuerza de trabajo y población fuera de la fuerza de trabajo.",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "LF": {
+      "title": "Fuerza de trabajo",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Comprende a las personas en edad de trabajar que trabajan o están buscando trabajo y están disponibles. Se divide en población ocupada y desocupada",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "LF_POT": {
+      "title": "Fuerza de trabajo potencial",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "\"Personas que se encuentran fuera de la fuerza de trabajo y que tienen interés en trabajar\"}",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "MCSFT": {
+      "title": "MCSFT",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Relación porcentual de las personas ocupadas que desean trabajar más horas, ya sea en su empleo principal o secundario, y tienen una jornada inferior a 48 horas semanales (SIH) más las personas desocupadas (DS) más las personas que integran la fuerza de trabajo potencial (FTP) y el número de personas que integran la fuerza de trabajo (FT) más las personas que integran la fuerza de trabajo potencial (FTP)",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "UNEMP": {
+      "title": "Población desocupada",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Personas de 15 años y más que durante el período de referencia estuvieron simultáneamente: \"sin empleo\", ni se desempeñaron como trabajador(a) familiar sin remuneración; \"buscando empleo\", y \"actualmente disponibles para trabajar",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "PET": {
+      "title": "Población en edad de trabajar (PET)",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Población constituida por todas las personas de 15 años y más. Se divide en fuerza de trabajo y población fuera de la fuerza de trabajo.",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "NILF": {
+      "title": "Población fuera de la fuerza de trabajo",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Personas en edad de trabajar de 15 años y más, que en la semana de referencia no participaron en la producción porque no\nlo necesitaban, no podían o no estaban interesadas en tener actividad remunerad",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "EMP": {
+      "title": "Población ocupada",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Personas de 15 años y más que trabajaron por lo menos una hora remunerada en la semana de referencia; no trabajaron la semana de\nreferencia, pero tenían un trabajo o negocio, y trabajaron en la semana de referencia por lo menos una hora sin remuneración",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "UNDEREMP": {
+      "title": "Población subocupada",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Trabajadores que tienen el deseo manifiesto de mejorar sus ingresos, el número de horas trabajadas o el tener una labor más acorde a sus competencias",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "POP": {
+      "title": "Población total",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "methodology": "Población civil no institucional residente en hogares particulares. Esta población se estima con base en los censos de población, las estadísticas vitales y de migración",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "TCDFTP": {
+      "title": "TCDFTP",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Tasa combinada de desempleo y fuerza de trabajo potencial",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "TCSD": {
+      "title": "TCSD",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Tasa combinada de subocupación por insuficiencia de horas y desempleo",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "PART_RATE": {
+      "title": "Tasa Global de Participación (TGP)",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Relación porcentual entre la fuerza de trabajo (FT) y la población en edad de trabajar (PET)",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "UNEMP_RATE": {
+      "title": "Tasa de Desocupación (TD)",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Relación porcentual entre la fuerza de trabajo (FT) y la población en edad de trabajar (PET)",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "EMP_RATE": {
+      "title": "Tasa de Ocupación (TO)",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Relación porcentual entre la población ocupada (OC) y el número de personas que integran la población en edad de trabajar (PET).",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "UNDEREMP_RATE": {
+      "title": "Tasa de Subocupación (TS)",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empleo",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "M"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "methodology": "Relación porcentual de la población ocupada que manifestó querer y poder trabajar más horas a la semana, mejorar sus ingresos y/o tener una labor más propia de sus competencias (PS) y el número de personas que\nintegran la fuerza laboral (FT).",
+      "source": "DANE-GEIH",
+      "updated": "2025-06"
+    },
+    "\"PET_SHARE\"": {
+      "title": "\"PET_SHARE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"LF\"": {
+      "title": "\"LF\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"LF_POT\"": {
+      "title": "\"LF_POT\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"MCSFT\"": {
+      "title": "\"MCSFT\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"UNEMP\"": {
+      "title": "\"UNEMP\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"PET\"": {
+      "title": "\"PET\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"NILF\"": {
+      "title": "\"NILF\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"EMP\"": {
+      "title": "\"EMP\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"UNDEREMP\"": {
+      "title": "\"UNDEREMP\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"POP\"": {
+      "title": "\"POP\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "THS_PERSONS",
+      "unit_mult": 3,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 3,
+      "collection": "nan"
+    },
+    "\"TCDFTP\"": {
+      "title": "\"TCDFTP\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"TCSD\"": {
+      "title": "\"TCSD\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"PART_RATE\"": {
+      "title": "\"PART_RATE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"UNEMP_RATE\"": {
+      "title": "\"UNEMP_RATE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"EMP_RATE\"": {
+      "title": "\"EMP_RATE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"UNDEREMP_RATE\"": {
+      "title": "\"UNDEREMP_RATE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "PERCENT",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-GEIH",
+      "updated": "2025-09",
+      "decimals": 2,
+      "collection": "nan"
+    },
+    "\"NUM_SME_MALE\"": {
+      "title": "\"NUM_SME_MALE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "A1.12_SME_SEX"
+    },
+    "\"NUM_SME_FEMALE\"": {
+      "title": "\"NUM_SME_FEMALE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "A1.12_SME_SEX"
+    },
+    "\"NUM_SME_TOTAL\"": {
+      "title": "\"NUM_SME_TOTAL\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "A1.10_SME_OWNSTAT"
+    },
+    "\"NUM_SME_PATRON\"": {
+      "title": "\"NUM_SME_PATRON\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "A1.10_SME_OWNSTAT"
+    },
+    "\"NUM_SME_CTA_PROP\"": {
+      "title": "\"NUM_SME_CTA_PROP\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "A1.10_SME_OWNSTAT"
+    },
+    "\"NUM_SME_AGRIC\"": {
+      "title": "\"NUM_SME_AGRIC\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_MINING\"": {
+      "title": "\"NUM_SME_MINING\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_INDUSTRY\"": {
+      "title": "\"NUM_SME_INDUSTRY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_CONSTRUCTION\"": {
+      "title": "\"NUM_SME_CONSTRUCTION\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_CARS_REPAIRING\"": {
+      "title": "\"NUM_SME_CARS_REPAIRING\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_TRANSPORTATION_LOGISTICS\"": {
+      "title": "\"NUM_SME_TRANSPORTATION_LOGISTICS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_HOTELS_RESTAURANTS\"": {
+      "title": "\"NUM_SME_HOTELS_RESTAURANTS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_CIT\"": {
+      "title": "\"NUM_SME_CIT\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_FINANCE_RSTATE\"": {
+      "title": "\"NUM_SME_FINANCE_RSTATE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_EDUCATION\"": {
+      "title": "\"NUM_SME_EDUCATION\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_HEALTH\"": {
+      "title": "\"NUM_SME_HEALTH\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_ARTS_ENTERTAINMENT\"": {
+      "title": "\"NUM_SME_ARTS_ENTERTAINMENT\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_NO_SECTOR\"": {
+      "title": "\"NUM_SME_NO_SECTOR\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "B.2_SME_ACTIVITY"
+    },
+    "\"NUM_SME_STARTED_ALONE\"": {
+      "title": "\"NUM_SME_STARTED_ALONE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.1_SME_FOUNDER"
+    },
+    "\"NUM_SME_STARTED_WITH_FAMILY\"": {
+      "title": "\"NUM_SME_STARTED_WITH_FAMILY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.1_SME_FOUNDER"
+    },
+    "\"NUM_SME_STARTED_WITH_OTHERS\"": {
+      "title": "\"NUM_SME_STARTED_WITH_OTHERS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.1_SME_FOUNDER"
+    },
+    "\"NUM_SME_STARTED_BY_OTHER_PEOPLE\"": {
+      "title": "\"NUM_SME_STARTED_BY_OTHER_PEOPLE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.1_SME_FOUNDER"
+    },
+    "\"NUM_SME_STARTED_BY_FAMILY\"": {
+      "title": "\"NUM_SME_STARTED_BY_FAMILY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.1_SME_FOUNDER"
+    },
+    "\"NUM_SME_STARTED_BY_OTHERS\"": {
+      "title": "\"NUM_SME_STARTED_BY_OTHERS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.1_SME_FOUNDER"
+    },
+    "\"NUM_SME_REASON_NO_OTHER_INCOME\"": {
+      "title": "\"NUM_SME_REASON_NO_OTHER_INCOME\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_REASON_OPPORTUNITY\"": {
+      "title": "\"NUM_SME_REASON_OPPORTUNITY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_REASON_TRADITION\"": {
+      "title": "\"NUM_SME_REASON_TRADITION\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_REASON_COMPLEMENT_INCOME\"": {
+      "title": "\"NUM_SME_REASON_COMPLEMENT_INCOME\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_REASON_CAREER\"": {
+      "title": "\"NUM_SME_REASON_CAREER\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_REASON_LOW_EMPLOYABILITY\"": {
+      "title": "\"NUM_SME_REASON_LOW_EMPLOYABILITY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_REASON_OTHER\"": {
+      "title": "\"NUM_SME_REASON_OTHER\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.2_SME_REASON"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_SAVINGS\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_SAVINGS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_FAMILYLOAN\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_FAMILYLOAN\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_BANKLOAN\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_BANKLOAN\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_SHARKLOAN\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_SHARKLOAN\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_SEED\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_SEED\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_NONEED\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_NONEED\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_DONTKNOW\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_DONTKNOW\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_PRIMARYSOURCE_OTHER\"": {
+      "title": "\"NUM_SME_PRIMARYSOURCE_OTHER\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "C.4_SME_RESOURCES"
+    },
+    "\"NUM_SME_LOCATION_HOME\"": {
+      "title": "\"NUM_SME_LOCATION_HOME\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_ONPREMISE\"": {
+      "title": "\"NUM_SME_LOCATION_ONPREMISE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_DOORSALES\"": {
+      "title": "\"NUM_SME_LOCATION_DOORSALES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_STREETVENDING\"": {
+      "title": "\"NUM_SME_LOCATION_STREETVENDING\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_ONVEHICLE\"": {
+      "title": "\"NUM_SME_LOCATION_ONVEHICLE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_CONTRUCTIONSITE\"": {
+      "title": "\"NUM_SME_LOCATION_CONTRUCTIONSITE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_FARM\"": {
+      "title": "\"NUM_SME_LOCATION_FARM\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_LOCATION_OTHER\"": {
+      "title": "\"NUM_SME_LOCATION_OTHER\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "D.1_LOCATION"
+    },
+    "\"NUM_SME_CONTRIBUTION_HEALTHPENSION\"": {
+      "title": "\"NUM_SME_CONTRIBUTION_HEALTHPENSION\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.1.1_CONTRIBUTION"
+    },
+    "\"NUM_SME_CONTRIBUTION_NOCONTRIBUTION\"": {
+      "title": "\"NUM_SME_CONTRIBUTION_NOCONTRIBUTION\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.1.1_CONTRIBUTION"
+    },
+    "\"NUM_SME_CONTRIBUTION_HEALTHONLY\"": {
+      "title": "\"NUM_SME_CONTRIBUTION_HEALTHONLY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.1.1_CONTRIBUTION"
+    },
+    "\"NUM_SME_CONTRIBUTION_PENSIONONLY\"": {
+      "title": "\"NUM_SME_CONTRIBUTION_PENSIONONLY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.1.1_CONTRIBUTION"
+    },
+    "\"NUM_SME_ONEEMPLOYEE\"": {
+      "title": "\"NUM_SME_ONEEMPLOYEE\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.2_NUMEMPLOYEES"
+    },
+    "\"NUM_SME_UPTOTHREEEMPLOYEES\"": {
+      "title": "\"NUM_SME_UPTOTHREEEMPLOYEES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.2_NUMEMPLOYEES"
+    },
+    "\"NUM_SME_UPTONINEEMPLOYEES\"": {
+      "title": "\"NUM_SME_UPTONINEEMPLOYEES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.2_NUMEMPLOYEES"
+    },
+    "\"NUM_SME_OWNERS\"": {
+      "title": "\"NUM_SME_OWNERS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.3_TYPEEMPLOYEE"
+    },
+    "\"NUM_SME_EMMPLOYEES\"": {
+      "title": "\"NUM_SME_EMMPLOYEES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.3_TYPEEMPLOYEE"
+    },
+    "\"NUM_SME_PARTNERS\"": {
+      "title": "\"NUM_SME_PARTNERS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.3_TYPEEMPLOYEE"
+    },
+    "\"NUM_SME_VOLUNTEERS\"": {
+      "title": "\"NUM_SME_VOLUNTEERS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "E.3_TYPEEMPLOYEE"
+    },
+    "\"NUM_SME_RUT_YES\"": {
+      "title": "\"NUM_SME_RUT_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.1_RUT"
+    },
+    "\"NUM_SME_RUT_NO\"": {
+      "title": "\"NUM_SME_RUT_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.1_RUT"
+    },
+    "\"NUM_SME_REGISTRY_PNL\"": {
+      "title": "\"NUM_SME_REGISTRY_PNL\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.4_REGISTRY"
+    },
+    "\"NUM_SME_REGISTRY_BOOK\"": {
+      "title": "\"NUM_SME_REGISTRY_BOOK\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.4_REGISTRY"
+    },
+    "\"NUM_SME_REGISTRY_OTHER\"": {
+      "title": "\"NUM_SME_REGISTRY_OTHER\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.4_REGISTRY"
+    },
+    "\"NUM_SME_REGISTRY_FINSTATEMENTS\"": {
+      "title": "\"NUM_SME_REGISTRY_FINSTATEMENTS\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.4_REGISTRY"
+    },
+    "\"NUM_SME_REGISTRY_NOREGISTRY\"": {
+      "title": "\"NUM_SME_REGISTRY_NOREGISTRY\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.4_REGISTRY"
+    },
+    "\"NUM_SME_CHAMBER_YES\"": {
+      "title": "\"NUM_SME_CHAMBER_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.6_CHAMBER"
+    },
+    "\"NUM_SME_CHAMBER_NO\"": {
+      "title": "\"NUM_SME_CHAMBER_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "F.6_CHAMBER"
+    },
+    "\"NUM_SME_HASELECTRONICS_YES\"": {
+      "title": "\"NUM_SME_HASELECTRONICS_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.1_ELECTRONICS"
+    },
+    "\"NUM_SME_HASELECTRONICS_NO\"": {
+      "title": "\"NUM_SME_HASELECTRONICS_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.1_ELECTRONICS"
+    },
+    "\"NUM_SME_HASMOBILE_YES\"": {
+      "title": "\"NUM_SME_HASMOBILE_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.4A_MOBILE"
+    },
+    "\"NUM_SME_HASMOBILE_NO\"": {
+      "title": "\"NUM_SME_HASMOBILE_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.4A_MOBILE"
+    },
+    "\"NUM_SME_HASWEBPAGE_YES\"": {
+      "title": "\"NUM_SME_HASWEBPAGE_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.7_WEBPAGE"
+    },
+    "\"NUM_SME_HASWEBPAGE_NO\"": {
+      "title": "\"NUM_SME_HASWEBPAGE_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.7_WEBPAGE"
+    },
+    "\"NUM_SME_HASSOCIALMEDIA_YES\"": {
+      "title": "\"NUM_SME_HASSOCIALMEDIA_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.8_SOCIALMEDIA"
+    },
+    "\"NUM_SME_HASSOCIALMEDIA_NO\"": {
+      "title": "\"NUM_SME_HASSOCIALMEDIA_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.8_SOCIALMEDIA"
+    },
+    "\"NUM_SME_USESINTERNET_YES\"": {
+      "title": "\"NUM_SME_USESINTERNET_YES\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.9_INTERNET"
+    },
+    "\"NUM_SME_USESINTERNET_NO\"": {
+      "title": "\"NUM_SME_USESINTERNET_NO\"",
+      "category": "Economía y Sociedad",
+      "subcategory": "Empresas (EMICRON)",
+      "dims": [
+        "TIME_PERIOD",
+        "FREQ",
+        "REF_AREA"
+      ],
+      "freq": [
+        "A"
+      ],
+      "unit": "NUMBER",
+      "unit_mult": 0,
+      "default_viz": "time_series",
+      "source": "DANE-EMICRON",
+      "updated": "2025-09",
+      "dimensions_applicables": [
+        "URBAN_RURAL"
+      ],
+      "decimals": 3,
+      "collection": "G.9_INTERNET"
+    }
+  },
+  "collections": {
+    "nan": {
+      "title": "Nan",
+      "members": [
+        "\"PET_SHARE\"",
+        "\"LF\"",
+        "\"LF_POT\"",
+        "\"MCSFT\"",
+        "\"UNEMP\"",
+        "\"PET\"",
+        "\"NILF\"",
+        "\"EMP\"",
+        "\"UNDEREMP\"",
+        "\"POP\"",
+        "\"TCDFTP\"",
+        "\"TCSD\"",
+        "\"PART_RATE\"",
+        "\"UNEMP_RATE\"",
+        "\"EMP_RATE\"",
+        "\"UNDEREMP_RATE\""
+      ],
+      "filter_whitelist": [
+        "NAN",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "A1.12_SME_SEX": {
+      "title": "Sme Sex",
+      "members": [
+        "\"NUM_SME_MALE\"",
+        "\"NUM_SME_FEMALE\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "A1.10_SME_OWNSTAT": {
+      "title": "Sme Ownstat",
+      "members": [
+        "\"NUM_SME_TOTAL\"",
+        "\"NUM_SME_PATRON\"",
+        "\"NUM_SME_CTA_PROP\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "B.2_SME_ACTIVITY": {
+      "title": "B.2 Sme Activity",
+      "members": [
+        "\"NUM_SME_AGRIC\"",
+        "\"NUM_SME_MINING\"",
+        "\"NUM_SME_INDUSTRY\"",
+        "\"NUM_SME_CONSTRUCTION\"",
+        "\"NUM_SME_CARS_REPAIRING\"",
+        "\"NUM_SME_TRANSPORTATION_LOGISTICS\"",
+        "\"NUM_SME_HOTELS_RESTAURANTS\"",
+        "\"NUM_SME_CIT\"",
+        "\"NUM_SME_FINANCE_RSTATE\"",
+        "\"NUM_SME_EDUCATION\"",
+        "\"NUM_SME_HEALTH\"",
+        "\"NUM_SME_ARTS_ENTERTAINMENT\"",
+        "\"NUM_SME_NO_SECTOR\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "C.1_SME_FOUNDER": {
+      "title": "C.1 Sme Founder",
+      "members": [
+        "\"NUM_SME_STARTED_ALONE\"",
+        "\"NUM_SME_STARTED_WITH_FAMILY\"",
+        "\"NUM_SME_STARTED_WITH_OTHERS\"",
+        "\"NUM_SME_STARTED_BY_OTHER_PEOPLE\"",
+        "\"NUM_SME_STARTED_BY_FAMILY\"",
+        "\"NUM_SME_STARTED_BY_OTHERS\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "C.2_SME_REASON": {
+      "title": "C.2 Sme Reason",
+      "members": [
+        "\"NUM_SME_REASON_NO_OTHER_INCOME\"",
+        "\"NUM_SME_REASON_OPPORTUNITY\"",
+        "\"NUM_SME_REASON_TRADITION\"",
+        "\"NUM_SME_REASON_COMPLEMENT_INCOME\"",
+        "\"NUM_SME_REASON_CAREER\"",
+        "\"NUM_SME_REASON_LOW_EMPLOYABILITY\"",
+        "\"NUM_SME_REASON_OTHER\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "C.4_SME_RESOURCES": {
+      "title": "C.4 Sme Resources",
+      "members": [
+        "\"NUM_SME_PRIMARYSOURCE_SAVINGS\"",
+        "\"NUM_SME_PRIMARYSOURCE_FAMILYLOAN\"",
+        "\"NUM_SME_PRIMARYSOURCE_BANKLOAN\"",
+        "\"NUM_SME_PRIMARYSOURCE_SHARKLOAN\"",
+        "\"NUM_SME_PRIMARYSOURCE_SEED\"",
+        "\"NUM_SME_PRIMARYSOURCE_NONEED\"",
+        "\"NUM_SME_PRIMARYSOURCE_DONTKNOW\"",
+        "\"NUM_SME_PRIMARYSOURCE_OTHER\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "D.1_LOCATION": {
+      "title": "D.1 Location",
+      "members": [
+        "\"NUM_SME_LOCATION_HOME\"",
+        "\"NUM_SME_LOCATION_ONPREMISE\"",
+        "\"NUM_SME_LOCATION_DOORSALES\"",
+        "\"NUM_SME_LOCATION_STREETVENDING\"",
+        "\"NUM_SME_LOCATION_ONVEHICLE\"",
+        "\"NUM_SME_LOCATION_CONTRUCTIONSITE\"",
+        "\"NUM_SME_LOCATION_FARM\"",
+        "\"NUM_SME_LOCATION_OTHER\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "E.1.1_CONTRIBUTION": {
+      "title": "E.1.1 Contribution",
+      "members": [
+        "\"NUM_SME_CONTRIBUTION_HEALTHPENSION\"",
+        "\"NUM_SME_CONTRIBUTION_NOCONTRIBUTION\"",
+        "\"NUM_SME_CONTRIBUTION_HEALTHONLY\"",
+        "\"NUM_SME_CONTRIBUTION_PENSIONONLY\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "E.2_NUMEMPLOYEES": {
+      "title": "E.2 Numemployees",
+      "members": [
+        "\"NUM_SME_ONEEMPLOYEE\"",
+        "\"NUM_SME_UPTOTHREEEMPLOYEES\"",
+        "\"NUM_SME_UPTONINEEMPLOYEES\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "E.3_TYPEEMPLOYEE": {
+      "title": "E.3 Typeemployee",
+      "members": [
+        "\"NUM_SME_OWNERS\"",
+        "\"NUM_SME_EMMPLOYEES\"",
+        "\"NUM_SME_PARTNERS\"",
+        "\"NUM_SME_VOLUNTEERS\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "F.1_RUT": {
+      "title": "F.1 Rut",
+      "members": [
+        "\"NUM_SME_RUT_YES\"",
+        "\"NUM_SME_RUT_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "F.4_REGISTRY": {
+      "title": "F.4 Registry",
+      "members": [
+        "\"NUM_SME_REGISTRY_PNL\"",
+        "\"NUM_SME_REGISTRY_BOOK\"",
+        "\"NUM_SME_REGISTRY_OTHER\"",
+        "\"NUM_SME_REGISTRY_FINSTATEMENTS\"",
+        "\"NUM_SME_REGISTRY_NOREGISTRY\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "F.6_CHAMBER": {
+      "title": "F.6 Chamber",
+      "members": [
+        "\"NUM_SME_CHAMBER_YES\"",
+        "\"NUM_SME_CHAMBER_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "G.1_ELECTRONICS": {
+      "title": "G.1 Electronics",
+      "members": [
+        "\"NUM_SME_HASELECTRONICS_YES\"",
+        "\"NUM_SME_HASELECTRONICS_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "G.4A_MOBILE": {
+      "title": "G.4A Mobile",
+      "members": [
+        "\"NUM_SME_HASMOBILE_YES\"",
+        "\"NUM_SME_HASMOBILE_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "G.7_WEBPAGE": {
+      "title": "G.7 Webpage",
+      "members": [
+        "\"NUM_SME_HASWEBPAGE_YES\"",
+        "\"NUM_SME_HASWEBPAGE_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "G.8_SOCIALMEDIA": {
+      "title": "G.8 Socialmedia",
+      "members": [
+        "\"NUM_SME_HASSOCIALMEDIA_YES\"",
+        "\"NUM_SME_HASSOCIALMEDIA_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    },
+    "G.9_INTERNET": {
+      "title": "G.9 Internet",
+      "members": [
+        "\"NUM_SME_USESINTERNET_YES\"",
+        "\"NUM_SME_USESINTERNET_NO\""
+      ],
+      "filter_whitelist": [
+        "URBAN_RURAL",
+        "REF_AREA",
+        "TIME_PERIOD",
+        "FREQ"
+      ]
+    }
+  }
+}

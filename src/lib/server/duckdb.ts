@@ -1,8 +1,8 @@
-import duckdb from 'duckdb';
 import { getDb } from '$lib/db/client';
-import { indicators, indicatorFiles, categories, areas } from '$lib/db/schema';
+import { indicators, indicatorFiles, indicatorGroups, areas } from '$lib/db/schema';
 import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 import { env } from '$env/dynamic/private';
+import { existsSync } from 'fs';
 import { isAbsolute, join } from 'path';
 
 export interface IndicatorData {
@@ -29,15 +29,30 @@ export interface TimeSeriesQueryParams {
 	muniCode?: string;
 }
 
-let duckDbInstance: duckdb.Database | null = null;
+interface DuckDbDatabase {
+	all(query: string, callback: (err: Error | null, rows: any) => void): void;
+}
 
-function getDuckDB(): Promise<duckdb.Database> {
+interface DuckDbModule {
+	Database: new (path: string, callback: (err: Error | null) => void) => DuckDbDatabase;
+}
+
+let duckDbInstance: DuckDbDatabase | null = null;
+let duckDbModule: DuckDbModule | null = null;
+
+async function loadDuckDB(): Promise<DuckDbModule> {
+	if (duckDbModule) return duckDbModule;
+
+	const imported = await import('duckdb');
+	duckDbModule = ((imported as any).default || imported) as DuckDbModule;
+	return duckDbModule;
+}
+
+async function getDuckDB(): Promise<DuckDbDatabase> {
+	if (duckDbInstance) return duckDbInstance;
+
+	const duckdb = await loadDuckDB();
 	return new Promise((resolve, reject) => {
-		if (duckDbInstance) {
-			resolve(duckDbInstance);
-			return;
-		}
-
 		const db = new duckdb.Database(':memory:', (err: Error | null) => {
 			if (err) {
 				reject(err);
@@ -49,7 +64,7 @@ function getDuckDB(): Promise<duckdb.Database> {
 	});
 }
 
-function runQuery<T = any>(db: duckdb.Database, query: string): Promise<T[]> {
+function runQuery<T = any>(db: DuckDbDatabase, query: string): Promise<T[]> {
 	return new Promise((resolve, reject) => {
 		db.all(query, (err: Error | null, rows: any) => {
 			if (err) {
@@ -66,11 +81,24 @@ function getDataPath(): string {
 }
 
 function resolveParquetPath(filePath: string): string {
-	if (isAbsolute(filePath)) {
+	if (!isAbsolute(filePath)) {
+		return join(getDataPath(), filePath);
+	}
+
+	if (existsSync(filePath)) {
 		return filePath;
 	}
 
-	return join(getDataPath(), filePath);
+	// Older seeded databases may contain developer-machine absolute paths.
+	// If they point somewhere under a data/ directory, re-root them to this environment's data path.
+	const normalizedPath = filePath.replace(/\\/g, '/');
+	const dataMarker = '/data/';
+	const dataIndex = normalizedPath.lastIndexOf(dataMarker);
+	if (dataIndex !== -1) {
+		return join(getDataPath(), normalizedPath.slice(dataIndex + dataMarker.length));
+	}
+
+	return filePath;
 }
 
 export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<IndicatorData[]> {
@@ -134,12 +162,21 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 		return [];
 	}
 
+	const uniqueFilesByResolvedPath = new Map<string, (typeof files)[number]>();
+	for (const file of files) {
+		uniqueFilesByResolvedPath.set(
+			`${file.indicatorId}|${file.refArea}|${file.year}|${resolveParquetPath(file.filePath)}`,
+			file
+		);
+	}
+	const filesToQuery = Array.from(uniqueFilesByResolvedPath.values());
+
 	const indicatorIdToCode = new Map(indicatorRecords.map((i) => [i.id, i.code]));
 
 	const duckDb = await getDuckDB();
 	const allData: IndicatorData[] = [];
 
-	for (const file of files) {
+	for (const file of filesToQuery) {
 		const indicatorCode = indicatorIdToCode.get(file.indicatorId);
 		if (!indicatorCode) continue;
 
@@ -194,7 +231,9 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 
 		try {
 			const rows = await runQuery<any>(duckDb, query);
-			console.log(`[DuckDB] ${indicatorCode}: Retrieved ${rows.length} rows from ${resolvedFilePath}`);
+			console.log(
+				`[DuckDB] ${indicatorCode}: Retrieved ${rows.length} rows from ${resolvedFilePath}`
+			);
 
 			for (const row of rows) {
 				const dataPoint: IndicatorData = {
@@ -222,45 +261,36 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 }
 
 export async function getAvailableIndicators(): Promise<
-	Array<{ code: string; name: string; frequency: string; area: string }>
+	Array<{
+		code: string;
+		name: string;
+		shortName: string | null;
+		frequency: string;
+		area: string;
+		group: string;
+	}>
 > {
 	const pgDb = getDb();
-	const allIndicators = await pgDb
+	const rows = await pgDb
 		.select({
 			code: indicators.code,
 			name: indicators.name,
+			shortName: indicators.shortName,
 			frequency: indicators.frequency,
-			categoryId: indicators.categoryId
+			group: indicatorGroups.name,
+			area: areas.name
 		})
-		.from(indicators);
+		.from(indicators)
+		.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
+		.innerJoin(areas, eq(indicatorGroups.areaId, areas.id));
 
-	const categoryIds = [...new Set(allIndicators.map((i) => i.categoryId))];
-	const categoriesData = await pgDb
-		.select({
-			id: categories.id,
-			areaId: categories.areaId
-		})
-		.from(categories)
-		.where(inArray(categories.id, categoryIds));
-
-	const categoryToAreaId = new Map(categoriesData.map((c) => [c.id, c.areaId]));
-
-	const areaIds = [...new Set(categoriesData.map((c) => c.areaId))];
-	const areasData = await pgDb
-		.select({
-			id: areas.id,
-			name: areas.name
-		})
-		.from(areas)
-		.where(inArray(areas.id, areaIds));
-
-	const areaIdToName = new Map(areasData.map((a) => [a.id, a.name]));
-
-	return allIndicators.map((i) => ({
+	return rows.map((i) => ({
 		code: i.code,
 		name: i.name,
+		shortName: i.shortName,
 		frequency: i.frequency,
-		area: areaIdToName.get(categoryToAreaId.get(i.categoryId) || 0) || 'Unknown'
+		area: i.area || 'Unknown',
+		group: i.group || 'Unknown'
 	}));
 }
 
@@ -347,12 +377,16 @@ export async function getDimensionsForIndicator(
 export interface IndicatorMetadata {
 	code: string;
 	name: string;
+	shortName: string | null;
 	description: string | null;
+	methodology: string | null;
 	source: string | null;
 	frequency: string;
 	unit: string | null;
 	unitMult: number | null;
 	decimals: number | null;
+	defaultViz: string | null;
+	updated: string | null;
 	availableDimensions: string[];
 }
 
@@ -388,40 +422,18 @@ export async function getIndicatorMetadata(
 		return {
 			code: indicator.code,
 			name: indicator.name,
+			shortName: indicator.shortName,
 			description: indicator.description,
+			methodology: indicator.methodology,
 			source: indicator.source,
 			frequency: indicator.frequency,
-			unit: null,
-			unitMult: null,
-			decimals: null,
+			unit: indicator.unit,
+			unitMult: indicator.unitMult,
+			decimals: indicator.decimals,
+			defaultViz: indicator.defaultViz,
+			updated: indicator.updated,
 			availableDimensions: []
 		};
-	}
-
-	const duckDb = await getDuckDB();
-	const resolvedFilePath = resolveParquetPath(files[0].filePath);
-	const query = `
-		SELECT
-			UNIT,
-			CAST(UNIT_MULT AS INTEGER) as UNIT_MULT,
-			CAST(DECIMALS AS INTEGER) as DECIMALS
-		FROM read_parquet('${resolvedFilePath}')
-		LIMIT 1
-	`;
-
-	let unit: string | null = null;
-	let unitMult: number | null = null;
-	let decimals: number | null = null;
-
-	try {
-		const rows = await runQuery<any>(duckDb, query);
-		if (rows.length > 0) {
-			unit = rows[0].UNIT || null;
-			unitMult = rows[0].UNIT_MULT || null;
-			decimals = rows[0].DECIMALS || null;
-		}
-	} catch (error) {
-		console.error(`[DuckDB] Error reading unit/decimals:`, error);
 	}
 
 	const columns = await getParquetColumns(files[0].filePath);
@@ -441,12 +453,16 @@ export async function getIndicatorMetadata(
 	return {
 		code: indicator.code,
 		name: indicator.name,
+		shortName: indicator.shortName,
 		description: indicator.description,
+		methodology: indicator.methodology,
 		source: indicator.source,
 		frequency: indicator.frequency,
-		unit,
-		unitMult,
-		decimals,
+		unit: indicator.unit,
+		unitMult: indicator.unitMult,
+		decimals: indicator.decimals,
+		defaultViz: indicator.defaultViz,
+		updated: indicator.updated,
 		availableDimensions
 	};
 }

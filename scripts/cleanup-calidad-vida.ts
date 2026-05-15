@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { db } from '../src/lib/db/script-client';
-import { areas, categories, indicators, indicatorFiles } from '../src/lib/db/schema';
+import { areas, indicatorGroups, indicators, indicatorFiles } from '../src/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
 (async () => {
@@ -21,23 +21,26 @@ import { eq, inArray } from 'drizzle-orm';
 	const areaId = calidadVidaArea[0].id;
 	console.log(`Found calidad_vida area (ID: ${areaId})`);
 
-	// Get all categories for this area
-	const cvCategories = await db.select().from(categories).where(eq(categories.areaId, areaId));
+	// Get all indicator groups for this area
+	const cvGroups = await db
+		.select()
+		.from(indicatorGroups)
+		.where(eq(indicatorGroups.areaId, areaId));
 
-	console.log(`Found ${cvCategories.length} categories to delete`);
+	console.log(`Found ${cvGroups.length} indicator groups to delete`);
 
-	if (cvCategories.length === 0) {
-		console.log('No categories to clean up');
+	if (cvGroups.length === 0) {
+		console.log('No indicator groups to clean up');
 		process.exit(0);
 	}
 
-	const categoryIds = cvCategories.map((c) => c.id);
+	const groupIds = cvGroups.map((c) => c.id);
 
-	// Get all indicators for these categories
+	// Get all indicators for these groups
 	const cvIndicators = await db
 		.select()
 		.from(indicators)
-		.where(inArray(indicators.categoryId, categoryIds));
+		.where(inArray(indicators.indicatorGroupId, groupIds));
 
 	console.log(`Found ${cvIndicators.length} indicators to delete`);
 
@@ -55,19 +58,19 @@ import { eq, inArray } from 'drizzle-orm';
 		// Delete indicators
 		const deletedIndicators = await db
 			.delete(indicators)
-			.where(inArray(indicators.categoryId, categoryIds))
+			.where(inArray(indicators.indicatorGroupId, groupIds))
 			.returning();
 
 		console.log(`✓ Deleted ${deletedIndicators.length} indicators`);
 	}
 
-	// Delete categories
-	const deletedCategories = await db
-		.delete(categories)
-		.where(eq(categories.areaId, areaId))
+	// Delete indicator groups
+	const deletedGroups = await db
+		.delete(indicatorGroups)
+		.where(eq(indicatorGroups.areaId, areaId))
 		.returning();
 
-	console.log(`✓ Deleted ${deletedCategories.length} categories`);
+	console.log(`✓ Deleted ${deletedGroups.length} indicator groups`);
 
 	console.log('\n=== Cleanup complete! ===');
 	console.log('Area "calidad_vida" kept for reuse');

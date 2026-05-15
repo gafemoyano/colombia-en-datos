@@ -2,8 +2,10 @@
 	interface Indicator {
 		code: string;
 		name: string;
+		shortName: string | null;
 		frequency: string;
 		area: string;
+		group: string;
 	}
 
 	interface Props {
@@ -32,7 +34,10 @@
 		if (searchQuery.trim()) {
 			const query = searchQuery.toLowerCase();
 			filtered = filtered.filter(
-				(i) => i.code.toLowerCase().includes(query) || i.name.toLowerCase().includes(query)
+				(i) =>
+					i.code.toLowerCase().includes(query) ||
+					i.name.toLowerCase().includes(query) ||
+					i.group.toLowerCase().includes(query)
 			);
 		}
 
@@ -48,13 +53,13 @@
 </script>
 
 <div class="bg-white rounded-lg shadow p-6">
-	<h2 class="text-xl font-semibold mb-4">Select Indicators</h2>
+	<h2 class="text-xl font-semibold mb-4">Seleccionar indicadores</h2>
 
 	<div class="mb-4">
 		<input
 			type="text"
 			bind:value={searchQuery}
-			placeholder="Search indicators..."
+			placeholder="Buscar indicadores..."
 			class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
 		/>
 	</div>
@@ -69,9 +74,10 @@
 					class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 mt-1"
 				/>
 				<div class="flex-1">
-					<div class="text-sm font-medium text-gray-900">{indicator.code}</div>
+					<div class="text-sm font-medium text-gray-900">{indicator.name}</div>
+					<div class="text-xs text-gray-500">{indicator.code}</div>
 					<div class="text-xs text-gray-500">
-						{indicator.frequency === 'M' ? 'Monthly' : 'Annual'}
+						{indicator.frequency === 'M' ? 'Mensual' : 'Anual'} · {indicator.group}
 					</div>
 				</div>
 			</label>
@@ -80,7 +86,10 @@
 
 	<div class="mt-4 pt-4 border-t">
 		<p class="text-sm text-gray-600">
-			{selected.length} indicator{selected.length !== 1 ? 's' : ''} selected
+			{selected.length} indicador{selected.length !== 1 ? 'es' : ''} seleccionado{selected.length !==
+			1
+				? 's'
+				: ''}
 		</p>
 	</div>
 </div>

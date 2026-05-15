@@ -9,12 +9,16 @@
 	interface IndicatorMetadata {
 		code: string;
 		name: string;
+		shortName: string | null;
 		description: string | null;
+		methodology: string | null;
 		source: string | null;
 		frequency: string;
 		unit: string | null;
 		unitMult: number | null;
 		decimals: number | null;
+		defaultViz: string | null;
+		updated: string | null;
 		availableDimensions: string[];
 	}
 
@@ -37,6 +41,13 @@
 	const uniqueAreas = $derived(
 		[...new Set(data.indicators.map((indicator: IndicatorSummary) => indicator.area))].sort()
 	);
+
+	function indicatorLabel(code: string): string {
+		const meta = metadata.find((item) => item.code === code);
+		if (meta) return meta.shortName || meta.name || code;
+		const summary = data.indicators.find((item: IndicatorSummary) => item.code === code);
+		return summary?.shortName || summary?.name || code;
+	}
 
 	async function loadMetadata() {
 		if (selectedIndicators.length === 0) {
@@ -106,14 +117,14 @@
 
 				chartData = Array.from(dataByKey.entries()).map(([key, points]) => {
 					const [indicator, dimValue] = key.split('|');
-					const labelMap: Record<string, string> = { T: 'Total', U: 'Urban', R: 'Rural' };
+					const labelMap: Record<string, string> = { T: 'Total', U: 'Urbano', R: 'Rural' };
 					const dimLabel = labelMap[dimValue] || dimValue;
 					return {
 						x: points.map((p) => p.time),
 						y: points.map((p) => p.value),
 						type: 'scatter',
 						mode: 'lines+markers',
-						name: `${indicator} · ${dimLabel}`,
+						name: `${indicatorLabel(indicator)} · ${dimLabel}`,
 						connectgaps: false
 					};
 				});
@@ -123,7 +134,7 @@
 					y: result.data.filter((d: any) => d.indicator === indicator).map((d: any) => d.value),
 					type: 'scatter',
 					mode: 'lines+markers',
-					name: indicator,
+					name: indicatorLabel(indicator),
 					connectgaps: false
 				}));
 			}
@@ -172,26 +183,26 @@
 
 <div class="space-y-6">
 	<div>
-		<h2 class="text-2xl font-bold text-gray-900 mb-2">Colombian Economic Indicators</h2>
+		<h2 class="text-2xl font-bold text-gray-900 mb-2">Indicadores de Colombia</h2>
 		<p class="text-gray-600">
-			Visualize demographic, economic, and statistical indicators for Colombia
+			Visualiza indicadores demográficos, económicos y estadísticos de Colombia
 		</p>
 	</div>
 
 	<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 		<div class="lg:col-span-1 space-y-6">
 			<div class="bg-white rounded-lg shadow p-6">
-				<h3 class="text-lg font-semibold mb-4">Filters</h3>
+				<h3 class="text-lg font-semibold mb-4">Filtros</h3>
 
 				<div class="space-y-4">
 					<div>
-						<label for="area" class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+						<label for="area" class="block text-sm font-medium text-gray-700 mb-2"> Área </label>
 						<select
 							id="area"
 							bind:value={selectedArea}
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
 						>
-							<option value="">All Areas</option>
+							<option value="">Todas las áreas</option>
 							{#each uniqueAreas as area}
 								<option value={area}>{area}</option>
 							{/each}
@@ -200,7 +211,7 @@
 
 					<div>
 						<label for="frequency" class="block text-sm font-medium text-gray-700 mb-2">
-							Frequency
+							Frecuencia
 						</label>
 						<select
 							id="frequency"
@@ -208,14 +219,14 @@
 							onchange={handleFrequencyChange}
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
 						>
-							<option value="M">Monthly (M)</option>
-							<option value="A">Annual (A)</option>
+							<option value="M">Mensual (M)</option>
+							<option value="A">Anual (A)</option>
 						</select>
 					</div>
 
 					<div>
 						<label for="start-date" class="block text-sm font-medium text-gray-700 mb-2">
-							Start Date (YYYY or YYYY-MM)
+							Fecha inicial (AAAA o AAAA-MM)
 						</label>
 						<input
 							id="start-date"
@@ -229,7 +240,7 @@
 
 					<div>
 						<label for="end-date" class="block text-sm font-medium text-gray-700 mb-2">
-							End Date (YYYY or YYYY-MM)
+							Fecha final (AAAA o AAAA-MM)
 						</label>
 						<input
 							id="end-date"
@@ -264,20 +275,20 @@
 			<div class="bg-white rounded-lg shadow p-6">
 				{#if isLoading}
 					<div class="flex items-center justify-center h-96">
-						<div class="text-gray-500">Loading data...</div>
+						<div class="text-gray-500">Cargando datos...</div>
 					</div>
 				{:else if chartData.length > 0}
 					<PlotlyChart
 						data={chartData}
 						layout={{
-							title: { text: 'Time Series Data' },
-							xaxis: { title: { text: 'Date' } },
-							yaxis: { title: { text: 'Value' } }
+							title: { text: 'Serie de tiempo' },
+							xaxis: { title: { text: 'Fecha' } },
+							yaxis: { title: { text: metadata[0]?.unit || 'Valor' } }
 						}}
 					/>
 				{:else}
 					<div class="flex items-center justify-center h-96">
-						<div class="text-gray-500">Select indicators to visualize</div>
+						<div class="text-gray-500">Selecciona indicadores para visualizar</div>
 					</div>
 				{/if}
 			</div>

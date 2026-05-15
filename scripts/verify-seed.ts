@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { db } from '../src/lib/db/script-client';
-import { indicators, categories, areas, indicatorFiles } from '../src/lib/db/schema';
+import { indicators, indicatorGroups, areas, indicatorFiles } from '../src/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
 (async () => {
@@ -15,19 +15,19 @@ import { eq, inArray } from 'drizzle-orm';
 		process.exit(1);
 	}
 
-	const cvCategories = await db
+	const cvGroups = await db
 		.select()
-		.from(categories)
-		.where(eq(categories.areaId, calidadVidaArea.id));
-	console.log('\nCalidad Vida Categories:', cvCategories.length);
-	console.log('Sample categories:');
-	cvCategories.slice(0, 5).forEach((c) => console.log(`  - ${c.name}`));
+		.from(indicatorGroups)
+		.where(eq(indicatorGroups.areaId, calidadVidaArea.id));
+	console.log('\nCalidad Vida Indicator groups:', cvGroups.length);
+	console.log('Sample indicator groups:');
+	cvGroups.slice(0, 5).forEach((c) => console.log(`  - ${c.name}`));
 
-	const categoryIds = cvCategories.map((c) => c.id);
+	const groupIds = cvGroups.map((c) => c.id);
 	const cvIndicators = await db
 		.select()
 		.from(indicators)
-		.where(inArray(indicators.categoryId, categoryIds));
+		.where(inArray(indicators.indicatorGroupId, groupIds));
 	console.log('\nCalidad Vida Indicators:', cvIndicators.length);
 	console.log('Sample indicators:');
 	cvIndicators.slice(0, 5).forEach((i) => console.log(`  - ${i.code} (${i.frequency})`));
