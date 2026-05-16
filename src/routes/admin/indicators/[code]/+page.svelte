@@ -1,4 +1,15 @@
 <script lang="ts">
+	import { ArrowLeft, Database, Layers3, Save } from 'lucide-svelte';
+	import Alert from '$lib/components/ui/Alert.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import Input from '$lib/components/ui/Input.svelte';
+	import Label from '$lib/components/ui/Label.svelte';
+	import Separator from '$lib/components/ui/Separator.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import { buttonVariants } from '$lib/components/ui/button';
+	import { cn } from '$lib/utils';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -8,171 +19,190 @@
 	<title>Admin · {data.indicator.code}</title>
 </svelte:head>
 
-<div class="max-w-4xl space-y-6">
-	<div>
-		<a href="/admin" class="text-sm text-blue-700 hover:underline">← Volver a indicadores</a>
-		<h2 class="text-2xl font-bold text-gray-900 mt-2">Editar indicador</h2>
-		<p class="text-gray-600">{data.indicator.code}</p>
+<div class="mx-auto max-w-5xl space-y-6">
+	<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+		<div class="space-y-3">
+			<a href="/admin" class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), '-ml-3')}>
+				<ArrowLeft class="h-4 w-4" />
+				Volver a indicadores
+			</a>
+			<div>
+				<div class="flex flex-wrap items-center gap-2">
+					<h1 class="text-3xl font-bold tracking-tight text-slate-950">{data.indicator.name}</h1>
+					<Badge variant="secondary">{data.indicator.frequency === 'M' ? 'Mensual' : 'Anual'}</Badge
+					>
+				</div>
+				<p class="mt-2 font-mono text-sm text-slate-500">{data.indicator.code}</p>
+			</div>
+		</div>
 	</div>
 
 	{#if data.saved}
-		<div class="bg-green-50 border border-green-200 text-green-700 rounded-md p-3 text-sm">
-			Indicador guardado.
-		</div>
+		<Alert variant="success">Indicador guardado.</Alert>
 	{/if}
 
 	{#if form?.error}
-		<div class="bg-red-50 border border-red-200 text-red-700 rounded-md p-3 text-sm">
-			{form.error}
-		</div>
+		<Alert variant="destructive">{form.error}</Alert>
 	{/if}
 
-	<div class="bg-white rounded-lg shadow p-6">
-		<h3 class="text-lg font-semibold mb-4">Contexto de origen</h3>
-		<dl class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-			<div>
-				<dt class="text-gray-500">Área</dt>
-				<dd class="text-gray-900">{data.indicator.area}</dd>
+	<div class="grid gap-6 lg:grid-cols-[280px_1fr]">
+		<div class="space-y-6">
+			<Card class="p-5">
+				<div class="flex items-center gap-2 text-sm font-semibold text-slate-950">
+					<Layers3 class="h-4 w-4" />
+					Contexto de origen
+				</div>
+				<Separator class="my-4" />
+				<dl class="space-y-4 text-sm">
+					<div>
+						<dt class="text-slate-500">Área</dt>
+						<dd class="mt-1 font-medium text-slate-950">{data.indicator.area}</dd>
+					</div>
+					<div>
+						<dt class="text-slate-500">Grupo</dt>
+						<dd class="mt-1 font-medium text-slate-950">{data.indicator.group}</dd>
+						<dd class="mt-1 font-mono text-xs text-slate-500">{data.indicator.groupCode}</dd>
+					</div>
+					<div>
+						<dt class="text-slate-500">Dimensiones del grupo</dt>
+						<dd class="mt-1 text-slate-700">
+							{data.indicator.filterWhitelist?.join(', ') || 'Sin definir'}
+						</dd>
+					</div>
+				</dl>
+			</Card>
+
+			<Card class="p-5">
+				<div class="flex items-center gap-2 text-sm font-semibold text-slate-950">
+					<Database class="h-4 w-4" />
+					Formato actual
+				</div>
+				<Separator class="my-4" />
+				<div class="grid grid-cols-2 gap-3 text-sm">
+					<div class="rounded-lg bg-slate-50 p-3">
+						<div class="text-xs text-slate-500">Unidad</div>
+						<div class="mt-1 font-medium">{data.indicator.unit || '—'}</div>
+					</div>
+					<div class="rounded-lg bg-slate-50 p-3">
+						<div class="text-xs text-slate-500">Decimales</div>
+						<div class="mt-1 font-medium">{data.indicator.decimals ?? '—'}</div>
+					</div>
+				</div>
+			</Card>
+		</div>
+
+		<form method="POST" class="space-y-6">
+			<Card class="p-6">
+				<div>
+					<h2 class="text-lg font-semibold text-slate-950">Anotación pública</h2>
+					<p class="mt-1 text-sm text-slate-500">
+						Estos campos alimentan el selector, la gráfica y el panel de información del indicador.
+					</p>
+				</div>
+				<Separator class="my-6" />
+
+				<div class="space-y-5">
+					<div class="grid gap-5 md:grid-cols-2">
+						<div class="space-y-2 md:col-span-2">
+							<Label for="name">Nombre público</Label>
+							<Input id="name" name="name" value={data.indicator.name} required />
+						</div>
+
+						<div class="space-y-2 md:col-span-2">
+							<Label for="shortName">Nombre corto</Label>
+							<Input
+								id="shortName"
+								name="shortName"
+								value={data.indicator.shortName || ''}
+								placeholder="Opcional para etiquetas de gráfica"
+							/>
+						</div>
+
+						<div class="space-y-2 md:col-span-2">
+							<Label for="description">Descripción</Label>
+							<Textarea
+								id="description"
+								name="description"
+								rows={4}
+								value={data.indicator.description || ''}
+								placeholder="Explicación breve para usuarios no técnicos"
+							/>
+						</div>
+
+						<div class="space-y-2 md:col-span-2">
+							<Label for="methodology">Metodología</Label>
+							<Textarea
+								id="methodology"
+								name="methodology"
+								rows={7}
+								value={data.indicator.methodology || ''}
+								placeholder="Definición formal, fórmula o nota metodológica"
+							/>
+						</div>
+					</div>
+				</div>
+			</Card>
+
+			<Card class="p-6">
+				<h2 class="text-lg font-semibold text-slate-950">Fuente y formato</h2>
+				<Separator class="my-6" />
+
+				<div class="grid gap-5 md:grid-cols-2">
+					<div class="space-y-2">
+						<Label for="source">Fuente</Label>
+						<Input id="source" name="source" value={data.indicator.source || ''} />
+					</div>
+					<div class="space-y-2">
+						<Label for="updated">Actualizado</Label>
+						<Input
+							id="updated"
+							name="updated"
+							value={data.indicator.updated || ''}
+							placeholder="2025-06"
+						/>
+					</div>
+					<div class="space-y-2">
+						<Label for="unit">Unidad</Label>
+						<Input id="unit" name="unit" value={data.indicator.unit || ''} />
+					</div>
+					<div class="space-y-2">
+						<Label for="unitMult">Multiplicador</Label>
+						<Input
+							id="unitMult"
+							name="unitMult"
+							type="number"
+							value={data.indicator.unitMult ?? ''}
+						/>
+					</div>
+					<div class="space-y-2">
+						<Label for="decimals">Decimales</Label>
+						<Input
+							id="decimals"
+							name="decimals"
+							type="number"
+							value={data.indicator.decimals ?? ''}
+						/>
+					</div>
+					<div class="space-y-2">
+						<Label for="defaultViz">Visualización por defecto</Label>
+						<Input
+							id="defaultViz"
+							name="defaultViz"
+							value={data.indicator.defaultViz || 'time_series'}
+						/>
+					</div>
+				</div>
+			</Card>
+
+			<div
+				class="sticky bottom-4 z-10 flex justify-end gap-3 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-lg backdrop-blur"
+			>
+				<a href="/admin" class={cn(buttonVariants({ variant: 'outline' }))}>Cancelar</a>
+				<Button type="submit" class="gap-2">
+					<Save class="h-4 w-4" />
+					Guardar cambios
+				</Button>
 			</div>
-			<div>
-				<dt class="text-gray-500">Grupo</dt>
-				<dd class="text-gray-900">{data.indicator.group}</dd>
-				<dd class="text-xs text-gray-500">{data.indicator.groupCode}</dd>
-			</div>
-			<div>
-				<dt class="text-gray-500">Frecuencia</dt>
-				<dd class="text-gray-900">{data.indicator.frequency === 'M' ? 'Mensual' : 'Anual'}</dd>
-			</div>
-			<div>
-				<dt class="text-gray-500">Dimensiones permitidas del grupo</dt>
-				<dd class="text-gray-900">{data.indicator.filterWhitelist?.join(', ') || 'Sin definir'}</dd>
-			</div>
-		</dl>
+		</form>
 	</div>
-
-	<form method="POST" class="bg-white rounded-lg shadow p-6 space-y-5">
-		<div>
-			<label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nombre público</label>
-			<input
-				id="name"
-				name="name"
-				value={data.indicator.name}
-				required
-				class="w-full px-3 py-2 border border-gray-300 rounded-md"
-			/>
-		</div>
-
-		<div>
-			<label for="shortName" class="block text-sm font-medium text-gray-700 mb-1"
-				>Nombre corto</label
-			>
-			<input
-				id="shortName"
-				name="shortName"
-				value={data.indicator.shortName || ''}
-				class="w-full px-3 py-2 border border-gray-300 rounded-md"
-			/>
-		</div>
-
-		<div>
-			<label for="description" class="block text-sm font-medium text-gray-700 mb-1"
-				>Descripción</label
-			>
-			<textarea
-				id="description"
-				name="description"
-				rows="4"
-				class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				>{data.indicator.description || ''}</textarea
-			>
-		</div>
-
-		<div>
-			<label for="methodology" class="block text-sm font-medium text-gray-700 mb-1"
-				>Metodología</label
-			>
-			<textarea
-				id="methodology"
-				name="methodology"
-				rows="6"
-				class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				>{data.indicator.methodology || ''}</textarea
-			>
-		</div>
-
-		<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-			<div>
-				<label for="source" class="block text-sm font-medium text-gray-700 mb-1">Fuente</label>
-				<input
-					id="source"
-					name="source"
-					value={data.indicator.source || ''}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				/>
-			</div>
-			<div>
-				<label for="updated" class="block text-sm font-medium text-gray-700 mb-1">Actualizado</label
-				>
-				<input
-					id="updated"
-					name="updated"
-					value={data.indicator.updated || ''}
-					placeholder="2025-06"
-					class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				/>
-			</div>
-		</div>
-
-		<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-			<div>
-				<label for="unit" class="block text-sm font-medium text-gray-700 mb-1">Unidad</label>
-				<input
-					id="unit"
-					name="unit"
-					value={data.indicator.unit || ''}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				/>
-			</div>
-			<div>
-				<label for="unitMult" class="block text-sm font-medium text-gray-700 mb-1"
-					>Multiplicador</label
-				>
-				<input
-					id="unitMult"
-					name="unitMult"
-					type="number"
-					value={data.indicator.unitMult ?? ''}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				/>
-			</div>
-			<div>
-				<label for="decimals" class="block text-sm font-medium text-gray-700 mb-1">Decimales</label>
-				<input
-					id="decimals"
-					name="decimals"
-					type="number"
-					value={data.indicator.decimals ?? ''}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				/>
-			</div>
-			<div>
-				<label for="defaultViz" class="block text-sm font-medium text-gray-700 mb-1"
-					>Visualización</label
-				>
-				<input
-					id="defaultViz"
-					name="defaultViz"
-					value={data.indicator.defaultViz || 'time_series'}
-					class="w-full px-3 py-2 border border-gray-300 rounded-md"
-				/>
-			</div>
-		</div>
-
-		<div class="flex gap-3 pt-2">
-			<button class="px-4 py-2 bg-blue-700 text-white rounded-md hover:bg-blue-800">Guardar</button>
-			<a href="/admin" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-				>Cancelar</a
-			>
-		</div>
-	</form>
 </div>

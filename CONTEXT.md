@@ -36,6 +36,14 @@ _Avoid_: Review state, approval status
 A category used to slice observations of an **Indicator**.
 _Avoid_: Filter, column, breakdown
 
+## Personas
+
+**Data scientist**:  
+A technical user who creates or transforms source data into indicator observations. They understand columnar data, schema mappings, and APIs. They are the primary users of the ingestion pipeline. _Avoid_: Analyst, uploader, admin.
+
+**Curator**:  
+A user who reviews and improves Spanish-facing indicator annotations (names, descriptions, methodology) in the admin UI. They do not need to be technical. _Avoid_: Editor, reviewer, admin.
+
 ## Relationships
 
 - An **Indicator** has zero or more **Indicator annotations**.
@@ -44,7 +52,12 @@ _Avoid_: Filter, column, breakdown
 - A **Source table** is an **Indicator group** when the grouping corresponds to a published table or sheet.
 - An **Indicator** can have a stable **Measurement format** or produce series with different **Measurement formats**.
 - An **Indicator** can be sliced by zero or more **Observation dimensions**.
+- An **Indicator** can have observations at different **Frequencies** without becoming a different indicator.
+- A single **Observation** has exactly one **Frequency**.
+- The `indicators` table does not store **Frequency**; it is purely a property of each **Observation** row.
 - An **Attention need** belongs to an **Indicator annotation**.
+- A **Data scientist** creates **Indicators** and their observations through the ingestion pipeline.
+- A **Data scientist** is responsible for transforming source data into the system's **Observation schema** before upload. The system does not perform column mapping.
 
 ## Example dialogue
 

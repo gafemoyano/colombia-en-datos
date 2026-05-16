@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 :root {
 	--c-primary: #2563eb;
@@ -9,4 +9,17 @@
 
 html {
 	scroll-behavior: smooth;
+}
+
+body {
+	font-feature-settings:
+		'rlig' 1,
+		'calt' 1;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+	background: #dbeafe;
+	color: #0f172a;
 }

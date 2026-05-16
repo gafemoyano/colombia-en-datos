@@ -1,5 +1,5 @@
-import { db } from '$lib/db/script-client';
-import { areas, indicatorGroups, indicators, indicatorFiles } from '$lib/db/schema';
+import { db } from '../db/script-client';
+import { areas, indicatorGroups, indicators, indicatorFiles } from '../db/schema';
 import { scanDataDirectory, type ParquetFile } from './scanner';
 import { and, eq } from 'drizzle-orm';
 import { existsSync, readFileSync } from 'fs';
@@ -145,9 +145,14 @@ function humanizeIndicatorCode(code: string, area: string): string {
 }
 
 function loadMetadataCatalog(dataPath: string): MetadataCatalog {
-	const metadataPath = join(dataPath, 'metadata', 'metadata_with_collections.json');
-	if (!existsSync(metadataPath)) return {};
+	const candidatePaths = [
+		join(dataPath, 'metadata', 'metadata_with_collections.json'),
+		join(process.cwd(), 'data', 'metadata', 'metadata_with_collections.json')
+	];
+	const metadataPath = candidatePaths.find((path) => existsSync(path));
+	if (!metadataPath) return {};
 
+	console.log('Loading metadata catalog:', metadataPath);
 	return JSON.parse(readFileSync(metadataPath, 'utf-8')) as MetadataCatalog;
 }
 
