@@ -1,5 +1,6 @@
 import { getDb } from '$lib/db/client';
 import { areas, indicatorGroups, indicators } from '$lib/db/schema';
+import { getAvailableFrequenciesByIndicator } from '$lib/server/duckdb';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -61,17 +62,17 @@ export const load: PageServerLoad = async ({ url }) => {
 	const allAreas = [...new Map(rows.map((row) => [row.areaCode, row.area])).entries()].map(
 		([code, name]) => ({ code, name })
 	);
+	const frequenciesByIndicator = await getAvailableFrequenciesByIndicator(
+		rows.map((row) => row.code)
+	);
 
-	const indicatorsWithAttention = rows
-		.map((row) => ({ ...row, attention: attentionNeeds(row) }))
-		.filter((row) => {
-			if (areaFilter && row.areaCode !== areaFilter) return false;
-			if (attentionOnly && !row.attention.needsAttention) return false;
-			if (!search) return true;
-			return [row.code, row.name, row.group, row.area]
-				.filter(Boolean)
-				.some((value) => value.toLowerCase().includes(search));
-		})
+	const catalog = rows
+		.map((row) => ({
+			...row,
+			availableFrequencies:
+				frequenciesByIndicator.get(row.code) || (row.frequency ? [row.frequency] : []),
+			attention: attentionNeeds(row)
+		}))
 		.sort(
 			(a, b) =>
 				a.area.localeCompare(b.area) ||
@@ -79,8 +80,18 @@ export const load: PageServerLoad = async ({ url }) => {
 				a.name.localeCompare(b.name)
 		);
 
+	const filteredIndicators = catalog.filter((row) => {
+		if (areaFilter && row.areaCode !== areaFilter) return false;
+		if (attentionOnly && !row.attention.needsAttention) return false;
+		if (!search) return true;
+		return [row.code, row.name, row.group, row.area]
+			.filter(Boolean)
+			.some((value) => value.toLowerCase().includes(search));
+	});
+
 	return {
-		indicators: indicatorsWithAttention,
+		indicators: filteredIndicators,
+		catalog,
 		areas: allAreas.sort((a, b) => a.name.localeCompare(b.name)),
 		filters: { search, area: areaFilter, attentionOnly }
 	};

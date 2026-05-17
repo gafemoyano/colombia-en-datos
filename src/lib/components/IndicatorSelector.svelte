@@ -3,7 +3,8 @@
 		code: string;
 		name: string;
 		shortName: string | null;
-		frequency: string;
+		frequency: string | null;
+		availableFrequencies?: string[];
 		area: string;
 		group: string;
 	}
@@ -20,11 +21,23 @@
 
 	let searchQuery = $state('');
 
+	function frequencyLabel(freq: string): string {
+		return freq === 'M' ? 'Mensual' : freq === 'A' ? 'Anual' : freq;
+	}
+
+	function frequenciesFor(indicator: Indicator): string[] {
+		return indicator.availableFrequencies?.length
+			? indicator.availableFrequencies
+			: indicator.frequency
+				? [indicator.frequency]
+				: [];
+	}
+
 	const filteredIndicators = $derived.by(() => {
 		let filtered = available;
 
 		if (currentFrequency) {
-			filtered = filtered.filter((i) => i.frequency === currentFrequency);
+			filtered = filtered.filter((i) => frequenciesFor(i).includes(currentFrequency));
 		}
 
 		if (currentArea) {
@@ -77,7 +90,7 @@
 					<div class="text-sm font-medium text-gray-900">{indicator.name}</div>
 					<div class="text-xs text-gray-500">{indicator.code}</div>
 					<div class="text-xs text-gray-500">
-						{indicator.frequency === 'M' ? 'Mensual' : 'Anual'} · {indicator.group}
+						{frequenciesFor(indicator).map(frequencyLabel).join(', ') || 'Sin datos'} · {indicator.group}
 					</div>
 				</div>
 			</label>

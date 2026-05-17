@@ -7,11 +7,12 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const freq = url.searchParams.get('freq') || 'M';
 	const refArea = url.searchParams.get('ref_area') || 'CO';
 
-	const dims = await getDimensionsForIndicator(indicator, freq, refArea);
+	const dimensions = await getDimensionsForIndicator(indicator, freq, refArea);
 
 	return json({
 		indicator,
 		freq,
-		dims
+		ref_area: refArea,
+		dimensions
 	});
 };

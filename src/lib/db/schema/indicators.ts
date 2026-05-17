@@ -51,7 +51,9 @@ export const indicators = sqliteTable('indicators', {
 	shortName: text('short_name', { length: 255 }),
 	description: text('description'),
 	methodology: text('methodology'),
-	frequency: text('frequency', { length: 1 }).notNull(),
+	// Deprecated: frequency is per-observation, not per-indicator.
+	// Kept for backward compatibility during migration. Will be removed in Phase 3.
+	frequency: text('frequency', { length: 1 }),
 	source: text('source', { length: 255 }),
 	unit: text('unit', { length: 100 }),
 	unitMult: integer('unit_mult'),
@@ -66,6 +68,9 @@ export const indicators = sqliteTable('indicators', {
 		.notNull()
 });
 
+// Legacy table: maps indicators to parquet file paths.
+// Deprecated in Phase 1. Replaced by indicator_data_sources + canonical store.
+// Kept for reference during transition.
 export const indicatorFiles = sqliteTable(
 	'indicator_files',
 	{
@@ -86,6 +91,111 @@ export const indicatorFiles = sqliteTable(
 			table.refArea,
 			table.year,
 			table.filePath
+		)
+	})
+);
+
+// ---------------------------------------------------------------------------
+// Phase 1: Dimension registry
+// ---------------------------------------------------------------------------
+
+export const dimensionDefinitions = sqliteTable('dimension_definitions', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	code: text('code', { length: 100 }).notNull().unique(),
+	name: text('name', { length: 255 }).notNull(),
+	sortOrder: integer('sort_order'),
+	isStandard: integer('is_standard', { mode: 'boolean' }).default(true),
+	createdAt: text('created_at')
+		.default(sql`(CURRENT_TIMESTAMP)`)
+		.notNull()
+});
+
+export const dimensionValues = sqliteTable(
+	'dimension_values',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		dimensionCode: text('dimension_code', { length: 100 })
+			.notNull()
+			.references(() => dimensionDefinitions.code),
+		code: text('code', { length: 100 }).notNull(),
+		labelEs: text('label_es', { length: 255 }),
+		sortOrder: integer('sort_order')
+	},
+	(table) => ({
+		uniqueDimensionValue: uniqueIndex('dimension_values_unique').on(
+			table.dimensionCode,
+			table.code
+		)
+	})
+);
+
+export const indicatorDimensions = sqliteTable(
+	'indicator_dimensions',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		indicatorId: integer('indicator_id')
+			.notNull()
+			.references(() => indicators.id),
+		freq: text('freq', { length: 1 }).notNull().default('*'),
+		dimensionCode: text('dimension_code', { length: 100 })
+			.notNull()
+			.references(() => dimensionDefinitions.code),
+		defaultValue: text('default_value', { length: 100 }),
+		isFilterable: integer('is_filterable', { mode: 'boolean' }).default(true),
+		isSplitable: integer('is_splitable', { mode: 'boolean' }).default(true)
+	},
+	(table) => ({
+		uniqueIndicatorDimension: uniqueIndex('indicator_dimensions_unique').on(
+			table.indicatorId,
+			table.freq,
+			table.dimensionCode
+		)
+	})
+);
+
+// ---------------------------------------------------------------------------
+// Phase 1: Data lineage / releases
+// ---------------------------------------------------------------------------
+
+export const dataReleases = sqliteTable('data_releases', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	indicatorId: integer('indicator_id')
+		.notNull()
+		.references(() => indicators.id),
+	releaseDate: text('release_date').default(sql`(CURRENT_TIMESTAMP)`),
+	periodStart: text('period_start'),
+	periodEnd: text('period_end'),
+	rowCount: integer('row_count'),
+	sourceFormat: text('source_format', { length: 50 }),
+	sourceName: text('source_name'),
+	uploadedBy: text('uploaded_by'),
+	status: text('status', { length: 50 }).default('published'),
+	checksum: text('checksum')
+});
+
+// ---------------------------------------------------------------------------
+// Phase 1: Canonical data sources
+// ---------------------------------------------------------------------------
+
+export const indicatorDataSources = sqliteTable(
+	'indicator_data_sources',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		indicatorId: integer('indicator_id')
+			.notNull()
+			.references(() => indicators.id),
+		refArea: text('ref_area', { length: 50 }).notNull(),
+		freq: text('freq', { length: 1 }).notNull(),
+		yearMin: integer('year_min'),
+		yearMax: integer('year_max'),
+		rowCount: integer('row_count'),
+		releaseId: integer('release_id').references(() => dataReleases.id)
+	},
+	(table) => ({
+		uniqueIndicatorDataSource: uniqueIndex('indicator_data_sources_unique').on(
+			table.indicatorId,
+			table.refArea,
+			table.freq
 		)
 	})
 );

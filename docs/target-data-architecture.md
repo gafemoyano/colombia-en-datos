@@ -1,14 +1,14 @@
 # Target Data Architecture: Universal Observation Schema
 
-> Status: Proposal — awaiting review before implementation.
+> Status: Accepted direction — Phase 1 foundation and Phase 2 API foundations are implemented; Explorer slice 1 exists and is being hardened through vertical product slices.
 >
 > Scope: How we store, ingest, and query indicator observations so that **end users can explore data in the browser** and **data scientists can self-service load new indicators** without engineering intervention.
 
 ---
 
-## 1. Current State Analysis
+## 1. Initial State Analysis (pre-Phase 1)
 
-### What works today
+### What worked before Phase 1
 
 | Strength | Detail |
 |----------|--------|
@@ -17,7 +17,7 @@
 | Runtime dimension discovery | `DESCRIBE` on parquet files finds dimensions (URBAN_RURAL, SEX, etc.) dynamically. |
 | Decoupled metadata | SQLite stores indicator definitions; parquet stores observations. |
 
-### What is broken or limiting
+### What was broken or limiting before Phase 1
 
 | Problem | Consequence |
 |---------|-------------|
@@ -31,7 +31,7 @@
 | **No data lineage** | We cannot answer "when was this indicator last loaded?" or "who uploaded this file?" |
 | **Schema implicit** | There is no documented "contract" that a parquet file must satisfy. The seed script assumes SDMX-like columns, but nothing enforces it. |
 
-### Data flow today (simplified)
+### Pre-Phase-1 data flow (simplified)
 
 ```
 Data scientist has new indicator
@@ -58,7 +58,7 @@ This flow is **developer-gated at every step**.
    What an indicator *means* (name, methodology) lives in SQLite and is editable in `/admin`. What columns an indicator *has*, and where its data *lives*, is also registered relationally so the UI and query engine never need to guess.
 
 3. **Self-service ingestion**  
-   A data scientist with a CSV/Excel/Parquet file should be able to upload, map columns, fix validation errors, and publish — entirely through the `/admin` UI — without asking engineering to run a script.
+   A data scientist with a Parquet file that already matches the Observation schema should be able to upload, fix validation errors, and publish through authenticated app surfaces without asking engineering to run a script. CSV/Excel conversion and column mapping are future conveniences, not part of the ingestion contract.
 
 4. **Canonical storage over scattered files**  
    We should move from 35 000 small files to a smaller number of canonical stores (DuckDB native files or consolidated parquet) so that queries are fast, backups are simple, and object-storage migration is cheap.
@@ -196,41 +196,39 @@ release_id     INTEGER REFERENCES data_releases(id)
 ### 4.1 High-level flow
 
 ```
-Data scientist opens /admin/upload
+Data scientist creates or chooses an Indicator
     ↓
-Uploads CSV / Excel / Parquet
+Data scientist transforms source data to the Observation schema
     ↓
-System detects columns, suggests mappings
+Data scientist uploads a Parquet file
     ↓
-Data scientist confirms/adjusts mappings
+System validates required columns, types, registered dimensions, and row identity
     ↓
-System validates (required columns, type checks, dimension codelists)
-    ↓
-System previews first 20 rows
+System previews rows and returns an uploadId
     ↓
 Data scientist publishes
     ↓
-System inserts into observations.duckdb
+System replaces observations for indicator_code + freq in observations.duckdb
     ↓
-System registers dimensions in indicator_dimensions
+System records data lineage in data_releases and indicator_data_sources
     ↓
-Indicator is live immediately in the app
+Indicator data is live immediately in the Explorer view
 ```
 
 ### 4.2 Upload API
 
 ```typescript
+// POST /api/indicators
+// Body: { code, name, areaCode, groupCode, dimensionsByFreq }
+// Response: { indicator }
+
 // POST /api/admin/ingest/upload
 // multipart/form-data
 // Body: file, indicatorCode, freq
-// Response: { jobId, detectedColumns, sampleRows }
-
-// POST /api/admin/ingest/validate
-// Body: { jobId }
-// Response: { valid, errors[], warnings[], rowCount, preview[] }
+// Response: { valid, errors[], rowCount, preview[], columns[], uploadId?, checksum? }
 
 // POST /api/admin/ingest/publish
-// Body: { jobId, releaseNotes? }
+// Body: { uploadId, releaseNotes? }
 // Response: { releaseId, indicatorCode, freq, rowsInserted }
 ```
 
@@ -248,7 +246,7 @@ The uploaded file must contain at minimum these columns:
 | `time_period` | VARCHAR | `'2019-01'` (for M), `'2019'` (for A) |
 | `obs_value` | DOUBLE | `12345.6` |
 
-The file may also contain any dimensions registered for this **indicator + freq** combination. If a registered dimension column is missing, the upload is rejected.
+The file may also contain dimensions registered for this **indicator + freq** combination. Whether every registered dimension must be present, or absent nullable dimensions are acceptable, remains a validation hardening decision before the upload UI is built.
 
 | Optional dimension | Present only if registered for indicator+freq | Example values |
 |--------------------|-----------------------------------------------|----------------|
@@ -264,6 +262,8 @@ The file may also contain any dimensions registered for this **indicator + freq*
 Extra columns not registered as dimensions are rejected with a clear error.
 
 ### 4.4 Validation rules
+
+These are target validation rules. Phase 2 implemented the core upload/publish path; codelist enforcement, duplicate-key checks, and final missing-dimension policy still need hardening before broad data-scientist self-service.
 
 1. `indicator_code` must match an existing indicator.
 2. `freq` must match the frequencies registered for this indicator's dimensions (or `'*'` wildcard dimensions).
@@ -342,42 +342,124 @@ This removes filesystem I/O from the metadata hot path and makes dimension respo
 
 ---
 
-## 6. Frontend Changes
+## 6. Explorer View: Vertical Product Slice
 
-### 6.1 Dynamic dimension selectors
+The next product work is not a backend/frontend split. The app should add a parallel **Explorer view** at `/explore` and build it as a SvelteKit fullstack vertical slice. The current `/app` dashboard remains in place while `/explore` proves the new interaction model.
 
-`DimensionSelector.svelte` should consume `/api/dims/[indicator]` which now returns enriched objects instead of raw strings:
+### 6.1 Route and integration shape
 
-```json
-{
-  "indicator": "EMP",
-  "dimensions": [
-    {
-      "code": "URBAN_RURAL",
-      "name": "Zona",
-      "isSplitable": true,
-      "isFilterable": true,
-      "values": [
-        { "code": "T", "label": "Total" },
-        { "code": "U", "label": "Urbano" },
-        { "code": "R", "label": "Rural" }
-      ]
-    }
-  ]
+`/explore` lives under the existing app layout group:
+
+```txt
+src/routes/(app)/explore/+page.server.ts
+src/routes/(app)/explore/+page.svelte
+src/lib/server/explorer.ts
+```
+
+The route uses SvelteKit server load as the primary composition layer. It imports server-side query helpers directly instead of making internal HTTP requests to `/api/data`, `/api/dims`, or `/api/meta`. REST endpoints remain available for external use and backward compatibility.
+
+The Explorer server layer returns a chart-library-neutral page model. Plotly remains the charting foundation, but conversion to Plotly traces happens in the Svelte/UI layer.
+
+### 6.2 URL state and share links
+
+Explorer state is URL-first. The first UI supports a single selected Indicator, but the URL parser is plural-capable from day one so multi-indicator comparison can be added without breaking links.
+
+```txt
+/explore?indicator=EMP&freq=M&by=SEX&filter.DEPT_CODE=05&start=2020-01&end=2024-12
+```
+
+Rules:
+
+- `indicator` may appear multiple times, but slice 1 uses only one selected Indicator.
+- `freq` selects the observation Frequency for the current data scope.
+- `by` identifies the Split dimension using the uppercase registry code.
+- `filter.{DIMENSION_CODE}=value` records an Explicit filter choice.
+- Omitting `filter.{DIMENSION_CODE}` means the All values option, not a source-provided total.
+- A source value such as `SEX=T` remains a normal Explicit filter choice labeled as Total if the codelist says so.
+- If a dimension is both filtered and used as `by`, the filter wins and `by` is canonicalized away.
+- Date range constrains chart observations, but does not change dimension value availability.
+
+### 6.3 Discovery controls and visualization controls
+
+The Explorer UI separates Indicator discovery from observation visualization:
+
+- Top Discovery/data-scope row: area narrowing, indicator combobox/search, Frequency selector.
+- Left Visualization panel: Split dimension selector, dynamic dimension filters, Fixed dimension summary, chartability guidance.
+- Chart surface: Plotly chart, no-data states, and chart-local date controls.
+- Context/details area: Indicator annotation and Measurement format.
+
+Area narrowing is optional. Indicator search is primary. Frequency lives with Indicator selection because it determines the applicable dimensions and time grain.
+
+### 6.4 Chartability rules
+
+The Explorer does not guess user intent by silently applying total/default filters. A chart renders only when the current state is a **Chartable selection**: each returned observation maps unambiguously to one point in one visual series.
+
+A registered Observation dimension is resolved when it is one of:
+
+1. an Explicit filter choice;
+2. the Split dimension; or
+3. a Fixed dimension with only one available value for the current Indicator/Frequency/filter context.
+
+If unresolved multi-value dimensions remain, the chart area shows guidance instead of rendering an arbitrary chart. The user must add filters or choose a Split dimension. If a Split dimension is chosen, every other applicable multi-value dimension must be filtered or fixed.
+
+Chartability is checked in two steps:
+
+1. Registry preflight: compare registered dimensions against URL filters and `by`.
+2. Post-query assertion: verify that the returned observations do not produce ambiguous duplicate points.
+
+### 6.5 Dimension labels and geography
+
+The Explorer reads all dimension labels from `dimension_values`, including geographic dimensions (`GEO_LEVEL`, `DEPT_CODE`, and future `MUNI_CODE`). The existing `departamentos` table may seed department labels, but it is not the runtime label source for Explorer controls. See `docs/adr/0002-geography-labels-from-dimension-values.md`.
+
+`ref_area` remains a Reference area / source coverage anchor, usually `CO`. Department and municipality selection are expressed through Geographic observation dimensions, not by rewriting `ref_area`.
+
+### 6.6 UI component foundation
+
+The Explorer uses shadcn-svelte as its UI component foundation rather than expanding the existing local primitives. Current Explorer controls use shadcn-svelte cards, buttons, selects, popovers, command/combobox search, badges, alerts, labels, and inputs where free text is appropriate. See `docs/adr/0003-shadcn-svelte-for-explorer-ui.md`.
+
+### 6.7 Time axis and date filtering
+
+Date filtering is chart-local Explorer state, but users should not type storage-formatted periods. The Explorer server layer derives a **Time axis** from the canonical observation store for the selected Indicator, Frequency, and Reference area:
+
+```sql
+SELECT DISTINCT time_period
+FROM observations
+WHERE indicator_code = ?
+  AND freq = ?
+  AND ref_area = ?
+ORDER BY time_period;
+```
+
+The server model exposes chart-control options instead of only echoing raw URL state:
+
+```typescript
+interface ExplorerTimeAxis {
+  freq: string | null;
+  granularity: 'year' | 'month' | 'quarter' | 'day' | 'unknown';
+  periods: Array<{
+    value: string; // canonical URL/storage value, e.g. '2024' or '2024-01'
+    label: string; // human label, e.g. '2024' or 'Ene 2024'
+  }>;
+  start: string | null;
+  end: string | null;
 }
 ```
 
-The component renders selects dynamically. Adding a new dimension to the registry automatically makes it appear in the UI for every indicator that uses it.
+URL parameters remain stable and shareable:
 
-### 6.2 Share links and URL state
-
-Because the dimension set is dynamic, URL parameters for filters should use a stable prefix or JSON blob:
-
-```
-/app?indicator=EMP&indicator=EMP_F&freq=M&by=URBAN_RURAL&filter.urban_rural=U&filter.sex=F
+```txt
+/explore?indicator=EMP&freq=M&start=2020-01&end=2024-12
+/explore?indicator=NUM_SME_CTA_PROP&freq=A&start=2020&end=2024
 ```
 
-This is already partially supported; we just need to make the parsing dynamic based on the registered dimensions.
+Rules:
+
+- `start` and `end` are optional bounds over `time_period`.
+- The UI renders period selectors from the Time axis (`Desde el inicio`, `Hasta el final`, then observed periods).
+- Period labels depend on Frequency: annual values show years, monthly values show month-year labels, quarterly values show quarter-year labels.
+- Invalid URL period values are canonicalized away with a warning rather than passed to DuckDB.
+- If `start` is after `end`, the Explorer canonicalizes the range to a valid order.
+- The Time axis depends on Indicator + Frequency + Reference area, not on Observation dimension filters. This preserves the rule that date range constrains chart observations but does not change Observation dimension value availability.
 
 ---
 
@@ -422,57 +504,59 @@ This is blocked until we have:
 
 ## 8. Implementation Roadmap
 
-### Phase 1: Foundation (1–2 weeks)
+### Phase 1: Foundation — complete
 
 1. **Schema migration**  
-   - Add `dimension_definitions`, `dimension_values`, `indicator_dimensions`, `data_releases`, `indicator_data_sources` tables.
-   - Seed standard dimensions and values from existing parquet data.
+   - Added `dimension_definitions`, `dimension_values`, `indicator_dimensions`, `data_releases`, `indicator_data_sources` tables.
+   - Made `indicators.frequency` nullable during migration.
 
 2. **Canonical store creation**  
-   - One-time script: load all existing parquet into `observations.duckdb`.
-   - Verify row counts match.
+   - Created `data/observations.duckdb` and loaded existing observations.
+   - Replaced scattered parquet querying on the hot path.
 
 3. **SQL injection fix**  
-   - Rewrite `queryTimeSeries()` to use prepared statements.
-   - Add Vitest tests for the query builder.
+   - Rewrote `queryTimeSeries()` to use prepared statements.
 
 4. **Dimension registry API**  
-   - Replace runtime `DESCRIBE` with SQLite registry lookups.
-   - Return enriched dimension objects from `/api/dims/[indicator]`.
+   - Replaced runtime `DESCRIBE` with SQLite registry lookups.
+   - `/api/dims/[indicator]` returns enriched dimension objects.
 
-### Phase 2: Ingestion API (2–3 weeks)
+### Phase 2: Ingestion API foundations — complete enough for Explorer work
 
-1. **Upload endpoint**  
-   - `POST /api/admin/ingest/upload` accepts Parquet (CSV/Excel in future).
-   - Body: `file`, `indicatorCode`, `freq`.
-   - Returns detected columns + sample rows for preview.
+1. **Indicator creation endpoint**  
+   - `POST /api/indicators` creates indicators and registers `dimensionsByFreq`.
 
-2. **Validation engine**  
-   - Verify file columns match the indicator+freq registered dimensions.
-   - Type checks, codelist enforcement, duplicate-key detection.
-   - Return preview + error list before publish.
+2. **Upload endpoint and validation engine**  
+   - `POST /api/admin/ingest/upload` accepts Parquet files matching the Observation schema.
+   - Validation returns errors, row count, preview rows, columns, uploadId, and checksum.
 
 3. **Publish flow**  
-   - `DELETE FROM observations WHERE indicator_code = X AND freq = Y`.
-   - `INSERT` new observations into `observations.duckdb`.
-   - Write `data_releases` record.
-   - Invalidate any caches.
+   - `POST /api/admin/ingest/publish` fully replaces observations for `indicator_code + freq`.
+   - Writes `data_releases` and refreshes `indicator_data_sources`.
 
-4. **Indicator creation endpoint**  
-   - `POST /api/indicators` with `code`, `name`, `areaCode`, `groupCode`, `dimensionsByFreq`.
-   - Inline area/group creation if they don't exist.
+4. **Frequency availability**  
+   - `GET /api/indicators` and admin listing expose frequencies available in the canonical store.
 
-### Phase 3: Query migration (1 week)
+### Phase 3/4: Explorer vertical slices — in progress
 
-1. Switch `/api/data` to query `observations.duckdb` instead of scattered parquet files.
-2. Remove `indicator_files` table usage from the hot path (keep for archival reference).
-3. Benchmark query performance; add DuckDB indexes if needed.
+Build the new `/explore` route as a parallel prototype while leaving `/app` intact.
 
-### Phase 4: Dynamic frontend (1 week)
+#### Slice 1: Single-indicator chartability loop — implemented, hardening continues
 
-1. Rewrite `DimensionSelector.svelte` to use registry-driven dimension objects.
-2. Remove hardcoded dimension codelists from the component.
-3. Implement share-link serialization for dynamic filters.
+1. **Install and configure shadcn-svelte for the Explorer.** ✅
+2. **Create the route:** `src/routes/(app)/explore/+page.server.ts` and `+page.svelte`. ✅
+3. **Create `src/lib/server/explorer.ts`:** parse URL state, load catalog, resolve dimensions, compute chartability, query observations, and return chart-library-neutral series. ✅
+4. **Top Discovery/data-scope controls:** area narrowing, indicator combobox/search, Frequency selector. ✅
+5. **Left Visualization controls:** Split dimension selector, dynamic dimension filters with All values option, Fixed dimension summary, unresolved-dimension guidance. ✅
+6. **Chart surface:** Time axis selectors, Plotly rendering when chartable, empty/no-data/needs-selection states. ✅
+7. **Share-link behavior:** repeated `indicator` params, uppercase dimension URL codes, `filter.{DIMENSION_CODE}` params, canonicalization of invalid state. ✅
+
+#### Later Explorer slices
+
+1. Multi-indicator comparison using common dimensions first; per-indicator overrides are future advanced behavior.
+2. Excel/download export for the current Explorer state.
+3. Saved collections or saved Explorer states.
+4. Upload UI built on top of the ingestion API.
 
 ### Phase 5: External access (future)
 
@@ -503,25 +587,32 @@ This is blocked until we have:
 | **Keep metadata in SQLite** | Drizzle ORM, migrations, and admin CRUD are already built for SQLite. Moving metadata to DuckDB would require rebuilding the auth/admin stack. |
 | **Prepared statements instead of query builder** | Fixes the critical SQL injection vulnerability and is actually less code than our current string-concatenation approach. |
 | **Dimension registry in SQLite** | Eliminates runtime `DESCRIBE` overhead and lets the UI be fully dynamic. The seed cost is paid once at ingestion, not on every metadata request. |
-| **Default values for missing dimensions** | Data scientists should not have to know that `SEX='T'` is required. The ingestion pipeline fills sensible defaults. |
+| **Explicit filters over implicit defaults in Explorer** | The Explorer should not guess user intent by silently applying totals such as `SEX='T'` or geography defaults such as `DEPT_CODE='00'`. Users choose filters explicitly; unresolved multi-value dimensions produce guidance instead of arbitrary charts. |
 | **Frequency is per-observation, not per-indicator** | An indicator code can have both monthly and annual data without splitting into separate indicators. Frequency lives on each observation row. The `indicators.frequency` column is dropped entirely. |
 | **Dimensions are per-indicator-frequency** | Monthly `EMP` can have an `URBAN_RURAL` breakdown while annual `EMP` does not. The registry keys dimensions by `(indicator_id, freq)`. |
 | **Data scientists transform files before upload** | The system does not perform column mapping. Data scientists produce files that already match the observation schema. This keeps the upload API simple and unambiguous. |
 | **Overwrite contract for uploads** | Each upload fully replaces all observations for the given `indicator_code + freq` combination. The canonical table is the only persistent store; original files are not archived. |
 | **Serialized writes acceptable** | Only one upload runs at a time. This avoids DuckDB's lack of concurrent write support without adding async job queues in Phase 2. |
+| **Explorer as SvelteKit vertical slice** | `/explore` uses server load as the primary composition layer instead of orchestrating internal REST calls from the browser. |
+| **Chart-library-neutral series model** | The Explorer server layer returns domain chart series; Plotly-specific traces are built in the UI layer. |
+| **Geographic labels from dimension values** | Explorer-facing labels for `GEO_LEVEL`, `DEPT_CODE`, and future `MUNI_CODE` come from `dimension_values`; see ADR 0002. |
+| **shadcn-svelte for Explorer UI** | The Explorer uses shadcn-svelte as its component foundation; see ADR 0003. |
 
 ---
 
 ## 11. Open Questions
 
-1. **Should we keep the `data/` directory as the primary storage and use `observations.duckdb` only as a query acceleration cache?**  
-   *Recommendation:* No. Having two primary stores creates sync complexity. Treat the DuckDB file as canonical and the old directory as an archival snapshot.
+1. **Must every registered dimension column be present in uploaded Parquet files?**  
+   *Recommendation:* Decide before the upload UI. Requiring presence is stricter and catches accidental omissions; allowing nullable absence is more flexible for sparse dimensions.
 
-2. **How do we handle updates to existing data (e.g., DANE revises 2023 employment figures)?**  
-   *Recommendation:* Uploads specify a date range. Publishing a new release for the same indicator and overlapping periods uses `INSERT OR REPLACE` semantics in DuckDB. The old release row is kept in `data_releases` for audit, but its observations are overwritten.
+2. **When do we drop the legacy `indicators.frequency` column?**  
+   *Recommendation:* After `/explore` and the remaining app surfaces read available frequencies from observations or `indicator_data_sources`.
 
-3. **Should dimensions be global or per-area?**  
-   *Recommendation:* Global. `SEX` means the same thing in employment and quality-of-life surveys. The codelist may vary slightly (e.g. some sources use `M`/`F`, others `1`/`2`), but the dimension definition is shared. Mapping tables in the ingestion layer handle source-specific codes.
+3. **How should DANE geographic code labels be seeded?**  
+   *Recommendation:* Save the DANE code reference locally, then seed `dimension_values` for `DEPT_CODE`, `MUNI_CODE`, and `GEO_LEVEL`. `departamentos` can be a seed source, but not the Explorer runtime label source.
 
-4. **Do we need a staging/QA environment for uploaded data?**  
-   *Recommendation:* Phase 2 includes a `status = 'staged'` state. A future enhancement could add a `/admin/review` queue where a second curator approves before `status = 'published'`.
+4. **How much ingestion validation hardening is required before broad self-service?**  
+   *Recommendation:* Add codelist enforcement, duplicate-key detection, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
+
+5. **When should multi-indicator comparison support per-indicator overrides?**  
+   *Recommendation:* Start with common dimensions only. Add per-indicator filter overrides only after the single-indicator Explorer and common-dimension comparison are stable.

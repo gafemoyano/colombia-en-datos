@@ -30,8 +30,19 @@ function isAdminAuthorized(request: Request): boolean {
 	return providedUsername === username && providedPassword === password;
 }
 
+function requiresAdminAuth(pathname: string, method: string): boolean {
+	return (
+		pathname.startsWith('/admin') ||
+		pathname.startsWith('/api/admin') ||
+		((pathname === '/api/indicators' || pathname === '/api/indicators/') && method !== 'GET')
+	);
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
-	if (event.url.pathname.startsWith('/admin') && !isAdminAuthorized(event.request)) {
+	if (
+		requiresAdminAuth(event.url.pathname, event.request.method) &&
+		!isAdminAuthorized(event.request)
+	) {
 		return unauthorized();
 	}
 
