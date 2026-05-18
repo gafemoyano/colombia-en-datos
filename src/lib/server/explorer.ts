@@ -111,12 +111,23 @@ export interface ExplorerMetadata {
 	updated: string | null;
 }
 
+export interface ExplorerMeasurementCompatibility {
+	compatible: boolean;
+	unit: string | null;
+	unitMult: number | null;
+	message: string | null;
+}
+
 export interface ExplorerPageModel {
 	state: ExplorerState;
 	areas: Array<{ code: string; name: string }>;
 	indicators: ExplorerCatalogIndicator[];
 	selectedIndicator: ExplorerCatalogIndicator | null;
+	selectedIndicators: ExplorerCatalogIndicator[];
+	commonFrequencies: string[];
 	metadata: ExplorerMetadata | null;
+	metadatas: ExplorerMetadata[];
+	measurementCompatibility: ExplorerMeasurementCompatibility;
 	dimensions: ExplorerDimension[];
 	unresolvedDimensions: ExplorerDimension[];
 	fixedDimensions: ExplorerDimension[];
@@ -211,10 +222,14 @@ function formatTimePeriod(value: string, freq: string): string {
 }
 
 function parseState(url: URL): ExplorerState {
-	const selectedIndicators = url.searchParams
-		.getAll('indicator')
-		.map((value) => value.trim())
-		.filter(Boolean);
+	const selectedIndicators = Array.from(
+		new Set(
+			url.searchParams
+				.getAll('indicator')
+				.map((value) => value.trim())
+				.filter(Boolean)
+		)
+	).slice(0, 5);
 
 	const filters: Record<string, string> = {};
 	for (const [key, value] of url.searchParams.entries()) {
@@ -294,6 +309,40 @@ async function loadCatalog(): Promise<{
 		.sort((a, b) => a.name.localeCompare(b.name));
 
 	return { areas: areaOptions, indicators: catalog };
+}
+
+function emptyMeasurementCompatibility(): ExplorerMeasurementCompatibility {
+	return {
+		compatible: true,
+		unit: null,
+		unitMult: null,
+		message: null
+	};
+}
+
+function resolveMeasurementCompatibility(
+	metadatas: ExplorerMetadata[]
+): ExplorerMeasurementCompatibility {
+	if (metadatas.length === 0) return emptyMeasurementCompatibility();
+
+	const first = metadatas[0];
+	const incompatible = metadatas.some(
+		(metadata) => metadata.unit !== first.unit || metadata.unitMult !== first.unitMult
+	);
+
+	return {
+		compatible: !incompatible,
+		unit: first.unit,
+		unitMult: first.unitMult,
+		message: incompatible
+			? 'Estos indicadores usan unidades o multiplicadores distintos. La comparación directa todavía no está soportada.'
+			: null
+	};
+}
+
+function intersectArrays<T>(arrays: T[][]): T[] {
+	if (arrays.length === 0) return [];
+	return arrays[0].filter((value) => arrays.every((array) => array.includes(value)));
 }
 
 async function loadMetadata(indicatorCode: string): Promise<ExplorerMetadata | null> {
@@ -436,20 +485,25 @@ function buildWhereForObservationQueries(params: {
 }
 
 async function loadTimeAxis(params: {
-	indicatorCode: string;
+	indicatorCodes: string[];
 	freq: string;
 	start: string;
 	end: string;
 	warnings: string[];
 }): Promise<ExplorerTimeAxis> {
+	if (params.indicatorCodes.length === 0) return emptyTimeAxis(params.freq);
+
 	const rows = await runCanonicalQuery<{ time_period: string }>(
 		`
 			SELECT DISTINCT time_period
 			FROM observations
-			WHERE indicator_code = ? AND freq = ? AND ref_area = ? AND time_period IS NOT NULL
+			WHERE indicator_code IN (${params.indicatorCodes.map(() => '?').join(', ')})
+				AND freq = ?
+				AND ref_area = ?
+				AND time_period IS NOT NULL
 			ORDER BY time_period
 		`,
-		params.indicatorCode,
+		...params.indicatorCodes,
 		params.freq,
 		REF_AREA
 	);
@@ -520,6 +574,26 @@ async function loadAvailableValues(params: {
 	return valuesByDimension;
 }
 
+function intersectValueMaps(maps: Map<string, string[]>[], dimensionCodes: string[]): Map<string, string[]> {
+	const result = new Map<string, string[]>();
+	for (const code of dimensionCodes) {
+		const values = intersectArrays(maps.map((map) => map.get(code) || []));
+		result.set(code, values);
+	}
+	return result;
+}
+
+function prefixDimensionForIndicator(
+	dimension: ExplorerDimension,
+	indicator: ExplorerCatalogIndicator
+): ExplorerDimension {
+	return {
+		...dimension,
+		code: `${indicator.code}:${dimension.code}`,
+		name: `${indicator.shortName || indicator.code} · ${dimension.name}`
+	};
+}
+
 function resolveDimensions(params: {
 	registeredDimensions: RegisteredDimension[];
 	availableValues: Map<string, string[]>;
@@ -548,7 +622,7 @@ function resolveDimensions(params: {
 }
 
 async function queryChart(params: {
-	indicator: ExplorerCatalogIndicator;
+	indicators: ExplorerCatalogIndicator[];
 	freq: string;
 	by: string | null;
 	filters: Record<string, string>;
@@ -556,23 +630,40 @@ async function queryChart(params: {
 	end: string;
 	dimensions: ExplorerDimension[];
 }): Promise<ExplorerChartModel> {
-	const where = buildWhereForObservationQueries({
-		indicatorCode: params.indicator.code,
-		freq: params.freq,
-		filters: params.filters,
-		includeDateRange: true,
-		start: params.start,
-		end: params.end
-	});
+	const conditions = [
+		`indicator_code IN (${params.indicators.map(() => '?').join(', ')})`,
+		'freq = ?',
+		'ref_area = ?'
+	];
+	const values: unknown[] = [
+		...params.indicators.map((indicator) => indicator.code),
+		params.freq,
+		REF_AREA
+	];
+
+	for (const [code, value] of Object.entries(params.filters)) {
+		conditions.push(`${dimensionColumn(code)} = ?`);
+		values.push(value);
+	}
+
+	if (params.start) {
+		conditions.push('time_period >= ?');
+		values.push(params.start);
+	}
+	if (params.end) {
+		conditions.push('time_period <= ?');
+		values.push(params.end);
+	}
+
 	const byColumn = params.by ? dimensionColumn(params.by) : null;
 	const rows = await runCanonicalQuery<Record<string, unknown>>(
 		`
-			SELECT time_period AS time, obs_value AS value${byColumn ? `, ${byColumn} AS split_value` : ''}
+			SELECT indicator_code AS indicator_code, time_period AS time, obs_value AS value${byColumn ? `, ${byColumn} AS split_value` : ''}
 			FROM observations
-			WHERE ${where.conditions.join(' AND ')}
-			ORDER BY time_period${byColumn ? ', split_value' : ''}
+			WHERE ${conditions.join(' AND ')}
+			ORDER BY indicator_code, time_period${byColumn ? ', split_value' : ''}
 		`,
-		...where.values
+		...values
 	);
 
 	if (rows.length === 0) {
@@ -585,7 +676,9 @@ async function queryChart(params: {
 
 	const seen = new Set<string>();
 	for (const row of rows) {
-		const key = params.by ? `${row.time}|${row.split_value}` : String(row.time);
+		const key = params.by
+			? `${row.indicator_code}|${row.time}|${row.split_value}`
+			: `${row.indicator_code}|${row.time}`;
 		if (seen.has(key)) {
 			return {
 				status: 'invalid',
@@ -606,11 +699,19 @@ async function queryChart(params: {
 	);
 	const seriesByName = new Map<string, ExplorerSeriesPoint[]>();
 
+	const indicatorLabels = new Map(
+		params.indicators.map(
+			(indicator) => [indicator.code, indicator.shortName || indicator.name] as const
+		)
+	);
+
 	for (const row of rows) {
+		const indicatorCode = String(row.indicator_code);
+		const indicatorName = indicatorLabels.get(indicatorCode) || indicatorCode;
 		const splitValue = params.by ? String(row.split_value || 'Sin valor') : '';
 		const name = params.by
-			? `${splitDimension?.name || params.by}: ${splitLabels.get(splitValue) || splitValue}`
-			: params.indicator.shortName || params.indicator.name;
+			? `${indicatorName} · ${splitDimension?.name || params.by}: ${splitLabels.get(splitValue) || splitValue}`
+			: indicatorName;
 		const points = seriesByName.get(name) || [];
 		points.push({
 			time: String(row.time),
@@ -630,21 +731,37 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 	const state = parseState(url);
 	const warnings: string[] = [];
 	const { areas: areaOptions, indicators: catalog } = await loadCatalog();
-	const selectedIndicator = state.indicator
-		? catalog.find((indicator) => indicator.code === state.indicator) || null
-		: null;
+	let selectedIndicators = state.selectedIndicators
+		.map((code) => catalog.find((indicator) => indicator.code === code) || null)
+		.filter((indicator): indicator is ExplorerCatalogIndicator => Boolean(indicator));
 
-	if (state.selectedIndicators.length > 1) {
-		warnings.push('Esta primera versión solo grafica un indicador; se usa el primero de la URL.');
+	if (selectedIndicators.length !== state.selectedIndicators.length) {
+		warnings.push('Se ignoraron indicadores de la URL que no existen en el catálogo.');
+		state.selectedIndicators = selectedIndicators.map((indicator) => indicator.code);
+		state.indicator = state.selectedIndicators[0] || null;
 	}
 
-	if (!state.indicator) {
+	const selectedIndicator = selectedIndicators[0] || null;
+	const metadatas = (
+		await Promise.all(selectedIndicators.map((indicator) => loadMetadata(indicator.code)))
+	).filter((metadata): metadata is ExplorerMetadata => Boolean(metadata));
+	const metadata = metadatas[0] || null;
+	const measurementCompatibility = resolveMeasurementCompatibility(metadatas);
+	const commonFrequencies = selectedIndicators.length
+		? intersectArrays(selectedIndicators.map((indicator) => indicator.availableFrequencies))
+		: [];
+
+	if (!state.indicator || selectedIndicators.length === 0) {
 		return {
 			state,
 			areas: areaOptions,
 			indicators: catalog,
 			selectedIndicator: null,
+			selectedIndicators: [],
+			commonFrequencies: [],
 			metadata: null,
+			metadatas: [],
+			measurementCompatibility: emptyMeasurementCompatibility(),
 			dimensions: [],
 			unresolvedDimensions: [],
 			fixedDimensions: [],
@@ -652,45 +769,33 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			chart: {
 				status: 'needs_indicator',
 				series: [],
-				messages: ['Elige un indicador para comenzar.']
+				messages: ['Elige uno o más indicadores para comenzar.']
 			},
 			warnings,
 			canonicalSearch: buildCanonicalSearch(state)
 		};
 	}
 
-	if (!selectedIndicator) {
-		return {
-			state,
-			areas: areaOptions,
-			indicators: catalog,
-			selectedIndicator: null,
-			metadata: null,
-			dimensions: [],
-			unresolvedDimensions: [],
-			fixedDimensions: [],
-			timeAxis: emptyTimeAxis(state.freq),
-			chart: {
-				status: 'invalid',
-				series: [],
-				messages: [`No se encontró el indicador ${state.indicator}.`]
-			},
-			warnings,
-			canonicalSearch: buildCanonicalSearch(state)
-		};
+	if (!state.freq && commonFrequencies.length === 1) {
+		state.freq = commonFrequencies[0];
 	}
 
-	if (!state.freq && selectedIndicator.availableFrequencies.length === 1) {
-		state.freq = selectedIndicator.availableFrequencies[0];
-	}
+	if (!state.freq || !commonFrequencies.includes(state.freq)) {
+		if (state.freq && !commonFrequencies.includes(state.freq)) {
+			warnings.push('Se ignoró la frecuencia porque no está disponible para todos los indicadores.');
+			state.freq = null;
+		}
 
-	if (!state.freq || !selectedIndicator.availableFrequencies.includes(state.freq)) {
 		return {
 			state,
 			areas: areaOptions,
 			indicators: catalog,
 			selectedIndicator,
-			metadata: await loadMetadata(selectedIndicator.code),
+			selectedIndicators,
+			commonFrequencies,
+			metadata,
+			metadatas,
+			measurementCompatibility,
 			dimensions: [],
 			unresolvedDimensions: [],
 			fixedDimensions: [],
@@ -698,16 +803,19 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			chart: {
 				status: 'needs_frequency',
 				series: [],
-				messages: ['Elige una frecuencia disponible para este indicador.']
+				messages: [
+					commonFrequencies.length === 0
+						? 'Los indicadores seleccionados no comparten una frecuencia.'
+						: 'Elige una frecuencia disponible para todos los indicadores seleccionados.'
+				]
 			},
 			warnings,
 			canonicalSearch: buildCanonicalSearch(state)
 		};
 	}
 
-	const metadata = await loadMetadata(selectedIndicator.code);
 	const timeAxis = await loadTimeAxis({
-		indicatorCode: selectedIndicator.code,
+		indicatorCodes: selectedIndicators.map((indicator) => indicator.code),
 		freq: state.freq,
 		start: state.start,
 		end: state.end,
@@ -715,18 +823,27 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 	});
 	state.start = timeAxis.start || '';
 	state.end = timeAxis.end || '';
-	const registeredDimensionResult = await loadRegisteredDimensions(
-		selectedIndicator.code,
-		state.freq
+
+	const registeredResults = await Promise.all(
+		selectedIndicators.map(async (indicator) => ({
+			indicator,
+			result: await loadRegisteredDimensions(indicator.code, state.freq as string)
+		}))
 	);
-	if (registeredDimensionResult.warning) {
-		warnings.push(registeredDimensionResult.warning);
+	const registryWarning = registeredResults.find((entry) => entry.result.warning)?.result.warning;
+
+	if (registryWarning) {
+		warnings.push(registryWarning);
 		return {
 			state,
 			areas: areaOptions,
 			indicators: catalog,
 			selectedIndicator,
+			selectedIndicators,
+			commonFrequencies,
 			metadata,
+			metadatas,
+			measurementCompatibility,
 			dimensions: [],
 			unresolvedDimensions: [],
 			fixedDimensions: [],
@@ -734,25 +851,49 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			chart: {
 				status: 'invalid',
 				series: [],
-				messages: [registeredDimensionResult.warning]
+				messages: [registryWarning]
 			},
 			warnings,
 			canonicalSearch: buildCanonicalSearch(state)
 		};
 	}
-	const registeredDimensions = registeredDimensionResult.dimensions;
-	const registeredCodes = new Set(registeredDimensions.map((dimension) => dimension.code));
+
+	const registeredByIndicator = new Map(
+		registeredResults.map((entry) => [entry.indicator.code, entry.result.dimensions] as const)
+	);
+	const commonDimensionCodes = intersectArrays(
+		registeredResults.map((entry) => entry.result.dimensions.map((dimension) => dimension.code))
+	);
+	const commonCodeSet = new Set(commonDimensionCodes);
+	const firstRegisteredDimensions = registeredResults[0]?.result.dimensions || [];
+	const commonRegisteredDimensions = commonDimensionCodes
+		.map((code) => {
+			const firstDimension = firstRegisteredDimensions.find((dimension) => dimension.code === code);
+			if (!firstDimension) return null;
+			return {
+				...firstDimension,
+				isFilterable: registeredResults.every((entry) =>
+					entry.result.dimensions.find((dimension) => dimension.code === code)?.isFilterable
+				),
+				isSplitable: registeredResults.every((entry) =>
+					entry.result.dimensions.find((dimension) => dimension.code === code)?.isSplitable
+				)
+			};
+		})
+		.filter((dimension): dimension is RegisteredDimension => Boolean(dimension));
 
 	for (const code of Object.keys(state.filters)) {
-		if (!registeredCodes.has(code)) {
+		if (!commonCodeSet.has(code)) {
 			delete state.filters[code];
-			warnings.push(`Se ignoró el filtro ${code} porque no aplica a este indicador/frecuencia.`);
+			warnings.push(
+				`Se ignoró el filtro ${code} porque no aplica a todos los indicadores seleccionados.`
+			);
 		}
 	}
 
-	if (state.by && !registeredCodes.has(state.by)) {
+	if (state.by && !commonCodeSet.has(state.by)) {
 		warnings.push(
-			`Se ignoró la desagregación ${state.by} porque no aplica a este indicador/frecuencia.`
+			`Se ignoró la desagregación ${state.by} porque no aplica a todos los indicadores seleccionados.`
 		);
 		state.by = null;
 	}
@@ -762,35 +903,84 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		state.by = null;
 	}
 
-	const availableValues = await loadAvailableValues({
-		indicatorCode: selectedIndicator.code,
-		freq: state.freq,
-		dimensions: registeredDimensions,
-		filters: state.filters
-	});
-	const valueLabels = await loadValueLabels(
-		registeredDimensions.map((dimension) => dimension.code)
+	const commonAvailableValueMaps = await Promise.all(
+		selectedIndicators.map((indicator) =>
+			loadAvailableValues({
+				indicatorCode: indicator.code,
+				freq: state.freq as string,
+				dimensions: commonRegisteredDimensions,
+				filters: state.filters
+			})
+		)
 	);
+	const commonAvailableValues = intersectValueMaps(commonAvailableValueMaps, commonDimensionCodes);
+	const allRegisteredCodes = Array.from(
+		new Set(
+			registeredResults.flatMap((entry) =>
+				entry.result.dimensions.map((dimension) => dimension.code)
+			)
+		)
+	);
+	const valueLabels = await loadValueLabels(allRegisteredCodes);
 	const dimensions = resolveDimensions({
-		registeredDimensions,
-		availableValues,
+		registeredDimensions: commonRegisteredDimensions,
+		availableValues: commonAvailableValues,
 		valueLabels,
 		filters: state.filters,
 		by: state.by
 	});
-	const unresolvedDimensions = dimensions.filter((dimension) => dimension.state === 'unresolved');
-	const fixedDimensions = dimensions.filter((dimension) => dimension.state === 'fixed');
-	const chart =
-		unresolvedDimensions.length > 0
+
+	const privateDimensions: ExplorerDimension[] = [];
+	for (const indicator of selectedIndicators) {
+		const registeredDimensions = registeredByIndicator.get(indicator.code) || [];
+		const privateRegisteredDimensions = registeredDimensions.filter(
+			(dimension) => !commonCodeSet.has(dimension.code)
+		);
+		if (privateRegisteredDimensions.length === 0) continue;
+
+		const availableValues = await loadAvailableValues({
+			indicatorCode: indicator.code,
+			freq: state.freq,
+			dimensions: privateRegisteredDimensions,
+			filters: state.filters
+		});
+		privateDimensions.push(
+			...resolveDimensions({
+				registeredDimensions: privateRegisteredDimensions,
+				availableValues,
+				valueLabels,
+				filters: {},
+				by: null
+			}).map((dimension) => prefixDimensionForIndicator(dimension, indicator))
+		);
+	}
+
+	const unresolvedDimensions = [
+		...dimensions.filter((dimension) => dimension.state === 'unresolved'),
+		...privateDimensions.filter((dimension) => dimension.state === 'unresolved')
+	];
+	const fixedDimensions = [
+		...dimensions.filter((dimension) => dimension.state === 'fixed'),
+		...privateDimensions.filter((dimension) => dimension.state === 'fixed')
+	];
+	const chart = !measurementCompatibility.compatible
+		? {
+				status: 'invalid' as const,
+				series: [],
+				messages: [measurementCompatibility.message || 'Los indicadores no son comparables.']
+			}
+		: unresolvedDimensions.length > 0
 			? {
 					status: 'needs_resolution' as const,
 					series: [],
 					messages: [
-						'Para graficar sin suposiciones, filtra o desagrega las dimensiones pendientes.'
+						selectedIndicators.length > 1
+							? 'Para comparar sin suposiciones, filtra o desagrega las dimensiones comunes pendientes. Los indicadores con dimensiones propias multi-valor todavía no son comparables.'
+							: 'Para graficar sin suposiciones, filtra o desagrega las dimensiones pendientes.'
 					]
 				}
 			: await queryChart({
-					indicator: selectedIndicator,
+					indicators: selectedIndicators,
 					freq: state.freq,
 					by: state.by,
 					filters: state.filters,
@@ -804,7 +994,11 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		areas: areaOptions,
 		indicators: catalog,
 		selectedIndicator,
+		selectedIndicators,
+		commonFrequencies,
 		metadata,
+		metadatas,
+		measurementCompatibility,
 		dimensions,
 		unresolvedDimensions,
 		fixedDimensions,

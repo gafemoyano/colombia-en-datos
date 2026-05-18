@@ -6,6 +6,7 @@
 	import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import X from '@lucide/svelte/icons/x';
 	import PlotlyChart from '$lib/components/PlotlyChart.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
@@ -52,8 +53,8 @@
 	);
 
 	const selectedIndicatorTitle = $derived(
-		data.selectedIndicator
-			? `${data.selectedIndicator.code} · ${data.selectedIndicator.shortName || data.selectedIndicator.name}`
+		data.selectedIndicators.length > 0
+			? `${data.selectedIndicators.length} indicador${data.selectedIndicators.length === 1 ? '' : 'es'} seleccionado${data.selectedIndicators.length === 1 ? '' : 's'}`
 			: 'Busca por código o nombre...'
 	);
 
@@ -83,16 +84,23 @@
 
 	const chartLayout = $derived<Partial<PlotlyTypes.Layout>>({
 		title: {
-			text: data.selectedIndicator?.shortName || data.selectedIndicator?.name || 'Explorador'
+			text:
+				data.selectedIndicators.length > 1
+					? 'Comparación de indicadores'
+					: data.selectedIndicator?.shortName || data.selectedIndicator?.name || 'Explorador'
 		},
 		xaxis: { title: { text: 'Periodo' } },
-		yaxis: { title: { text: data.metadata?.unit || 'Valor' } },
+		yaxis: { title: { text: data.measurementCompatibility.unit || 'Valor' } },
 		legend: { orientation: 'h' },
 		margin: { l: 60, r: 30, t: 60, b: 60 }
 	});
 
 	function frequencyLabel(freq: string): string {
-		return freq === 'M' ? 'Mensual' : freq === 'A' ? 'Anual' : freq;
+		if (freq === 'M') return 'Mensual';
+		if (freq === 'A') return 'Anual';
+		if (freq === 'Q') return 'Trimestral';
+		if (freq === 'D') return 'Diaria';
+		return freq;
 	}
 
 	function setParamOrDelete(params: URLSearchParams, key: string, value: string | null) {
@@ -169,15 +177,17 @@
 		navigateWith((params) => {
 			setParamOrDelete(params, 'area', area);
 
-			const currentIndicator = params.getAll('indicator')[0];
-			const currentIndicatorArea = data.indicators.find(
-				(indicator) => indicator.code === currentIndicator
-			)?.areaCode;
-
-			if (area && currentIndicator && currentIndicatorArea !== area) {
+			if (area) {
+				const keptIndicators = params.getAll('indicator').filter((code) => {
+					const indicatorArea = data.indicators.find((indicator) => indicator.code === code)?.areaCode;
+					return indicatorArea === area;
+				});
 				deleteIndicatorParams(params);
-				params.delete('freq');
-				deleteVisualizationParams(params);
+				for (const code of keptIndicators) params.append('indicator', code);
+				if (keptIndicators.length !== data.state.selectedIndicators.length) {
+					params.delete('freq');
+					deleteVisualizationParams(params);
+				}
 			}
 		});
 	}
@@ -186,15 +196,22 @@
 		indicatorPopoverOpen = false;
 		indicatorSearch = '';
 		navigateWith((params) => {
-			deleteIndicatorParams(params);
-			params.append('indicator', indicator.code);
-			deleteVisualizationParams(params);
-
-			if (indicator.availableFrequencies.length === 1) {
-				params.set('freq', indicator.availableFrequencies[0]);
-			} else {
+			const selected = params.getAll('indicator');
+			if (!selected.includes(indicator.code)) {
+				params.append('indicator', indicator.code);
 				params.delete('freq');
+				deleteVisualizationParams(params);
 			}
+		});
+	}
+
+	function removeIndicator(indicatorCode: string) {
+		navigateWith((params) => {
+			const selected = params.getAll('indicator').filter((code) => code !== indicatorCode);
+			deleteIndicatorParams(params);
+			for (const code of selected) params.append('indicator', code);
+			params.delete('freq');
+			deleteVisualizationParams(params);
 		});
 	}
 
@@ -239,7 +256,7 @@
 	function clearVisualizationHref(): string {
 		const params = new URLSearchParams();
 		if (data.state.area) params.set('area', data.state.area);
-		if (data.state.indicator) params.set('indicator', data.state.indicator);
+		for (const indicator of data.state.selectedIndicators) params.append('indicator', indicator);
 		if (data.state.freq) params.set('freq', data.state.freq);
 		return exploreHref(params);
 	}
@@ -299,7 +316,7 @@
 				</div>
 
 				<div class="space-y-2">
-					<Label id="indicator-label">Indicador</Label>
+					<Label id="indicator-label">Indicadores</Label>
 					<Popover.Root bind:open={indicatorPopoverOpen}>
 						<Popover.Trigger aria-labelledby="indicator-label">
 							{#snippet child({ props })}
@@ -342,6 +359,23 @@
 							</Command.Root>
 						</Popover.Content>
 					</Popover.Root>
+					{#if data.selectedIndicators.length > 0}
+						<div class="flex flex-wrap gap-2">
+							{#each data.selectedIndicators as indicator}
+								<Badge variant="secondary" class="h-7 gap-1 pr-1">
+									<span class="max-w-56 truncate">{indicator.shortName || indicator.name}</span>
+									<button
+										type="button"
+										class="hover:bg-muted-foreground/10 rounded-full p-0.5"
+										aria-label={`Quitar ${indicator.name}`}
+										onclick={() => removeIndicator(indicator.code)}
+									>
+										<X class="size-3" />
+									</button>
+								</Badge>
+							{/each}
+						</div>
+					{/if}
 				</div>
 
 				<div class="space-y-2">
@@ -349,7 +383,7 @@
 					<Select.Root
 						type="single"
 						value={data.state.freq || EMPTY_FREQ}
-						disabled={!data.selectedIndicator}
+						disabled={data.selectedIndicators.length === 0 || data.commonFrequencies.length === 0}
 						onValueChange={handleFrequencySelect}
 					>
 						<Select.Trigger aria-labelledby="freq-label" class="h-9 w-full">
@@ -357,7 +391,7 @@
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value={EMPTY_FREQ} label="Selecciona">Selecciona</Select.Item>
-							{#each data.selectedIndicator?.availableFrequencies || [] as freq}
+							{#each data.commonFrequencies as freq}
 								<Select.Item value={freq} label={frequencyLabel(freq)}>{frequencyLabel(freq)}</Select.Item>
 							{/each}
 						</Select.Content>
@@ -385,13 +419,15 @@
 				<Card.CardDescription>Filtra o desagrega cada dimensión multi-valor.</Card.CardDescription>
 			</Card.CardHeader>
 			<Card.CardContent class="space-y-6 px-5 pb-5">
-				{#if !data.selectedIndicator || !data.state.freq}
+				{#if data.selectedIndicators.length === 0 || !data.state.freq}
 					<p class="text-muted-foreground text-sm">
-						Selecciona un indicador y una frecuencia para ver sus dimensiones.
+						Selecciona uno o más indicadores y una frecuencia común para ver sus dimensiones.
 					</p>
 				{:else if data.dimensions.length === 0}
 					<p class="text-muted-foreground text-sm">
-						Este indicador no tiene dimensiones registradas para esta frecuencia.
+						{data.selectedIndicators.length > 1
+							? 'Estos indicadores no tienen dimensiones comunes para esta frecuencia.'
+							: 'Este indicador no tiene dimensiones registradas para esta frecuencia.'}
 					</p>
 				{:else}
 					<div class="space-y-2">
@@ -469,10 +505,16 @@
 					<div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
 						<div>
 							<Card.CardTitle>
-								{data.selectedIndicator?.name || 'Selecciona un indicador'}
+								{#if data.selectedIndicators.length > 1}
+									Comparación de {data.selectedIndicators.length} indicadores
+								{:else}
+									{data.selectedIndicator?.name || 'Selecciona un indicador'}
+								{/if}
 							</Card.CardTitle>
 							<Card.CardDescription>
-								{#if data.selectedIndicator}
+								{#if data.selectedIndicators.length > 1}
+									{data.selectedIndicators.map((indicator) => indicator.code).join(' · ')}
+								{:else if data.selectedIndicator}
 									{data.selectedIndicator.code} · {data.selectedIndicator.area} · {data
 										.selectedIndicator.group}
 								{:else}
@@ -610,7 +652,28 @@
 						</Card.CardTitle>
 					</Card.CardHeader>
 					<Card.CardContent class="space-y-3 text-sm">
-						{#if data.metadata}
+						{#if data.metadatas.length > 1}
+							<div>
+								<div class="text-muted-foreground text-xs uppercase">Unidad compartida</div>
+								<div>
+									{#if data.measurementCompatibility.compatible}
+										{data.measurementCompatibility.unit || 'Sin unidad registrada'}
+									{:else}
+										<span class="text-destructive">Unidades incompatibles</span>
+									{/if}
+								</div>
+							</div>
+							<div class="space-y-2">
+								{#each data.metadatas as metadata}
+									<div class="rounded-lg border px-3 py-2">
+										<div class="font-medium">{metadata.shortName || metadata.name}</div>
+										<div class="text-muted-foreground mt-1 text-xs">
+											{metadata.code} · {metadata.unit || 'Sin unidad'}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{:else if data.metadata}
 							<div>
 								<div class="text-muted-foreground text-xs uppercase">Unidad</div>
 								<div>{data.metadata.unit || 'Sin unidad registrada'}</div>
