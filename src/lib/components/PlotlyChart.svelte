@@ -12,7 +12,7 @@
 	let { data, layout = {}, config = {}, class: className = '' }: Props = $props();
 
 	let container: HTMLDivElement;
-	let plotlyModule: typeof PlotlyTypes | null = null;
+	let plotlyModule = $state<typeof PlotlyTypes | null>(null);
 
 	const defaultLayout = $derived<Partial<PlotlyTypes.Layout>>({
 		autosize: true,
@@ -28,14 +28,11 @@
 
 	onMount(async () => {
 		plotlyModule = await import('plotly.js-dist-min');
-		if (container && plotlyModule) {
-			await plotlyModule.newPlot(container, data, defaultLayout, defaultConfig);
-		}
 	});
 
 	$effect(() => {
 		if (container && plotlyModule && data) {
-			plotlyModule.react(container, data, defaultLayout, defaultConfig);
+			void plotlyModule.react(container, data, defaultLayout, defaultConfig);
 		}
 	});
 

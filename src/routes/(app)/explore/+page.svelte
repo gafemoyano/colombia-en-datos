@@ -168,7 +168,8 @@
 		goto(href, {
 			keepFocus: true,
 			noScroll: true,
-			replaceState: options.replaceState ?? false
+			replaceState: options.replaceState ?? false,
+			invalidateAll: true
 		});
 	}
 
@@ -593,7 +594,9 @@
 				<Card.CardContent>
 					{#if data.chart.status === 'chartable'}
 						<div class="h-[520px]">
-							<PlotlyChart data={plotlyData} layout={chartLayout} />
+							{#key data.canonicalSearch}
+								<PlotlyChart data={plotlyData} layout={chartLayout} />
+							{/key}
 						</div>
 					{:else}
 						<div

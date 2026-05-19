@@ -29,9 +29,9 @@
 					<Database class="h-4 w-4" />
 					Indicadores
 				</a>
-				<a href="/app" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+				<a href="/explore" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
 					<BarChart3 class="h-4 w-4" />
-					<span class="hidden sm:inline">Ver app</span>
+					<span class="hidden sm:inline">Ver explorador</span>
 				</a>
 				<a
 					href="/"

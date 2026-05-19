@@ -20,7 +20,7 @@
 
 			<div class="mt-8 flex flex-col gap-3 sm:flex-row">
 				<a
-					href="/app"
+					href="/explore"
 					class="inline-flex items-center justify-center rounded-xl bg-[var(--c-primary)] px-5 py-3 font-medium text-white shadow hover:bg-[var(--c-primary-600)] focus:outline-none focus:ring-2 focus:ring-[var(--c-primary)]/40"
 				>
 					<Icon name="play" className="mr-2 h-5 w-5" ariaHidden="true" />
