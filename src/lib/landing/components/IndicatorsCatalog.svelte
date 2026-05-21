@@ -17,7 +17,7 @@
 	const catalog = rawData as CatalogBlock[];
 </script>
 
-<section id="indicadores" class="min-h-[100svh] pt-24 scroll-mt-24 snap-start">
+<section id="catalogo" class="min-h-[100svh] pt-24 scroll-mt-24 snap-start">
 	<div class="mx-auto max-w-5xl px-4 sm:px-6">
 		<header class="mb-6">
 			<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">Catálogo de indicadores</h2>
@@ -55,8 +55,8 @@
 		</div>
 
 		<p class="mt-4 text-xs text-zinc-500">
-			Fuente y metodología estarán enlazadas en cada ficha de indicador. Comparaciones justas: per cápita, por 100
-			mil, ajustado por precios.
+			Fuente y metodología estarán enlazadas en cada ficha de indicador. Comparaciones disponibles
+			per cápita, por 100 mil habitantes, ajustado por precios y todo lo que imagines.
 		</p>
 	</div>
 </section>

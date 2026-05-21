@@ -6,10 +6,20 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-	--c-primary: #2563eb;
-	--c-primary-600: #1d4ed8;
-	--c-warm: #f59e0b;
-	--c-soft: #eef2ff;
+	--c-primary: #1f4e79;
+	--c-primary-600: #173d60;
+	--c-primary-900: #0f2a43;
+	--c-warm: #d89a2b;
+	--c-warm-soft: #fff4de;
+	--c-soft: #eaf2f8;
+	--c-page: #fcfdfe;
+	--c-ink: #111827;
+	--c-muted: #52616b;
+	--c-border: #d7e3ec;
+	--c-accent: #2a9d8f;
+	--c-accent-soft: #e5f5f2;
+	--c-mint-soft: #e5f5f2;
+	--c-coral-soft: #fdece8;
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.141 0.005 285.823);
 	--card: oklch(1 0 0);
