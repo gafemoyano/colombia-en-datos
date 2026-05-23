@@ -21,6 +21,9 @@
 		"db:studio": "drizzle-kit studio",
 		"db:seed": "tsx scripts/seed.ts",
 		"db:seed:annotations": "node scripts/seed-annotations.mjs",
+		"canonical:build": "tsx scripts/create-canonical-store.ts",
+		"canonical:validate": "tsx scripts/validate-canonical-store.ts",
+		"canonical:rebuild": "npm run canonical:build && npm run canonical:validate",
 		"duckdb:rebuild": "npm rebuild duckdb"
 	},
 	"devDependencies": {

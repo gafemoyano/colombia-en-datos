@@ -2,6 +2,7 @@ import { and, eq, inArray, or } from 'drizzle-orm';
 import { getDb } from '$lib/db/client';
 import {
 	areas,
+	departamentos,
 	dimensionDefinitions,
 	dimensionValues,
 	indicatorDimensions,
@@ -10,7 +11,6 @@ import {
 } from '$lib/db/schema';
 import { getAvailableFrequenciesByIndicator, runCanonicalQuery } from '$lib/server/duckdb';
 
-const REF_AREA = 'CO';
 const DIMENSION_COLUMNS = new Map<string, string>([
 	['GEO_LEVEL', 'geo_level'],
 	['DEPT_CODE', 'dept_code'],
@@ -440,11 +440,36 @@ async function loadValueLabels(
 			.where(inArray(dimensionValues.dimensionCode, dimensionCodes));
 
 		const labels = new Map<string, Map<string, string>>();
-		for (const row of rows) {
-			const dimensionLabels = labels.get(row.dimensionCode) || new Map<string, string>();
-			dimensionLabels.set(row.code, row.labelEs || row.code);
-			labels.set(row.dimensionCode, dimensionLabels);
+		function setLabel(dimensionCode: string, code: string, label: string) {
+			const dimensionLabels = labels.get(dimensionCode) || new Map<string, string>();
+			dimensionLabels.set(code, label);
+			labels.set(dimensionCode, dimensionLabels);
 		}
+
+		for (const row of rows) {
+			setLabel(row.dimensionCode, row.code, row.labelEs || row.code);
+		}
+
+		if (dimensionCodes.includes('GEO_LEVEL')) {
+			setLabel('GEO_LEVEL', 'NAT', 'Nacional');
+			setLabel('GEO_LEVEL', 'DEP', 'Departamental');
+			setLabel('GEO_LEVEL', 'MUN', 'Municipal');
+		}
+
+		if (dimensionCodes.includes('DEPT_CODE')) {
+			setLabel('DEPT_CODE', '00', 'Colombia');
+			const departmentRows = await db
+				.select({ code: departamentos.code, name: departamentos.name })
+				.from(departamentos);
+			for (const row of departmentRows) {
+				setLabel('DEPT_CODE', row.code, row.name);
+			}
+		}
+
+		if (dimensionCodes.includes('MUNI_CODE')) {
+			setLabel('MUNI_CODE', '0000', 'Todos los municipios');
+		}
+
 		return labels;
 	} catch (error) {
 		console.warn(`[Explorer] Could not load dimension value labels: ${errorSummary(error)}`);
@@ -461,8 +486,8 @@ function buildWhereForObservationQueries(params: {
 	start?: string;
 	end?: string;
 }): { conditions: string[]; values: unknown[] } {
-	const conditions = ['indicator_code = ?', 'freq = ?', 'ref_area = ?'];
-	const values: unknown[] = [params.indicatorCode, params.freq, REF_AREA];
+	const conditions = ['indicator_code = ?', 'freq = ?'];
+	const values: unknown[] = [params.indicatorCode, params.freq];
 
 	for (const [code, value] of Object.entries(params.filters)) {
 		if (code === params.excludeDimension) continue;
@@ -499,13 +524,11 @@ async function loadTimeAxis(params: {
 			FROM observations
 			WHERE indicator_code IN (${params.indicatorCodes.map(() => '?').join(', ')})
 				AND freq = ?
-				AND ref_area = ?
 				AND time_period IS NOT NULL
 			ORDER BY time_period
 		`,
 		...params.indicatorCodes,
-		params.freq,
-		REF_AREA
+		params.freq
 	);
 	const periods = rows.map((row) => String(row.time_period)).filter(Boolean);
 	const periodSet = new Set(periods);
@@ -632,13 +655,11 @@ async function queryChart(params: {
 }): Promise<ExplorerChartModel> {
 	const conditions = [
 		`indicator_code IN (${params.indicators.map(() => '?').join(', ')})`,
-		'freq = ?',
-		'ref_area = ?'
+		'freq = ?'
 	];
 	const values: unknown[] = [
 		...params.indicators.map((indicator) => indicator.code),
-		params.freq,
-		REF_AREA
+		params.freq
 	];
 
 	for (const [code, value] of Object.entries(params.filters)) {
