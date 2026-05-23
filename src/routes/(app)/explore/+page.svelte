@@ -87,7 +87,7 @@
 			text:
 				data.selectedIndicators.length > 1
 					? 'Comparación de indicadores'
-					: data.selectedIndicator?.shortName || data.selectedIndicator?.name || 'Explorador'
+					: data.selectedIndicator?.name || data.selectedIndicator?.shortName || 'Explorador'
 		},
 		xaxis: { title: { text: 'Periodo' } },
 		yaxis: { title: { text: data.measurementCompatibility.unit || 'Valor' } },
@@ -200,8 +200,13 @@
 			const selected = params.getAll('indicator');
 			if (!selected.includes(indicator.code)) {
 				params.append('indicator', indicator.code);
-				params.delete('freq');
-				deleteVisualizationParams(params);
+				// Only reset controls if the new indicator doesn't share the current frequency.
+				// The server will validate dimension compatibility and prune incompatible filters/by.
+				const currentFreq = params.get('freq');
+				if (currentFreq && !indicator.availableFrequencies?.includes(currentFreq)) {
+					params.delete('freq');
+					deleteVisualizationParams(params);
+				}
 			}
 		});
 	}
@@ -364,7 +369,7 @@
 						<div class="flex flex-wrap gap-2">
 							{#each data.selectedIndicators as indicator}
 								<Badge variant="secondary" class="h-7 gap-1 pr-1">
-									<span class="max-w-56 truncate">{indicator.shortName || indicator.name}</span>
+									<span class="max-w-56 truncate">{indicator.name}</span>
 									<button
 										type="button"
 										class="hover:bg-muted-foreground/10 rounded-full p-0.5"
@@ -669,7 +674,7 @@
 							<div class="space-y-2">
 								{#each data.metadatas as metadata}
 									<div class="rounded-lg border px-3 py-2">
-										<div class="font-medium">{metadata.shortName || metadata.name}</div>
+										<div class="font-medium">{metadata.name || metadata.shortName}</div>
 										<div class="text-muted-foreground mt-1 text-xs">
 											{metadata.code} · {metadata.unit || 'Sin unidad'}
 										</div>
