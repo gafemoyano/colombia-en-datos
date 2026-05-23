@@ -40,6 +40,10 @@ _Avoid_: Review state, approval status
 The upload and validation scope for an **Indicator** at one **Frequency**.
 _Avoid_: Indicator version, frequency row
 
+**Published indicator**:
+An **Indicator** that has published observations available for exploration.
+_Avoid_: Saved indicator, validated indicator
+
 **Observation dimension**:
 A category used to slice observations of an **Indicator**.
 _Avoid_: Filter, column, breakdown
@@ -101,7 +105,10 @@ A user who reviews and improves Spanish-facing indicator annotations (names, des
 - An **Indicator** has zero or more **Indicator annotations**.
 - **Methodology** is part of an **Indicator annotation** when a formal definition or formula is available.
 - A **Data source** provides one or more **Indicator groups**.
+- An **Indicator group** belongs to exactly one **Data source**.
 - An **Indicator group** contains one or more **Indicators**.
+- An **Indicator** belongs to exactly one **Indicator group**.
+- When a **Data source** has no meaningful grouping, it uses a default **Indicator group** named after the **Data source**.
 - A **Source table** is an **Indicator group** when the grouping corresponds to a published table or sheet.
 - An **Indicator** can have a stable **Measurement format** or produce series with different **Measurement formats**.
 - An **Indicator** can be sliced by zero or more **Observation dimensions**.
@@ -117,6 +124,7 @@ A user who reviews and improves Spanish-facing indicator annotations (names, des
 - **Discovery controls** choose the **Indicator**; **Visualization controls** constrain or split its observations.
 - An **Indicator** can have observations at different **Frequencies** without becoming a different indicator.
 - An **Indicator frequency** belongs to exactly one **Indicator**.
+- A **Published indicator** is visible in the **Explorer view**.
 - A single **Observation** has exactly one **Frequency**.
 - The `indicators` table does not store **Frequency**; it is purely a property of each **Observation** row.
 - An **Attention need** belongs to an **Indicator annotation**.
