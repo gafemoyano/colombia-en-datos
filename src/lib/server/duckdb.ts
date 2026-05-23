@@ -11,6 +11,8 @@ import {
 import { eq, and, inArray, or } from 'drizzle-orm';
 import { join, resolve } from 'path';
 
+export const CANONICAL_SCHEMA_VERSION = 1;
+
 export interface IndicatorData {
 	time: string;
 	value: number;
@@ -58,21 +60,41 @@ async function loadDuckDB(): Promise<DuckDbModule> {
 }
 
 export function getCanonicalDbPath(): string {
-	if (process.env.CANONICAL_DUCKDB_PATH) return resolve(process.env.CANONICAL_DUCKDB_PATH);
+	if (process.env.CANONICAL_DUCKDB_PATH) {
+		return resolve(process.env.CANONICAL_DUCKDB_PATH);
+	}
+	if (process.env.DATA_PATH) {
+		return join(resolve(process.env.DATA_PATH), 'observations.duckdb');
+	}
+	// Local dev fallback only
+	return join(process.cwd(), 'data', 'observations.duckdb');
+}
 
-	const candidates = [
-		...(process.env.DATA_PATH ? [join(resolve(process.env.DATA_PATH), 'observations.duckdb')] : []),
-		join(process.cwd(), 'data', 'observations.duckdb')
-	];
-
-	return candidates.find((path) => existsSync(path)) || candidates[0];
+async function validateCanonicalSchema(db: DuckDbDatabase): Promise<void> {
+	const stmt = db.prepare("SELECT value FROM _meta WHERE key = 'schema_version'");
+	const rows = await runStmt<{ value: string }>(stmt);
+	if (rows.length === 0) {
+		throw new Error('Canonical DuckDB missing schema_version in _meta table');
+	}
+	const version = parseInt(rows[0].value, 10);
+	if (version !== CANONICAL_SCHEMA_VERSION) {
+		throw new Error(
+			`Canonical DuckDB schema version mismatch: expected ${CANONICAL_SCHEMA_VERSION}, got ${version}`
+		);
+	}
 }
 
 async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {
 	if (canonicalDb) return canonicalDb;
 
+	const dbPath = getCanonicalDbPath();
+	if (!existsSync(dbPath)) {
+		throw new Error(`Canonical DuckDB not found at ${dbPath}`);
+	}
+
 	const duckdb = await loadDuckDB();
-	canonicalDb = new duckdb.Database(getCanonicalDbPath());
+	canonicalDb = new duckdb.Database(dbPath);
+	await validateCanonicalSchema(canonicalDb);
 	return canonicalDb;
 }
 

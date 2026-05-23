@@ -1,6 +1,8 @@
 import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
+import { existsSync, copyFileSync, mkdirSync } from 'fs';
+import { join, resolve } from 'path';
 
 function unauthorized() {
 	return new Response('Authentication required', {
@@ -38,7 +40,25 @@ function requiresAdminAuth(pathname: string, method: string): boolean {
 	);
 }
 
+function bootstrapCanonicalDb() {
+	const dataPath = process.env.DATA_PATH;
+	if (!dataPath) return;
+
+	const targetDir = resolve(dataPath);
+	const target = join(targetDir, 'observations.duckdb');
+	if (existsSync(target)) return;
+
+	const template = join(process.cwd(), 'data', 'observations.duckdb.template');
+	if (!existsSync(template)) return;
+
+	mkdirSync(targetDir, { recursive: true });
+	console.log('[bootstrap] Seeding canonical DB from template:', template, '→', target);
+	copyFileSync(template, target);
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
+	bootstrapCanonicalDb();
+
 	if (
 		requiresAdminAuth(event.url.pathname, event.request.method) &&
 		!isAdminAuthorized(event.request)

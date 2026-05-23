@@ -28,5 +28,13 @@ primary_region = 'iad'
   auto_start_machines = true
   processes = ['app']
 
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/health'
+    protocol = 'http'
+
 [[vm]]
   size = 'shared-cpu-1x'

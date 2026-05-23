@@ -23,6 +23,8 @@ const REQUIRED_COLUMNS = [
 	'obs_status'
 ];
 
+const REQUIRED_SCHEMA_VERSION = 1;
+
 function all<T = any>(db: duckdb.Database, sql: string): Promise<T[]> {
 	return new Promise((resolveRows, reject) => {
 		db.all(sql, (error: Error | null, rows: any) => {
@@ -52,6 +54,20 @@ async function run() {
 		const missingColumns = REQUIRED_COLUMNS.filter((column) => !columnNames.has(column));
 		if (missingColumns.length > 0) {
 			throw new Error(`Missing observations columns: ${missingColumns.join(', ')}`);
+		}
+
+		const metaRows = await all<{ value: string }>(
+			db,
+			"SELECT value FROM _meta WHERE key = 'schema_version'"
+		);
+		if (metaRows.length === 0) {
+			throw new Error('Missing schema_version in _meta table');
+		}
+		const schemaVersion = parseInt(metaRows[0].value, 10);
+		if (schemaVersion !== REQUIRED_SCHEMA_VERSION) {
+			throw new Error(
+				`Schema version mismatch: expected ${REQUIRED_SCHEMA_VERSION}, got ${schemaVersion}`
+			);
 		}
 
 		const summary = await all<{
@@ -89,6 +105,7 @@ async function run() {
 				{
 					path: CANONICAL_PATH,
 					sizeBytes: statSync(CANONICAL_PATH).size,
+					schemaVersion,
 					rowCount,
 					indicatorCount,
 					freqCount: Number(first?.freq_count || 0),

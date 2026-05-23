@@ -209,6 +209,26 @@ async function run() {
 		);
 	});
 
+	console.log('[canonical] Writing schema metadata...');
+	await new Promise<void>((res, rej) => {
+		db.run(
+			'CREATE TABLE IF NOT EXISTS _meta (key VARCHAR PRIMARY KEY, value VARCHAR)',
+			(err: Error | null) => {
+				if (err) rej(err);
+				else res();
+			}
+		);
+	});
+	await new Promise<void>((res, rej) => {
+		db.run(
+			"INSERT OR REPLACE INTO _meta VALUES ('schema_version', '1')",
+			(err: Error | null) => {
+				if (err) rej(err);
+				else res();
+			}
+		);
+	});
+
 	// Clean up temp dir
 	try {
 		rmSync(TEMP_DIR, { recursive: true, force: true });
