@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import { getDb } from '$lib/db/client';
 import {
 	indicators,
@@ -8,7 +9,7 @@ import {
 	dimensionValues
 } from '$lib/db/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
-import { join } from 'path';
+import { join, resolve } from 'path';
 
 export interface IndicatorData {
 	time: string;
@@ -57,7 +58,14 @@ async function loadDuckDB(): Promise<DuckDbModule> {
 }
 
 export function getCanonicalDbPath(): string {
-	return join(process.cwd(), 'data', 'observations.duckdb');
+	if (process.env.CANONICAL_DUCKDB_PATH) return resolve(process.env.CANONICAL_DUCKDB_PATH);
+
+	const candidates = [
+		...(process.env.DATA_PATH ? [join(resolve(process.env.DATA_PATH), 'observations.duckdb')] : []),
+		join(process.cwd(), 'data', 'observations.duckdb')
+	];
+
+	return candidates.find((path) => existsSync(path)) || candidates[0];
 }
 
 async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {

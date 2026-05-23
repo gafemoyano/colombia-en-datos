@@ -1,22 +1,30 @@
 import duckdb from 'duckdb';
-import { resolve, join } from 'path';
-import { existsSync, readdirSync, statSync, symlinkSync, unlinkSync, mkdirSync } from 'fs';
+import { dirname, resolve, join } from 'path';
+import { existsSync, readdirSync, symlinkSync, unlinkSync, mkdirSync, renameSync, rmSync } from 'fs';
 
-const DATA_PATH = resolve(process.cwd(), 'data');
-const CANONICAL_PATH = resolve(process.cwd(), 'data', 'observations.duckdb');
+const DATA_PATH = process.env.DATA_PATH ? resolve(process.env.DATA_PATH) : resolve(process.cwd(), 'data');
+const CANONICAL_PATH = process.env.CANONICAL_DUCKDB_PATH
+	? resolve(process.env.CANONICAL_DUCKDB_PATH)
+	: resolve(DATA_PATH, 'observations.duckdb');
+const BUILD_PATH = process.env.CANONICAL_BUILD_PATH
+	? resolve(process.env.CANONICAL_BUILD_PATH)
+	: `${CANONICAL_PATH}.next-${Date.now()}`;
 const TEMP_DIR = resolve('/tmp', 'ced-canonical-' + Date.now());
 
 async function run() {
-	console.log('[canonical] Creating store at', CANONICAL_PATH);
+	console.log('[canonical] Data path:', DATA_PATH);
+	console.log('[canonical] Building store at', BUILD_PATH);
+	console.log('[canonical] Final store path', CANONICAL_PATH);
 
-	if (existsSync(CANONICAL_PATH)) {
-		unlinkSync(CANONICAL_PATH);
+	if (existsSync(BUILD_PATH)) {
+		unlinkSync(BUILD_PATH);
 	}
 
+	mkdirSync(dirname(BUILD_PATH), { recursive: true });
 	mkdirSync(TEMP_DIR, { recursive: true });
 	console.log('[canonical] Temp dir:', TEMP_DIR);
 
-	const db = new duckdb.Database(CANONICAL_PATH);
+	const db = new duckdb.Database(BUILD_PATH);
 
 	const createTable = `
 		CREATE TABLE observations (
@@ -100,9 +108,31 @@ async function run() {
 				REF_AREA as ref_area,
 				TIME_PERIOD as time_period,
 				OBS_VALUE as obs_value,
-				GEO_LEVEL as geo_level,
-				DEPT_CODE as dept_code,
-				MUNI_CODE as muni_code,
+				COALESCE(
+					NULLIF(GEO_LEVEL, ''),
+					CASE
+						WHEN REF_AREA = 'CO' THEN 'NAT'
+						WHEN LENGTH(REF_AREA) = 2 THEN 'DEP'
+						WHEN LENGTH(REF_AREA) = 5 THEN 'MUN'
+						ELSE NULL
+					END
+				) as geo_level,
+				COALESCE(
+					NULLIF(DEPT_CODE, ''),
+					CASE
+						WHEN REF_AREA = 'CO' THEN '00'
+						WHEN LENGTH(REF_AREA) IN (2, 5) THEN SUBSTR(REF_AREA, 1, 2)
+						ELSE NULL
+					END
+				) as dept_code,
+				COALESCE(
+					NULLIF(MUNI_CODE, ''),
+					CASE
+						WHEN REF_AREA = 'CO' THEN '0000'
+						WHEN LENGTH(REF_AREA) = 5 THEN REF_AREA
+						ELSE NULL
+					END
+				) as muni_code,
 				URBAN_RURAL as urban_rural,
 				SEX as sex,
 				AGE as age,
@@ -181,11 +211,17 @@ async function run() {
 
 	// Clean up temp dir
 	try {
-		import('fs').then(({ rmdirSync }) => rmdirSync(TEMP_DIR));
+		rmSync(TEMP_DIR, { recursive: true, force: true });
 	} catch {}
 
-	console.log(`[canonical] Done! ${totalRows.toLocaleString()} rows, ${allFiles.length} files`);
 	db.close();
+
+	if (BUILD_PATH !== CANONICAL_PATH) {
+		renameSync(BUILD_PATH, CANONICAL_PATH);
+		console.log('[canonical] Atomically replaced', CANONICAL_PATH);
+	}
+
+	console.log(`[canonical] Done! ${totalRows.toLocaleString()} rows, ${allFiles.length} files`);
 }
 
 run().catch((err) => {
