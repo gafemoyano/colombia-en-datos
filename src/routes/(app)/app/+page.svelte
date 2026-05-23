@@ -123,7 +123,7 @@
 						x: points.map((p) => p.time),
 						y: points.map((p) => p.value),
 						type: 'scatter',
-						mode: 'lines+markers',
+						mode: 'lines',
 						name: `${indicatorLabel(indicator)} · ${dimLabel}`,
 						connectgaps: false
 					};
@@ -133,7 +133,7 @@
 					x: result.data.filter((d: any) => d.indicator === indicator).map((d: any) => d.time),
 					y: result.data.filter((d: any) => d.indicator === indicator).map((d: any) => d.value),
 					type: 'scatter',
-					mode: 'lines+markers',
+					mode: 'lines',
 					name: indicatorLabel(indicator),
 					connectgaps: false
 				}));

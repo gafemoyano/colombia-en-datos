@@ -77,7 +77,7 @@
 			x: series.points.map((point) => point.time),
 			y: series.points.map((point) => point.value),
 			type: 'scatter',
-			mode: 'lines+markers',
+			mode: 'lines',
 			name: series.name
 		}))
 	);
