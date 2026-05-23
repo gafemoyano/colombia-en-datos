@@ -1,0 +1,32 @@
+# Preview app config — no persistent volume, ephemeral data only
+app = 'colombia-en-datos-preview'
+primary_region = 'iad'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  DATA_PATH = '/app/data'
+  NODE_ENV = 'production'
+  PORT = '8080'
+
+# Secrets are injected by the preview workflow:
+#   DATABASE_URL, TURSO_AUTH_TOKEN
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  processes = ['app']
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/api/health'
+    protocol = 'http'
+
+[[vm]]
+  size = 'shared-cpu-1x'

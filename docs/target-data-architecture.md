@@ -246,7 +246,7 @@ The uploaded file must contain at minimum these columns:
 | `time_period` | VARCHAR | `'2019-01'` (for M), `'2019'` (for A) |
 | `obs_value` | DOUBLE | `12345.6` |
 
-The file may also contain dimensions registered for this **indicator + freq** combination. Whether every registered dimension must be present, or absent nullable dimensions are acceptable, remains a validation hardening decision before the upload UI is built.
+The file must contain every dimension registered for this **indicator + freq** combination. Missing registered dimension columns are rejected because the saved definition is the declared observation contract.
 
 | Optional dimension | Present only if registered for indicator+freq | Example values |
 |--------------------|-----------------------------------------------|----------------|
@@ -602,17 +602,14 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 
 ## 11. Open Questions
 
-1. **Must every registered dimension column be present in uploaded Parquet files?**  
-   *Recommendation:* Decide before the upload UI. Requiring presence is stricter and catches accidental omissions; allowing nullable absence is more flexible for sparse dimensions.
-
-2. **When do we drop the legacy `indicators.frequency` column?**  
+1. **When do we drop the legacy `indicators.frequency` column?**  
    *Recommendation:* After `/explore` and the remaining app surfaces read available frequencies from observations or `indicator_data_sources`.
 
-3. **How should DANE geographic code labels be seeded?**  
+2. **How should DANE geographic code labels be seeded?**  
    *Recommendation:* Save the DANE code reference locally, then seed `dimension_values` for `DEPT_CODE`, `MUNI_CODE`, and `GEO_LEVEL`. `departamentos` can be a seed source, but not the Explorer runtime label source.
 
-4. **How much ingestion validation hardening is required before broad self-service?**  
-   *Recommendation:* Add codelist enforcement, duplicate-key detection, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
+3. **How much ingestion validation hardening is required before broad self-service?**  
+   *Recommendation:* Add codelist enforcement, duplicate-key detection, required registered-dimension enforcement, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
 
-5. **When should multi-indicator comparison support per-indicator overrides?**  
+4. **When should multi-indicator comparison support per-indicator overrides?**  
    *Recommendation:* Start with common dimensions only. Add per-indicator filter overrides only after the single-indicator Explorer and common-dimension comparison are stable.
