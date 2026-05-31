@@ -53,6 +53,7 @@
 ```sql
 dimension_definitions   -- Registry of known dimensions (code, name, sort_order, is_standard)
 dimension_values        -- Codelists (dimension_code, code, label_es, sort_order)
+indicator_frequencies   -- Explicit admin-defined indicator+freq scopes, including dimensionless indicators
 indicator_dimensions    -- Which dims apply to which indicator+freq (indicator_id, freq, dimension_code, default_value, is_filterable, is_splitable)
 data_releases           -- Audit trail (indicator_id, release_date, row_count, checksum, status)
 indicator_data_sources  -- Canonical store slice reference (indicator_id, ref_area, freq, year_min, year_max, row_count, release_id)

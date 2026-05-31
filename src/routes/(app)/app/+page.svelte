@@ -12,7 +12,7 @@
 		shortName: string | null;
 		description: string | null;
 		methodology: string | null;
-		source: string | null;
+		sourceCitation: string | null;
 		frequency: string;
 		unit: string | null;
 		unitMult: number | null;
@@ -26,7 +26,7 @@
 
 	type IndicatorSummary = PageData['indicators'][number];
 
-	let selectedArea = $state<string>('');
+	let selectedDataSource = $state<string>('');
 	let selectedIndicators = $state<string[]>([]);
 	let startDate = $state<string>('');
 	let endDate = $state<string>('');
@@ -38,8 +38,8 @@
 	let isLoading = $state(false);
 	let metadata = $state<IndicatorMetadata[]>([]);
 
-	const uniqueAreas = $derived(
-		[...new Set(data.indicators.map((indicator: IndicatorSummary) => indicator.area))].sort()
+	const uniqueDataSources = $derived(
+		[...new Set(data.indicators.map((indicator: IndicatorSummary) => indicator.dataSource))].sort()
 	);
 
 	function indicatorLabel(code: string): string {
@@ -196,15 +196,17 @@
 
 				<div class="space-y-4">
 					<div>
-						<label for="area" class="block text-sm font-medium text-gray-700 mb-2"> Área </label>
+						<label for="data-source" class="block text-sm font-medium text-gray-700 mb-2">
+							Fuente de datos
+						</label>
 						<select
-							id="area"
-							bind:value={selectedArea}
+							id="data-source"
+							bind:value={selectedDataSource}
 							class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
 						>
-							<option value="">Todas las áreas</option>
-							{#each uniqueAreas as area}
-								<option value={area}>{area}</option>
+							<option value="">Todas las fuentes de datos</option>
+							{#each uniqueDataSources as dataSource}
+								<option value={dataSource}>{dataSource}</option>
 							{/each}
 						</select>
 					</div>
@@ -259,7 +261,7 @@
 				selected={selectedIndicators}
 				onSelectionChange={handleSelectionChange}
 				currentFrequency={frequency}
-				currentArea={selectedArea}
+				currentDataSource={selectedDataSource}
 			/>
 
 			<DimensionSelector

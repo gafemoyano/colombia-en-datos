@@ -20,7 +20,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const EMPTY_AREA = '__area_all__';
+	const EMPTY_DATA_SOURCE = '__data_source_all__';
 	const EMPTY_FREQ = '__freq_empty__';
 	const EMPTY_BY = '__by_empty__';
 	const EMPTY_FILTER = '__filter_all__';
@@ -30,16 +30,17 @@
 	let indicatorPopoverOpen = $state(false);
 	let indicatorSearch = $state('');
 
-	const indicatorsForArea = $derived(
-		data.state.area
-			? data.indicators.filter((indicator) => indicator.areaCode === data.state.area)
+	const indicatorsForDataSource = $derived(
+		data.state.dataSource
+			? data.indicators.filter((indicator) => indicator.dataSourceCode === data.state.dataSource)
 			: data.indicators
 	);
 
-	const selectedAreaLabel = $derived(
-		data.state.area
-			? data.areas.find((area) => area.code === data.state.area)?.name || data.state.area
-			: 'Todas las áreas'
+	const selectedDataSourceLabel = $derived(
+		data.state.dataSource
+			? data.dataSources.find((dataSource) => dataSource.code === data.state.dataSource)?.name ||
+				data.state.dataSource
+			: 'Todas las fuentes de datos'
 	);
 
 	const selectedFrequencyLabel = $derived(
@@ -125,7 +126,7 @@
 
 	function canonicalizeParams(params: URLSearchParams): URLSearchParams {
 		const canonical = new URLSearchParams();
-		const area = params.get('area')?.trim();
+		const dataSource = params.get('data_source')?.trim();
 		const indicators = params
 			.getAll('indicator')
 			.map((indicator) => indicator.trim())
@@ -139,7 +140,7 @@
 			.map(([key, value]) => [key.slice('filter.'.length).toUpperCase(), value.trim()] as const)
 			.sort(([a], [b]) => a.localeCompare(b));
 
-		if (area) canonical.set('area', area);
+		if (dataSource) canonical.set('data_source', dataSource);
 		for (const indicator of indicators) canonical.append('indicator', indicator);
 		if (freq) canonical.set('freq', freq);
 		if (by) canonical.set('by', by);
@@ -173,15 +174,17 @@
 		});
 	}
 
-	function handleAreaSelect(selectedValue: string) {
-		const area = selectedValue === EMPTY_AREA ? '' : selectedValue;
+	function handleDataSourceSelect(selectedValue: string) {
+		const dataSource = selectedValue === EMPTY_DATA_SOURCE ? '' : selectedValue;
 		navigateWith((params) => {
-			setParamOrDelete(params, 'area', area);
+			setParamOrDelete(params, 'data_source', dataSource);
 
-			if (area) {
+			if (dataSource) {
 				const keptIndicators = params.getAll('indicator').filter((code) => {
-					const indicatorArea = data.indicators.find((indicator) => indicator.code === code)?.areaCode;
-					return indicatorArea === area;
+					const indicatorDataSource = data.indicators.find(
+						(indicator) => indicator.code === code
+					)?.dataSourceCode;
+					return indicatorDataSource === dataSource;
 				});
 				deleteIndicatorParams(params);
 				for (const code of keptIndicators) params.append('indicator', code);
@@ -261,7 +264,7 @@
 
 	function clearVisualizationHref(): string {
 		const params = new URLSearchParams();
-		if (data.state.area) params.set('area', data.state.area);
+		if (data.state.dataSource) params.set('data_source', data.state.dataSource);
 		for (const indicator of data.state.selectedIndicators) params.append('indicator', indicator);
 		if (data.state.freq) params.set('freq', data.state.freq);
 		return exploreHref(params);
@@ -303,19 +306,19 @@
 		<Card.CardContent class="px-5 pb-5">
 			<div class="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)_180px] lg:items-end">
 				<div class="space-y-2">
-					<Label id="area-label">Área</Label>
+					<Label id="data-source-label">Fuente de datos</Label>
 					<Select.Root
 						type="single"
-						value={data.state.area || EMPTY_AREA}
-						onValueChange={handleAreaSelect}
+						value={data.state.dataSource || EMPTY_DATA_SOURCE}
+						onValueChange={handleDataSourceSelect}
 					>
-						<Select.Trigger aria-labelledby="area-label" class="h-9 w-full">
-							<span class="truncate">{selectedAreaLabel}</span>
+						<Select.Trigger aria-labelledby="data-source-label" class="h-9 w-full">
+							<span class="truncate">{selectedDataSourceLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value={EMPTY_AREA} label="Todas las áreas">Todas las áreas</Select.Item>
-							{#each data.areas as area}
-								<Select.Item value={area.code} label={area.name}>{area.name}</Select.Item>
+							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas las fuentes de datos">Todas las fuentes de datos</Select.Item>
+							{#each data.dataSources as dataSource}
+								<Select.Item value={dataSource.code} label={dataSource.name}>{dataSource.name}</Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
@@ -341,21 +344,21 @@
 							<Command.Root>
 								<Command.Input
 									bind:value={indicatorSearch}
-									placeholder="Busca por código, nombre, grupo o área..."
+									placeholder="Busca por código, nombre, grupo o fuente de datos..."
 								/>
 								<Command.List class="max-h-96">
 									<Command.Empty>No hay indicadores para esa búsqueda.</Command.Empty>
-									<Command.Group heading={data.state.area ? 'Indicadores del área' : 'Indicadores'}>
-										{#each indicatorsForArea as indicator}
+									<Command.Group heading={data.state.dataSource ? 'Indicadores de la fuente de datos' : 'Indicadores'}>
+										{#each indicatorsForDataSource as indicator}
 											<Command.Item
 												value={`${indicator.code} ${indicator.name}`}
-												keywords={[indicator.code, indicator.name, indicator.group, indicator.area]}
+												keywords={[indicator.code, indicator.name, indicator.group, indicator.dataSource]}
 												onSelect={() => selectIndicator(indicator)}
 											>
 												<div class="min-w-0 flex-1 py-1">
 													<div class="truncate font-medium">{indicator.name}</div>
 													<div class="text-muted-foreground truncate text-xs">
-														{indicator.code} · {indicator.area} · {indicator.group}
+														{indicator.code} · {indicator.dataSource} · {indicator.group}
 													</div>
 												</div>
 											</Command.Item>
@@ -521,7 +524,7 @@
 								{#if data.selectedIndicators.length > 1}
 									{data.selectedIndicators.map((indicator) => indicator.code).join(' · ')}
 								{:else if data.selectedIndicator}
-									{data.selectedIndicator.code} · {data.selectedIndicator.area} · {data
+									{data.selectedIndicator.code} · {data.selectedIndicator.dataSource} · {data
 										.selectedIndicator.group}
 								{:else}
 									Comienza con los controles de descubrimiento.
@@ -687,8 +690,8 @@
 								<div>{data.metadata.unit || 'Sin unidad registrada'}</div>
 							</div>
 							<div>
-								<div class="text-muted-foreground text-xs uppercase">Fuente</div>
-								<div>{data.metadata.source || 'Sin fuente registrada'}</div>
+								<div class="text-muted-foreground text-xs uppercase">Citación de fuente</div>
+								<div>{data.metadata.sourceCitation || 'Sin citación registrada'}</div>
 							</div>
 							{#if data.metadata.description}
 								<p class="text-muted-foreground">{data.metadata.description}</p>

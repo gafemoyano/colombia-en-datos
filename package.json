@@ -24,6 +24,7 @@
 		"canonical:build": "tsx scripts/create-canonical-store.ts",
 		"canonical:validate": "tsx scripts/validate-canonical-store.ts",
 		"canonical:rebuild": "npm run canonical:build && npm run canonical:validate",
+		"data:backfill-releases": "tsx scripts/backfill-data-releases.ts",
 		"duckdb:rebuild": "npm rebuild duckdb"
 	},
 	"devDependencies": {

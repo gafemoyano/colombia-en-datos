@@ -5,7 +5,7 @@
 		shortName: string | null;
 		description: string | null;
 		methodology: string | null;
-		source: string | null;
+		sourceCitation: string | null;
 		frequency: string;
 		unit: string | null;
 		unitMult: number | null;
@@ -52,9 +52,9 @@
 							<dd class="text-gray-900">{meta.unit}{formatUnitMult(meta.unitMult)}</dd>
 						{/if}
 
-						{#if meta.source}
-							<dt class="text-gray-500">Fuente:</dt>
-							<dd class="text-gray-900">{meta.source}</dd>
+						{#if meta.sourceCitation}
+							<dt class="text-gray-500">Citación de fuente:</dt>
+							<dd class="text-gray-900">{meta.sourceCitation}</dd>
 						{/if}
 
 						<dt class="text-gray-500">Frecuencia:</dt>

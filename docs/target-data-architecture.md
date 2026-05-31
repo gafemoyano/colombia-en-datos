@@ -36,7 +36,7 @@
 ```
 Data scientist has new indicator
     ↓
-Writes parquet files to data/<area>/...  (manually, via Python script)
+Writes parquet files to data/<data-source>/...  (manually, via Python script)
     ↓
 Developer runs npm run db:seed
     ↓
@@ -145,6 +145,12 @@ label_es       VARCHAR
 sort_order     INTEGER
 PRIMARY KEY (dimension_code, code)
 
+-- indicator_frequencies
+-- Explicit admin-visible frequency definitions, including dimensionless indicators.
+indicator_id   INTEGER REFERENCES indicators(id)
+freq           VARCHAR NOT NULL      -- 'M', 'A', 'Q', 'D'
+PRIMARY KEY (indicator_id, freq)
+
 -- indicator_dimensions
 -- Which dimensions apply to a given indicator+freq combination, and their defaults.
 indicator_id   INTEGER REFERENCES indicators(id)
@@ -210,16 +216,16 @@ Data scientist publishes
     ↓
 System replaces observations for indicator_code + freq in observations.duckdb
     ↓
-System records data lineage in data_releases and indicator_data_sources
+System records published lineage in data_releases and indicator_data_sources
     ↓
-Indicator data is live immediately in the Explorer view
+Indicator frequency is live immediately in the Explorer view
 ```
 
 ### 4.2 Upload API
 
 ```typescript
 // POST /api/indicators
-// Body: { code, name, areaCode, groupCode, dimensionsByFreq }
+// Body: { code, name, dataSourceCode, groupCode, dimensionsByFreq }
 // Response: { indicator }
 
 // POST /api/admin/ingest/upload
@@ -270,7 +276,7 @@ These are target validation rules. Phase 2 implemented the core upload/publish p
 3. `time_period` must match the declared `freq` (YYYY-MM for M, YYYY for A, YYYY-QN for Q).
 4. `obs_value` must be numeric (nulls allowed).
 5. All columns present in the file must be either required columns, registered dimensions for this indicator+freq, or `obs_status`.
-6. Dimension values must exist in `dimension_values` or be auto-registered with a machine label (flagged for curation).
+6. Dimension values must exist in `dimension_values`; unknown values are rejected.
 7. Duplicate primary keys (same indicator, freq, time, dimensions) are rejected. Uploads are always full replacement for the indicator+freq combination.
 
 ---
@@ -383,12 +389,12 @@ Rules:
 
 The Explorer UI separates Indicator discovery from observation visualization:
 
-- Top Discovery/data-scope row: area narrowing, indicator combobox/search, Frequency selector.
+- Top Discovery/data-scope row: data source narrowing, indicator combobox/search, Frequency selector.
 - Left Visualization panel: Split dimension selector, dynamic dimension filters, Fixed dimension summary, chartability guidance.
 - Chart surface: Plotly chart, no-data states, and chart-local date controls.
 - Context/details area: Indicator annotation and Measurement format.
 
-Area narrowing is optional. Indicator search is primary. Frequency lives with Indicator selection because it determines the applicable dimensions and time grain.
+Data source narrowing is optional. Indicator search is primary. Frequency lives with Indicator selection because it determines the applicable dimensions and time grain.
 
 ### 6.4 Chartability rules
 
@@ -535,7 +541,7 @@ This is blocked until we have:
    - Writes `data_releases` and refreshes `indicator_data_sources`.
 
 4. **Frequency availability**  
-   - `GET /api/indicators` and admin listing expose frequencies available in the canonical store.
+   - Public `GET /api/indicators` and Explorer expose only published frequencies: a published release/source record must exist and observations must exist in the canonical store. Admin listing still shows saved definitions without observations.
 
 ### Phase 3/4: Explorer vertical slices — in progress
 
@@ -546,7 +552,7 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 1. **Install and configure shadcn-svelte for the Explorer.** ✅
 2. **Create the route:** `src/routes/(app)/explore/+page.server.ts` and `+page.svelte`. ✅
 3. **Create `src/lib/server/explorer.ts`:** parse URL state, load catalog, resolve dimensions, compute chartability, query observations, and return chart-library-neutral series. ✅
-4. **Top Discovery/data-scope controls:** area narrowing, indicator combobox/search, Frequency selector. ✅
+4. **Top Discovery/data-scope controls:** data source narrowing, indicator combobox/search, Frequency selector. ✅
 5. **Left Visualization controls:** Split dimension selector, dynamic dimension filters with All values option, Fixed dimension summary, unresolved-dimension guidance. ✅
 6. **Chart surface:** Time axis selectors, Plotly rendering when chartable, empty/no-data/needs-selection states. ✅
 7. **Share-link behavior:** repeated `indicator` params, uppercase dimension URL codes, `filter.{DIMENSION_CODE}` params, canonicalization of invalid state. ✅
@@ -585,13 +591,17 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 | **Wide table over EAV** | Columnar performance is the reason we use DuckDB/Parquet. EAV would force us to pivot at query time, destroying that advantage. |
 | **DuckDB native file over many parquets** | Fewer files = lower I/O overhead, simpler backups, and a single object to expose to external data scientists. We can still export to parquet on demand. |
 | **Keep metadata in SQLite** | Drizzle ORM, migrations, and admin CRUD are already built for SQLite. Moving metadata to DuckDB would require rebuilding the auth/admin stack. |
+| **Data source over Area** | The top-level indicator parent is provenance-oriented, not a stable product taxonomy. `data_sources` replaces the legacy `areas` table, and public controls should say Data source. |
+| **Source citation over source** | The parent origin is a Data source; indicator-specific provenance text is a Source citation stored as `source_citation`. |
 | **Prepared statements instead of query builder** | Fixes the critical SQL injection vulnerability and is actually less code than our current string-concatenation approach. |
 | **Dimension registry in SQLite** | Eliminates runtime `DESCRIBE` overhead and lets the UI be fully dynamic. The seed cost is paid once at ingestion, not on every metadata request. |
 | **Explicit filters over implicit defaults in Explorer** | The Explorer should not guess user intent by silently applying totals such as `SEX='T'` or geography defaults such as `DEPT_CODE='00'`. Users choose filters explicitly; unresolved multi-value dimensions produce guidance instead of arbitrary charts. |
 | **Frequency is per-observation, not per-indicator** | An indicator code can have both monthly and annual data without splitting into separate indicators. Frequency lives on each observation row. The `indicators.frequency` column is dropped entirely. |
+| **Indicator frequencies are explicit definitions** | `indicator_frequencies` records every admin-defined `indicator + freq`, including dimensionless indicators. `indicator_dimensions` then records dimensions for that scope. |
 | **Dimensions are per-indicator-frequency** | Monthly `EMP` can have an `URBAN_RURAL` breakdown while annual `EMP` does not. The registry keys dimensions by `(indicator_id, freq)`. |
 | **Data scientists transform files before upload** | The system does not perform column mapping. Data scientists produce files that already match the observation schema. This keeps the upload API simple and unambiguous. |
 | **Overwrite contract for uploads** | Each upload fully replaces all observations for the given `indicator_code + freq` combination. The canonical table is the only persistent store; original files are not archived. |
+| **Published visibility requires lineage and observations** | Public catalogs expose an indicator frequency only when `data_releases`/`indicator_data_sources` mark it published and the canonical store contains observations for the same indicator/frequency. Admin surfaces can still show saved definitions without observations. |
 | **Serialized writes acceptable** | Only one upload runs at a time. This avoids DuckDB's lack of concurrent write support without adding async job queues in Phase 2. |
 | **Explorer as SvelteKit vertical slice** | `/explore` uses server load as the primary composition layer instead of orchestrating internal REST calls from the browser. |
 | **Chart-library-neutral series model** | The Explorer server layer returns domain chart series; Plotly-specific traces are built in the UI layer. |
@@ -609,7 +619,7 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
    *Recommendation:* Save the DANE code reference locally, then seed `dimension_values` for `DEPT_CODE`, `MUNI_CODE`, and `GEO_LEVEL`. `departamentos` can be a seed source, but not the Explorer runtime label source.
 
 3. **How much ingestion validation hardening is required before broad self-service?**  
-   *Recommendation:* Add codelist enforcement, duplicate-key detection, required registered-dimension enforcement, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
+   *Recommendation:* Add codelist enforcement that rejects unknown dimension values, duplicate-key detection, required registered-dimension enforcement, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
 
 4. **When should multi-indicator comparison support per-indicator overrides?**  
    *Recommendation:* Start with common dimensions only. Add per-indicator filter overrides only after the single-indicator Explorer and common-dimension comparison are stable.

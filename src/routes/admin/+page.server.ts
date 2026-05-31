@@ -1,6 +1,9 @@
 import { getDb } from '$lib/db/client';
-import { areas, indicatorGroups, indicators } from '$lib/db/schema';
-import { getAvailableFrequenciesByIndicator } from '$lib/server/duckdb';
+import { dataSources, indicatorGroups, indicators } from '$lib/db/schema';
+import {
+	getAvailableFrequenciesByIndicator,
+	getPublishedFrequenciesByIndicator
+} from '$lib/server/duckdb';
 import { eq } from 'drizzle-orm';
 import type { PageServerLoad } from './$types';
 
@@ -39,7 +42,7 @@ function attentionNeeds(indicator: {
 export const load: PageServerLoad = async ({ url }) => {
 	const db = getDb();
 	const search = url.searchParams.get('q')?.trim().toLowerCase() || '';
-	const areaFilter = url.searchParams.get('area') || '';
+	const dataSourceFilter = url.searchParams.get('data_source') || url.searchParams.get('area') || '';
 	const attentionOnly = url.searchParams.get('attention') === '1';
 
 	const rows = await db
@@ -49,42 +52,51 @@ export const load: PageServerLoad = async ({ url }) => {
 			description: indicators.description,
 			methodology: indicators.methodology,
 			frequency: indicators.frequency,
-			source: indicators.source,
+			sourceCitation: indicators.sourceCitation,
 			unit: indicators.unit,
-			area: areas.name,
-			areaCode: areas.code,
+			dataSource: dataSources.name,
+			dataSourceCode: dataSources.code,
 			group: indicatorGroups.name
 		})
 		.from(indicators)
 		.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
-		.innerJoin(areas, eq(indicatorGroups.areaId, areas.id));
+		.innerJoin(dataSources, eq(indicatorGroups.dataSourceId, dataSources.id));
 
-	const allAreas = [...new Map(rows.map((row) => [row.areaCode, row.area])).entries()].map(
-		([code, name]) => ({ code, name })
-	);
-	const frequenciesByIndicator = await getAvailableFrequenciesByIndicator(
-		rows.map((row) => row.code)
-	);
+	const allDataSources = [
+		...new Map(rows.map((row) => [row.dataSourceCode, row.dataSource])).entries()
+	].map(([code, name]) => ({ code, name }));
+	const indicatorCodes = rows.map((row) => row.code);
+	const frequenciesByIndicator = await getAvailableFrequenciesByIndicator(indicatorCodes);
+	const publishedFrequenciesByIndicator = await getPublishedFrequenciesByIndicator(indicatorCodes);
 
 	const catalog = rows
-		.map((row) => ({
-			...row,
-			availableFrequencies:
-				frequenciesByIndicator.get(row.code) || (row.frequency ? [row.frequency] : []),
-			attention: attentionNeeds(row)
-		}))
+		.map((row) => {
+			const availableFrequencies =
+				frequenciesByIndicator.get(row.code) || (row.frequency ? [row.frequency] : []);
+			const publishedFrequencies = publishedFrequenciesByIndicator.get(row.code) || [];
+
+			return {
+				...row,
+				availableFrequencies,
+				publishedFrequencies,
+				unpublishedObservationFrequencies: availableFrequencies.filter(
+					(freq) => !publishedFrequencies.includes(freq)
+				),
+				attention: attentionNeeds(row)
+			};
+		})
 		.sort(
 			(a, b) =>
-				a.area.localeCompare(b.area) ||
+				a.dataSource.localeCompare(b.dataSource) ||
 				a.group.localeCompare(b.group) ||
 				a.name.localeCompare(b.name)
 		);
 
 	const filteredIndicators = catalog.filter((row) => {
-		if (areaFilter && row.areaCode !== areaFilter) return false;
+		if (dataSourceFilter && row.dataSourceCode !== dataSourceFilter) return false;
 		if (attentionOnly && !row.attention.needsAttention) return false;
 		if (!search) return true;
-		return [row.code, row.name, row.group, row.area]
+		return [row.code, row.name, row.group, row.dataSource]
 			.filter(Boolean)
 			.some((value) => value.toLowerCase().includes(search));
 	});
@@ -92,7 +104,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		indicators: filteredIndicators,
 		catalog,
-		areas: allAreas.sort((a, b) => a.name.localeCompare(b.name)),
-		filters: { search, area: areaFilter, attentionOnly }
+		dataSources: allDataSources.sort((a, b) => a.name.localeCompare(b.name)),
+		filters: { search, dataSource: dataSourceFilter, attentionOnly }
 	};
 };

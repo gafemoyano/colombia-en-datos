@@ -13,7 +13,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const EMPTY_AREA = '__area_all__';
+	const EMPTY_DATA_SOURCE = '__data_source_all__';
 
 	let indicatorPopoverOpen = $state(false);
 	let indicatorSearch = $state('');
@@ -22,9 +22,10 @@
 		data.indicators.filter((indicator) => indicator.attention.needsAttention).length
 	);
 
-	const selectedAreaLabel = $derived(
-		data.filters.area
-			? data.areas.find((area) => area.code === data.filters.area)?.name || data.filters.area
+	const selectedDataSourceLabel = $derived(
+		data.filters.dataSource
+			? data.dataSources.find((dataSource) => dataSource.code === data.filters.dataSource)?.name ||
+				data.filters.dataSource
 			: 'Todas'
 	);
 
@@ -40,7 +41,9 @@
 
 	const indicatorOptions = $derived(
 		data.catalog.filter((indicator) => {
-			if (data.filters.area && indicator.areaCode !== data.filters.area) return false;
+			if (data.filters.dataSource && indicator.dataSourceCode !== data.filters.dataSource) {
+				return false;
+			}
 			if (data.filters.attentionOnly && !indicator.attention.needsAttention) return false;
 			return true;
 		})
@@ -48,6 +51,10 @@
 
 	function frequencyLabel(freq: string): string {
 		return freq === 'M' ? 'Mensual' : freq === 'A' ? 'Anual' : freq;
+	}
+
+	function isPublished(indicator: PageData['indicators'][number], freq: string): boolean {
+		return indicator.publishedFrequencies.includes(freq);
 	}
 
 	function setParamOrDelete(params: URLSearchParams, key: string, value: string | null) {
@@ -58,11 +65,11 @@
 	function adminHref(params: URLSearchParams): string {
 		const canonical = new URLSearchParams();
 		const q = params.get('q')?.trim();
-		const area = params.get('area')?.trim();
+		const dataSource = params.get('data_source')?.trim();
 		const attention = params.get('attention') === '1';
 
 		if (q) canonical.set('q', q);
-		if (area) canonical.set('area', area);
+		if (dataSource) canonical.set('data_source', dataSource);
 		if (attention) canonical.set('attention', '1');
 
 		const search = canonical.toString();
@@ -83,10 +90,10 @@
 		});
 	}
 
-	function handleAreaSelect(selectedValue: string) {
-		const area = selectedValue === EMPTY_AREA ? '' : selectedValue;
+	function handleDataSourceSelect(selectedValue: string) {
+		const dataSource = selectedValue === EMPTY_DATA_SOURCE ? '' : selectedValue;
 		navigateWith((params) => {
-			setParamOrDelete(params, 'area', area);
+			setParamOrDelete(params, 'data_source', dataSource);
 		});
 	}
 
@@ -154,8 +161,8 @@
 					<div class="text-muted-foreground text-xs">Con atención</div>
 				</Card.Card>
 				<Card.Card class="col-span-2 p-4 shadow-none sm:col-span-1">
-					<div class="text-2xl font-semibold">{data.areas.length}</div>
-					<div class="text-muted-foreground text-xs">Áreas</div>
+					<div class="text-2xl font-semibold">{data.dataSources.length}</div>
+					<div class="text-muted-foreground text-xs">Fuentes de datos</div>
 				</Card.Card>
 			</div>
 		</div>
@@ -184,7 +191,7 @@
 							<Command.Root>
 								<Command.Input
 									bind:value={indicatorSearch}
-									placeholder="Busca por código, nombre, grupo o área..."
+									placeholder="Busca por código, nombre, grupo o fuente de datos..."
 								/>
 								<Command.List class="max-h-96">
 									<Command.Empty>No hay indicadores para esa búsqueda.</Command.Empty>
@@ -197,7 +204,7 @@
 												<div class="py-1">
 													<div class="font-medium">Buscar “{indicatorSearch.trim()}”</div>
 													<div class="text-muted-foreground text-xs">
-														Filtra por código, nombre, grupo o área
+														Filtra por código, nombre, grupo o fuente de datos
 													</div>
 												</div>
 											</Command.Item>
@@ -213,13 +220,13 @@
 										{#each indicatorOptions as indicator}
 											<Command.Item
 												value={`${indicator.code} ${indicator.name}`}
-												keywords={[indicator.code, indicator.name, indicator.group, indicator.area]}
+												keywords={[indicator.code, indicator.name, indicator.group, indicator.dataSource]}
 												onSelect={() => selectIndicator(indicator.code)}
 											>
 												<div class="min-w-0 flex-1 py-1">
 													<div class="truncate font-medium">{indicator.name}</div>
 													<div class="text-muted-foreground truncate text-xs">
-														{indicator.code} · {indicator.area} · {indicator.group}
+														{indicator.code} · {indicator.dataSource} · {indicator.group}
 													</div>
 												</div>
 											</Command.Item>
@@ -232,19 +239,19 @@
 				</div>
 
 				<div class="space-y-2">
-					<Label id="area-label">Área</Label>
+					<Label id="data-source-label">Fuente de datos</Label>
 					<Select.Root
 						type="single"
-						value={data.filters.area || EMPTY_AREA}
-						onValueChange={handleAreaSelect}
+						value={data.filters.dataSource || EMPTY_DATA_SOURCE}
+						onValueChange={handleDataSourceSelect}
 					>
-						<Select.Trigger aria-labelledby="area-label" class="h-9 w-full">
-							<span class="truncate">{selectedAreaLabel}</span>
+						<Select.Trigger aria-labelledby="data-source-label" class="h-9 w-full">
+							<span class="truncate">{selectedDataSourceLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value={EMPTY_AREA} label="Todas">Todas</Select.Item>
-							{#each data.areas as area}
-								<Select.Item value={area.code} label={area.name}>{area.name}</Select.Item>
+							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas">Todas</Select.Item>
+							{#each data.dataSources as dataSource}
+								<Select.Item value={dataSource.code} label={dataSource.name}>{dataSource.name}</Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
@@ -299,14 +306,16 @@
 								<div class="text-muted-foreground mt-1 font-mono text-xs">{indicator.code}</div>
 							</td>
 							<td class="text-muted-foreground px-5 py-4">
-								<div>{indicator.area}</div>
+								<div>{indicator.dataSource}</div>
 								<div class="mt-1 text-xs">{indicator.group}</div>
 							</td>
 							<td class="text-muted-foreground px-5 py-4">
 								<div class="flex flex-wrap gap-1.5">
 									{#if indicator.availableFrequencies.length > 0}
 										{#each indicator.availableFrequencies as freq}
-											<Badge variant="secondary">{frequencyLabel(freq)}</Badge>
+											<Badge variant={isPublished(indicator, freq) ? 'secondary' : 'destructive'}>
+												{frequencyLabel(freq)}{isPublished(indicator, freq) ? '' : ' sin publicar'}
+											</Badge>
 										{/each}
 									{:else}
 										<Badge variant="outline">Sin datos</Badge>

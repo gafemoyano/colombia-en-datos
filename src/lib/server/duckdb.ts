@@ -3,10 +3,13 @@ import { getDb } from '$lib/db/client';
 import {
 	indicators,
 	indicatorGroups,
-	areas,
+	dataSources,
 	indicatorDimensions,
 	dimensionDefinitions,
-	dimensionValues
+	dimensionValues,
+	indicatorDataSources,
+	dataReleases,
+	indicatorFrequencies
 } from '$lib/db/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
 import { join, resolve } from 'path';
@@ -348,7 +351,7 @@ export interface IndicatorMetadata {
 	shortName: string | null;
 	description: string | null;
 	methodology: string | null;
-	source: string | null;
+	sourceCitation: string | null;
 	frequency: string | null;
 	unit: string | null;
 	unitMult: number | null;
@@ -395,7 +398,7 @@ export async function getIndicatorMetadata(
 		shortName: indicator.shortName,
 		description: indicator.description,
 		methodology: indicator.methodology,
-		source: indicator.source,
+		sourceCitation: indicator.sourceCitation,
 		frequency: indicator.frequency,
 		unit: indicator.unit,
 		unitMult: indicator.unitMult,
@@ -448,6 +451,49 @@ export async function getAvailableFrequenciesByIndicator(
 	}
 }
 
+export async function getPublishedFrequenciesByIndicator(
+	indicatorCodes?: string[]
+): Promise<Map<string, string[]>> {
+	if (indicatorCodes && indicatorCodes.length === 0) return new Map();
+
+	const pgDb = getDb();
+	const metadataRows = await pgDb
+		.select({
+			indicatorCode: indicators.code,
+			freq: indicatorDataSources.freq
+		})
+		.from(indicatorDataSources)
+		.innerJoin(indicators, eq(indicatorDataSources.indicatorId, indicators.id))
+		.innerJoin(dataReleases, eq(indicatorDataSources.releaseId, dataReleases.id))
+		.where(
+			and(
+				eq(dataReleases.status, 'published'),
+				indicatorCodes ? inArray(indicators.code, indicatorCodes) : undefined
+			)
+		);
+
+	if (metadataRows.length === 0) return new Map();
+
+	const metadataPairs = new Set(
+		metadataRows.map((row) => `${row.indicatorCode}\u0000${row.freq}`)
+	);
+	const observedFrequencies = await getAvailableFrequenciesByIndicator(
+		[...new Set(metadataRows.map((row) => row.indicatorCode))]
+	);
+	const result = new Map<string, string[]>();
+
+	for (const [indicatorCode, frequencies] of observedFrequencies.entries()) {
+		for (const freq of frequencies) {
+			if (!metadataPairs.has(`${indicatorCode}\u0000${freq}`)) continue;
+			const current = result.get(indicatorCode) || [];
+			if (!current.includes(freq)) current.push(freq);
+			result.set(indicatorCode, current);
+		}
+	}
+
+	return result;
+}
+
 export async function getAvailableIndicators(): Promise<
 	Array<{
 		code: string;
@@ -455,7 +501,7 @@ export async function getAvailableIndicators(): Promise<
 		shortName: string | null;
 		frequency: string | null;
 		availableFrequencies: string[];
-		area: string;
+		dataSource: string;
 		group: string;
 	}>
 > {
@@ -467,33 +513,39 @@ export async function getAvailableIndicators(): Promise<
 			shortName: indicators.shortName,
 			frequency: indicators.frequency,
 			group: indicatorGroups.name,
-			area: areas.name
+			dataSource: dataSources.name
 		})
 		.from(indicators)
 		.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
-		.innerJoin(areas, eq(indicatorGroups.areaId, areas.id));
+		.innerJoin(dataSources, eq(indicatorGroups.dataSourceId, dataSources.id));
 
-	const frequencyMap = await getAvailableFrequenciesByIndicator(
+	const frequencyMap = await getPublishedFrequenciesByIndicator(
 		rows.map((indicator) => indicator.code)
 	);
 
-	return rows.map((i) => {
-		const availableFrequencies = frequencyMap.get(i.code) || (i.frequency ? [i.frequency] : []);
-		return {
-			code: i.code,
-			name: i.name,
-			shortName: i.shortName,
-			frequency: i.frequency || availableFrequencies[0] || null,
-			availableFrequencies,
-			area: i.area || 'Unknown',
-			group: i.group || 'Unknown'
-		};
-	});
+	return rows
+		.map((i) => {
+			const availableFrequencies = frequencyMap.get(i.code) || [];
+			return {
+				code: i.code,
+				name: i.name,
+				shortName: i.shortName,
+				frequency: availableFrequencies[0] || null,
+				availableFrequencies,
+				dataSource: i.dataSource || 'Unknown',
+				group: i.group || 'Unknown'
+			};
+		})
+		.filter((indicator) => indicator.availableFrequencies.length > 0);
 }
 
 export async function getIndicatorsByFrequency(frequency: string): Promise<string[]> {
 	const pgDb = getDb();
-	const results = await pgDb.select().from(indicators).where(eq(indicators.frequency, frequency));
+	const results = await pgDb
+		.select({ code: indicators.code })
+		.from(indicatorFrequencies)
+		.innerJoin(indicators, eq(indicatorFrequencies.indicatorId, indicators.id))
+		.where(eq(indicatorFrequencies.freq, frequency));
 	return results.map((i) => i.code);
 }
 

@@ -1,7 +1,7 @@
 import { and, eq, inArray, or } from 'drizzle-orm';
 import { getDb } from '$lib/db/client';
 import {
-	areas,
+	dataSources,
 	departamentos,
 	dimensionDefinitions,
 	dimensionValues,
@@ -9,7 +9,7 @@ import {
 	indicatorGroups,
 	indicators
 } from '$lib/db/schema';
-import { getAvailableFrequenciesByIndicator, runCanonicalQuery } from '$lib/server/duckdb';
+import { getPublishedFrequenciesByIndicator, runCanonicalQuery } from '$lib/server/duckdb';
 
 const DIMENSION_COLUMNS = new Map<string, string>([
 	['GEO_LEVEL', 'geo_level'],
@@ -25,8 +25,8 @@ export interface ExplorerCatalogIndicator {
 	code: string;
 	name: string;
 	shortName: string | null;
-	area: string;
-	areaCode: string;
+	dataSource: string;
+	dataSourceCode: string;
 	group: string;
 	availableFrequencies: string[];
 }
@@ -88,7 +88,7 @@ export interface ExplorerTimeAxis {
 }
 
 export interface ExplorerState {
-	area: string;
+	dataSource: string;
 	selectedIndicators: string[];
 	indicator: string | null;
 	freq: string | null;
@@ -104,7 +104,7 @@ export interface ExplorerMetadata {
 	shortName: string | null;
 	description: string | null;
 	methodology: string | null;
-	source: string | null;
+	sourceCitation: string | null;
 	unit: string | null;
 	unitMult: number | null;
 	decimals: number | null;
@@ -120,7 +120,7 @@ export interface ExplorerMeasurementCompatibility {
 
 export interface ExplorerPageModel {
 	state: ExplorerState;
-	areas: Array<{ code: string; name: string }>;
+	dataSources: Array<{ code: string; name: string }>;
 	indicators: ExplorerCatalogIndicator[];
 	selectedIndicator: ExplorerCatalogIndicator | null;
 	selectedIndicators: ExplorerCatalogIndicator[];
@@ -239,7 +239,8 @@ function parseState(url: URL): ExplorerState {
 	}
 
 	return {
-		area: url.searchParams.get('area')?.trim() || '',
+		dataSource:
+			url.searchParams.get('data_source')?.trim() || url.searchParams.get('area')?.trim() || '',
 		selectedIndicators,
 		indicator: selectedIndicators[0] || null,
 		freq: url.searchParams.get('freq')?.trim().toUpperCase() || null,
@@ -252,7 +253,7 @@ function parseState(url: URL): ExplorerState {
 
 function buildCanonicalSearch(state: ExplorerState): string {
 	const params = new URLSearchParams();
-	if (state.area) params.set('area', state.area);
+	if (state.dataSource) params.set('data_source', state.dataSource);
 	for (const indicator of state.selectedIndicators) params.append('indicator', indicator);
 	if (state.freq) params.set('freq', state.freq);
 	if (state.by) params.set('by', state.by);
@@ -267,7 +268,7 @@ function buildCanonicalSearch(state: ExplorerState): string {
 }
 
 async function loadCatalog(): Promise<{
-	areas: Array<{ code: string; name: string }>;
+	dataSources: Array<{ code: string; name: string }>;
 	indicators: ExplorerCatalogIndicator[];
 }> {
 	const db = getDb();
@@ -276,39 +277,40 @@ async function loadCatalog(): Promise<{
 			code: indicators.code,
 			name: indicators.name,
 			shortName: indicators.shortName,
-			area: areas.name,
-			areaCode: areas.code,
+			dataSource: dataSources.name,
+			dataSourceCode: dataSources.code,
 			group: indicatorGroups.name
 		})
 		.from(indicators)
 		.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
-		.innerJoin(areas, eq(indicatorGroups.areaId, areas.id));
+		.innerJoin(dataSources, eq(indicatorGroups.dataSourceId, dataSources.id));
 
-	const frequencyMap = await getAvailableFrequenciesByIndicator(rows.map((row) => row.code));
+	const frequencyMap = await getPublishedFrequenciesByIndicator(rows.map((row) => row.code));
 	const catalog = rows
 		.map((row) => ({
 			code: row.code,
 			name: row.name,
 			shortName: row.shortName,
-			area: row.area || 'Sin área',
-			areaCode: row.areaCode,
+			dataSource: row.dataSource || 'Sin fuente de datos',
+			dataSourceCode: row.dataSourceCode,
 			group: row.group || 'Sin grupo',
 			availableFrequencies: frequencyMap.get(row.code) || []
 		}))
+		.filter((indicator) => indicator.availableFrequencies.length > 0)
 		.sort(
 			(a, b) =>
-				a.area.localeCompare(b.area) ||
+				a.dataSource.localeCompare(b.dataSource) ||
 				a.group.localeCompare(b.group) ||
 				a.name.localeCompare(b.name)
 		);
 
-	const areaOptions = [
-		...new Map(catalog.map((indicator) => [indicator.areaCode, indicator.area])).entries()
+	const dataSourceOptions = [
+		...new Map(catalog.map((indicator) => [indicator.dataSourceCode, indicator.dataSource])).entries()
 	]
 		.map(([code, name]) => ({ code, name }))
 		.sort((a, b) => a.name.localeCompare(b.name));
 
-	return { areas: areaOptions, indicators: catalog };
+	return { dataSources: dataSourceOptions, indicators: catalog };
 }
 
 function emptyMeasurementCompatibility(): ExplorerMeasurementCompatibility {
@@ -354,7 +356,7 @@ async function loadMetadata(indicatorCode: string): Promise<ExplorerMetadata | n
 			shortName: indicators.shortName,
 			description: indicators.description,
 			methodology: indicators.methodology,
-			source: indicators.source,
+			sourceCitation: indicators.sourceCitation,
 			unit: indicators.unit,
 			unitMult: indicators.unitMult,
 			decimals: indicators.decimals,
@@ -751,7 +753,7 @@ async function queryChart(params: {
 export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel> {
 	const state = parseState(url);
 	const warnings: string[] = [];
-	const { areas: areaOptions, indicators: catalog } = await loadCatalog();
+	const { dataSources: dataSourceOptions, indicators: catalog } = await loadCatalog();
 	let selectedIndicators = state.selectedIndicators
 		.map((code) => catalog.find((indicator) => indicator.code === code) || null)
 		.filter((indicator): indicator is ExplorerCatalogIndicator => Boolean(indicator));
@@ -775,7 +777,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 	if (!state.indicator || selectedIndicators.length === 0) {
 		return {
 			state,
-			areas: areaOptions,
+			dataSources: dataSourceOptions,
 			indicators: catalog,
 			selectedIndicator: null,
 			selectedIndicators: [],
@@ -809,7 +811,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 
 		return {
 			state,
-			areas: areaOptions,
+			dataSources: dataSourceOptions,
 			indicators: catalog,
 			selectedIndicator,
 			selectedIndicators,
@@ -857,7 +859,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		warnings.push(registryWarning);
 		return {
 			state,
-			areas: areaOptions,
+			dataSources: dataSourceOptions,
 			indicators: catalog,
 			selectedIndicator,
 			selectedIndicators,
@@ -1012,7 +1014,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 
 	return {
 		state,
-		areas: areaOptions,
+		dataSources: dataSourceOptions,
 		indicators: catalog,
 		selectedIndicator,
 		selectedIndicators,

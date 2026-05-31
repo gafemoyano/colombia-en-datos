@@ -1,31 +1,31 @@
 import 'dotenv/config';
 import { db } from '../src/lib/db/script-client';
-import { areas, indicatorGroups, indicators, indicatorFiles } from '../src/lib/db/schema';
+import { dataSources, indicatorGroups, indicators, indicatorFiles } from '../src/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
 (async () => {
 	console.log('=== Cleaning up old calidad_vida data ===\n');
 
-	// Find calidad_vida area
-	const calidadVidaArea = await db
+	// Find calidad_vida data source
+	const calidadVidaDataSource = await db
 		.select()
-		.from(areas)
-		.where(eq(areas.code, 'calidad_vida'))
+		.from(dataSources)
+		.where(eq(dataSources.code, 'calidad_vida'))
 		.limit(1);
 
-	if (calidadVidaArea.length === 0) {
-		console.log('No calidad_vida area found - nothing to clean up');
+	if (calidadVidaDataSource.length === 0) {
+		console.log('No calidad_vida data source found - nothing to clean up');
 		process.exit(0);
 	}
 
-	const areaId = calidadVidaArea[0].id;
-	console.log(`Found calidad_vida area (ID: ${areaId})`);
+	const dataSourceId = calidadVidaDataSource[0].id;
+	console.log(`Found calidad_vida data source (ID: ${dataSourceId})`);
 
-	// Get all indicator groups for this area
+	// Get all indicator groups for this data source
 	const cvGroups = await db
 		.select()
 		.from(indicatorGroups)
-		.where(eq(indicatorGroups.areaId, areaId));
+		.where(eq(indicatorGroups.dataSourceId, dataSourceId));
 
 	console.log(`Found ${cvGroups.length} indicator groups to delete`);
 
@@ -67,13 +67,13 @@ import { eq, inArray } from 'drizzle-orm';
 	// Delete indicator groups
 	const deletedGroups = await db
 		.delete(indicatorGroups)
-		.where(eq(indicatorGroups.areaId, areaId))
+		.where(eq(indicatorGroups.dataSourceId, dataSourceId))
 		.returning();
 
 	console.log(`✓ Deleted ${deletedGroups.length} indicator groups`);
 
 	console.log('\n=== Cleanup complete! ===');
-	console.log('Area "calidad_vida" kept for reuse');
+	console.log('Data source "calidad_vida" kept for reuse');
 	console.log('Departamentos table kept intact');
 	console.log('Ready for fresh data load!');
 

@@ -40,9 +40,10 @@ Rebuild from local parquet files under `data/`:
 
 ```bash
 npm run canonical:rebuild
+npm run data:backfill-releases
 ```
 
-This builds to a temporary `.next-*` DuckDB file, validates it, then atomically replaces `data/observations.duckdb`.
+This builds to a temporary `.next-*` DuckDB file, validates it, then atomically replaces `data/observations.duckdb`. The backfill command creates published `data_releases` and `indicator_data_sources` rows for existing canonical observations so public catalogs can expose published indicator frequencies.
 
 Validate without rebuilding:
 

@@ -55,8 +55,8 @@
 				<Separator class="my-4" />
 				<dl class="space-y-4 text-sm">
 					<div>
-						<dt class="text-slate-500">Área</dt>
-						<dd class="mt-1 font-medium text-slate-950">{data.indicator.area}</dd>
+						<dt class="text-slate-500">Fuente de datos</dt>
+						<dd class="mt-1 font-medium text-slate-950">{data.indicator.dataSource}</dd>
 					</div>
 					<div>
 						<dt class="text-slate-500">Grupo</dt>
@@ -144,13 +144,17 @@
 			</Card>
 
 			<Card class="p-6">
-				<h2 class="text-lg font-semibold text-slate-950">Fuente y formato</h2>
+				<h2 class="text-lg font-semibold text-slate-950">Citación y formato</h2>
 				<Separator class="my-6" />
 
 				<div class="grid gap-5 md:grid-cols-2">
 					<div class="space-y-2">
-						<Label for="source">Fuente</Label>
-						<Input id="source" name="source" value={data.indicator.source || ''} />
+						<Label for="sourceCitation">Citación de fuente</Label>
+						<Input
+							id="sourceCitation"
+							name="sourceCitation"
+							value={data.indicator.sourceCitation || ''}
+						/>
 					</div>
 					<div class="space-y-2">
 						<Label for="updated">Actualizado</Label>

@@ -141,11 +141,11 @@ const catalog = loadCatalog();
 const metadataByCode = buildMetadataIndex(catalog);
 
 for (const [code, name] of Object.entries(AREA_DISPLAY_NAMES)) {
-	await db.execute({ sql: 'UPDATE areas SET name = ? WHERE code = ?', args: [name, code] });
+	await db.execute({ sql: 'UPDATE data_sources SET name = ? WHERE code = ?', args: [name, code] });
 }
 
 const result = await db.execute(
-	'SELECT id, code, name, methodology, source, unit, unit_mult, decimals, default_viz, updated FROM indicators'
+	'SELECT id, code, name, methodology, source_citation, unit, unit_mult, decimals, default_viz, updated FROM indicators'
 );
 let updatedCount = 0;
 
@@ -160,7 +160,7 @@ for (const indicator of result.rows) {
 	const patch = {};
 	if (isRawTitle(indicator.code, indicator.name)) patch.name = nextName;
 	if (!indicator.methodology && metadata?.methodology) patch.methodology = metadata.methodology;
-	if (!indicator.source && metadata?.source) patch.source = metadata.source;
+	if (!indicator.source_citation && metadata?.source) patch.source_citation = metadata.source;
 	if (!indicator.unit && metadata?.unit) patch.unit = metadata.unit;
 	if (indicator.unit_mult === null && metadata?.unit_mult !== undefined)
 		patch.unit_mult = metadata.unit_mult;
