@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, Database, Home, Shield } from 'lucide-svelte';
+	import { BarChart3, ClipboardList, Database, Home, Shield } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 
@@ -30,6 +30,16 @@
 					Indicadores
 				</a>
 				<a href="/app" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+				<a href="/explore" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
+
+				<a
+					href="/admin/ingest/definitions"
+					class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}
+				>
+					<ClipboardList class="h-4 w-4" />
+					Definiciones
+				</a>
+				<a href="/explore" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
 					<BarChart3 class="h-4 w-4" />
 					<span class="hidden sm:inline">Ver app</span>
 				</a>

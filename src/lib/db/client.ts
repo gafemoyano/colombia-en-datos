@@ -1,9 +1,9 @@
 import { createClient } from '@libsql/client';
-import { drizzle } from 'drizzle-orm/libsql';
+import { drizzle, type LibSQLDatabase } from 'drizzle-orm/libsql';
 import { env } from '$env/dynamic/private';
 import * as schema from './schema';
 
-let cachedDb: ReturnType<typeof drizzle> | null = null;
+let cachedDb: LibSQLDatabase<typeof schema> | null = null;
 
 export function getDb() {
 	if (cachedDb) {
