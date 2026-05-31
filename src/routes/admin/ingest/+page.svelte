@@ -12,18 +12,24 @@
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { normalizeDataSourceCode } from '$lib/ingest/definitions';
 	import { cn } from '$lib/utils';
-	import type { PageData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form: ActionData } = $props();
 
+	const sampleDefinitionText = 'indicator_code\tfreq\tname\tdimensions\nEMP\tM\tEmpleo\tSEX, AGE';
 	let dataSourceCode = $state('');
 	let dataSourceName = $state('');
+	let definitionText = $state('');
 	const normalizedPreview = $derived(normalizeDataSourceCode(dataSourceCode));
 	const selectedExists = $derived(Boolean(data.selectedDataSource));
 
 	$effect(() => {
 		dataSourceCode = data.selectedInput.code;
 		dataSourceName = data.selectedInput.name;
+	});
+
+	$effect(() => {
+		definitionText = form?.definitionText || sampleDefinitionText;
 	});
 
 	function frequencyLabel(freq: string): string {
@@ -156,14 +162,60 @@
 					Grilla de definiciones
 				</div>
 				<p class="mt-2 text-sm text-slate-500">
-					El guardado y la validación por filas llegan en el siguiente slice. Este shell deja listo
-					el contexto de fuente de datos para pegar definiciones.
+					Pega filas desde una hoja de cálculo con encabezados. La validación revisa encabezados
+					obligatorios, dimensiones conocidas y errores por fila sin guardar cambios todavía.
 				</p>
-				<Textarea
-					class="mt-4 min-h-36 font-mono text-xs"
-					value={'indicator_code\tfreq\tname\tdimensions\nEMP\tM\tEmpleo\tSEX, AGE'}
-					disabled
-				/>
+
+				<form method="POST" class="mt-4 space-y-4">
+					<input type="hidden" name="data_source" value={normalizedPreview} />
+					<input type="hidden" name="data_source_name" value={dataSourceName} />
+					<Textarea
+						name="definition_text"
+						class="min-h-44 font-mono text-xs"
+						value={definitionText}
+						oninput={(event) =>
+							(definitionText = (event.currentTarget as HTMLTextAreaElement).value)}
+					/>
+					<Button type="submit" class="w-full" disabled={!normalizedPreview}>Validar grilla</Button>
+				</form>
+
+				{#if form?.validation}
+					<div
+						class="mt-4 rounded-lg border p-3 text-sm {form.validation.valid
+							? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+							: 'border-red-200 bg-red-50 text-red-800'}"
+					>
+						{#if form.validation.valid}
+							La grilla es válida: {form.validation.rows.length} fila(s) listas para guardar en un siguiente
+							slice.
+						{:else}
+							La grilla tiene {form.validation.errors.length} error(es). Corrige las filas antes de guardar.
+						{/if}
+					</div>
+
+					{#if form.validation.errors.length > 0}
+						<div class="mt-4 overflow-hidden rounded-lg border border-red-200">
+							<table class="min-w-full text-xs">
+								<thead class="bg-red-50 text-red-700">
+									<tr>
+										<th class="px-3 py-2 text-left font-medium">Fila</th>
+										<th class="px-3 py-2 text-left font-medium">Campo</th>
+										<th class="px-3 py-2 text-left font-medium">Error</th>
+									</tr>
+								</thead>
+								<tbody class="divide-y divide-red-100 bg-white">
+									{#each form.validation.errors as error}
+										<tr>
+											<td class="px-3 py-2 font-mono">{error.rowNumber}</td>
+											<td class="px-3 py-2 font-mono">{error.field}</td>
+											<td class="px-3 py-2">{error.message}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
+				{/if}
 			</Card>
 		</div>
 

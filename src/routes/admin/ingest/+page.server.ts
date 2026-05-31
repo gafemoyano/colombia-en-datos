@@ -1,15 +1,17 @@
-import { redirect } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { asc, eq, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/db/client';
 import {
 	areas,
+	dimensionDefinitions,
 	indicatorDataSources,
 	indicatorDimensions,
 	indicatorGroups,
 	indicators
 } from '$lib/db/schema';
 import { normalizeDataSourceCode } from '$lib/ingest/definitions';
-import type { PageServerLoad } from './$types';
+import { validateDefinitionPaste } from '$lib/server/definition-ingest';
+import type { Actions, PageServerLoad } from './$types';
 
 interface IndicatorDefinitionSeed {
 	indicatorId: number;
@@ -29,6 +31,10 @@ interface FrequencyDefinition {
 	freq: string;
 	dimensions: string[];
 	published: boolean;
+}
+
+function formValue(value: FormDataEntryValue | null): string {
+	return String(value || '').trim();
 }
 
 function ingestHref(params: URLSearchParams): string {
@@ -99,6 +105,32 @@ function buildDefinitions(params: {
 
 	return definitions;
 }
+
+export const actions: Actions = {
+	default: async ({ request }) => {
+		const db = getDb();
+		const formData = await request.formData();
+		const dimensionRows = await db
+			.select({ code: dimensionDefinitions.code })
+			.from(dimensionDefinitions);
+		const validation = validateDefinitionPaste({
+			dataSource: {
+				code: formValue(formData.get('data_source')),
+				name: formValue(formData.get('data_source_name'))
+			},
+			definitionText: String(formData.get('definition_text') || ''),
+			knownDimensionCodes: dimensionRows.map((row) => row.code)
+		});
+		const result = {
+			validation,
+			definitionText: String(formData.get('definition_text') || ''),
+			selectedInput: validation.dataSource
+		};
+
+		if (!validation.valid) return fail(400, result);
+		return result;
+	}
+};
 
 export const load: PageServerLoad = async ({ url }) => {
 	const db = getDb();
