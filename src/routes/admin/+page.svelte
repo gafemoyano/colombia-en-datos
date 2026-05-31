@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { AlertTriangle, CheckCircle2, ChevronsUpDown, Edit3, Sparkles, X } from 'lucide-svelte';
+	import {
+		AlertTriangle,
+		CheckCircle2,
+		ChevronsUpDown,
+		Edit3,
+		FileSpreadsheet,
+		Sparkles,
+		X
+	} from 'lucide-svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
@@ -141,6 +149,10 @@
 					<p class="text-muted-foreground mt-2">
 						Mejora nombres, descripciones y metodología para que el explorador sea más claro.
 					</p>
+					<Button href="/admin/ingest" variant="outline" class="mt-4">
+						<FileSpreadsheet class="h-4 w-4" />
+						Ingestar definiciones
+					</Button>
 				</div>
 			</div>
 
@@ -251,9 +263,7 @@
 				</div>
 
 				<div class="flex flex-col gap-3 sm:flex-row lg:justify-end">
-					<label
-						class="border-input flex h-9 items-center gap-2 rounded-lg border px-3 text-sm"
-					>
+					<label class="border-input flex h-9 items-center gap-2 rounded-lg border px-3 text-sm">
 						<input
 							type="checkbox"
 							checked={data.filters.attentionOnly}
@@ -337,7 +347,10 @@
 								</div>
 							</td>
 							<td class="px-5 py-4 text-right">
-								<Button href={`/admin/indicators/${encodeURIComponent(indicator.code)}`} variant="outline">
+								<Button
+									href={`/admin/indicators/${encodeURIComponent(indicator.code)}`}
+									variant="outline"
+								>
 									<Edit3 class="h-4 w-4" />
 									Editar
 								</Button>

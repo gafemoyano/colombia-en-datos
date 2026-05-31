@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, Database, Home, Shield } from 'lucide-svelte';
+	import { BarChart3, Database, FileSpreadsheet, Home, Shield } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 
@@ -28,6 +28,13 @@
 				>
 					<Database class="h-4 w-4" />
 					Indicadores
+				</a>
+				<a
+					href="/admin/ingest"
+					class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}
+				>
+					<FileSpreadsheet class="h-4 w-4" />
+					Ingesta
 				</a>
 				<a href="/app" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
 					<BarChart3 class="h-4 w-4" />
