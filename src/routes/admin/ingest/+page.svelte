@@ -87,6 +87,12 @@
 		<a href="/admin" class={cn(buttonVariants({ variant: 'outline' }))}>Catálogo admin</a>
 	</div>
 
+	{#if data.saved}
+		<div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+			Definiciones guardadas. La página se recargó con la fuente de datos seleccionada.
+		</div>
+	{/if}
+
 	<div class="grid gap-6 lg:grid-cols-[360px_1fr]">
 		<div class="space-y-6">
 			<Card class="p-5">
@@ -162,8 +168,8 @@
 					Grilla de definiciones
 				</div>
 				<p class="mt-2 text-sm text-slate-500">
-					Pega filas desde una hoja de cálculo con encabezados. La validación revisa encabezados
-					obligatorios, dimensiones conocidas y errores por fila sin guardar cambios todavía.
+					Pega filas desde una hoja de cálculo con encabezados. El guardado crea definiciones
+					dimensionless de forma transaccional; cualquier error impide guardar todas las filas.
 				</p>
 
 				<form method="POST" class="mt-4 space-y-4">
@@ -176,7 +182,9 @@
 						oninput={(event) =>
 							(definitionText = (event.currentTarget as HTMLTextAreaElement).value)}
 					/>
-					<Button type="submit" class="w-full" disabled={!normalizedPreview}>Validar grilla</Button>
+					<Button type="submit" class="w-full" disabled={!normalizedPreview}
+						>Guardar definiciones</Button
+					>
 				</form>
 
 				{#if form?.validation}
@@ -186,10 +194,9 @@
 							: 'border-red-200 bg-red-50 text-red-800'}"
 					>
 						{#if form.validation.valid}
-							La grilla es válida: {form.validation.rows.length} fila(s) listas para guardar en un siguiente
-							slice.
+							La grilla es válida.
 						{:else}
-							La grilla tiene {form.validation.errors.length} error(es). Corrige las filas antes de guardar.
+							La grilla tiene {form.validation.errors.length} error(es). No se guardó ninguna fila.
 						{/if}
 					</div>
 

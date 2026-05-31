@@ -68,6 +68,29 @@ export const indicators = sqliteTable('indicators', {
 		.notNull()
 });
 
+export const indicatorFrequencies = sqliteTable(
+	'indicator_frequencies',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		indicatorId: integer('indicator_id')
+			.notNull()
+			.references(() => indicators.id),
+		freq: text('freq', { length: 1 }).notNull(),
+		createdAt: text('created_at')
+			.default(sql`(CURRENT_TIMESTAMP)`)
+			.notNull(),
+		updatedAt: text('updated_at')
+			.default(sql`(CURRENT_TIMESTAMP)`)
+			.notNull()
+	},
+	(table) => ({
+		uniqueIndicatorFrequency: uniqueIndex('indicator_frequencies_unique').on(
+			table.indicatorId,
+			table.freq
+		)
+	})
+);
+
 // Legacy table: maps indicators to parquet file paths.
 // Deprecated in Phase 1. Replaced by indicator_data_sources + canonical store.
 // Kept for reference during transition.
@@ -122,10 +145,7 @@ export const dimensionValues = sqliteTable(
 		sortOrder: integer('sort_order')
 	},
 	(table) => ({
-		uniqueDimensionValue: uniqueIndex('dimension_values_unique').on(
-			table.dimensionCode,
-			table.code
-		)
+		uniqueDimensionValue: uniqueIndex('dimension_values_unique').on(table.dimensionCode, table.code)
 	})
 );
 

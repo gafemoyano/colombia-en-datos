@@ -1,3 +1,12 @@
+import { and, eq, inArray } from 'drizzle-orm';
+import { getDb } from '$lib/db/client';
+import {
+	areas,
+	dimensionDefinitions,
+	indicatorFrequencies,
+	indicatorGroups,
+	indicators
+} from '$lib/db/schema';
 import { normalizeDataSourceCode } from '$lib/ingest/definitions';
 
 export const REQUIRED_DEFINITION_HEADERS = [
@@ -60,6 +69,26 @@ export interface ValidateDefinitionPasteInput {
 	definitionText: string;
 	knownDimensionCodes: string[];
 }
+
+export interface SaveDefinitionGridInput {
+	dataSource: {
+		code: string;
+		name: string;
+	};
+	definitionText: string;
+}
+
+export interface SaveDefinitionGridResult {
+	ok: boolean;
+	validation: DefinitionValidationResult;
+	saved?: {
+		dataSourceCode: string;
+		indicatorCount: number;
+		frequencyCount: number;
+	};
+}
+
+type AppDb = ReturnType<typeof getDb>;
 
 interface ParsedLine {
 	lineNumber: number;
@@ -156,6 +185,21 @@ function parseDimensions(params: {
 	}
 
 	return Array.from(new Set(dimensions));
+}
+
+function withValidationErrors(
+	validation: DefinitionValidationResult,
+	errors: DefinitionValidationError[]
+): DefinitionValidationResult {
+	return {
+		...validation,
+		errors: [...validation.errors, ...errors],
+		valid: false
+	};
+}
+
+function uniqueValues(values: string[]): string[] {
+	return Array.from(new Set(values));
 }
 
 export function validateDefinitionPaste(
@@ -304,5 +348,166 @@ export function validateDefinitionPaste(
 		rows,
 		dataSource,
 		headers
+	};
+}
+
+export async function saveDefinitionGrid(
+	input: SaveDefinitionGridInput,
+	db: AppDb = getDb()
+): Promise<SaveDefinitionGridResult> {
+	const dimensionRows = await db
+		.select({ code: dimensionDefinitions.code })
+		.from(dimensionDefinitions);
+	let validation = validateDefinitionPaste({
+		...input,
+		knownDimensionCodes: dimensionRows.map((row) => row.code)
+	});
+
+	if (!validation.valid) return { ok: false, validation };
+
+	const errors: DefinitionValidationError[] = [];
+	if (!validation.dataSource.code) {
+		errors.push({
+			rowNumber: 0,
+			field: 'data_source',
+			message: 'Data source code is required.'
+		});
+	}
+	if (!validation.dataSource.name) {
+		errors.push({
+			rowNumber: 0,
+			field: 'data_source_name',
+			message: 'Data source name is required.'
+		});
+	}
+
+	const frequencyKeys = new Set<string>();
+	const indicatorNames = new Map<string, string>();
+	for (const row of validation.rows) {
+		if (row.dimensions.length > 0) {
+			errors.push({
+				rowNumber: row.rowNumber,
+				field: 'dimensions',
+				message: 'This save step only supports dimensionless definitions; leave dimensions empty.'
+			});
+		}
+
+		const frequencyKey = `${row.indicatorCode}\u0000${row.freq}`;
+		if (frequencyKeys.has(frequencyKey)) {
+			errors.push({
+				rowNumber: row.rowNumber,
+				field: 'freq',
+				message: `Duplicate Indicator frequency in pasted grid: ${row.indicatorCode}/${row.freq}`
+			});
+		}
+		frequencyKeys.add(frequencyKey);
+
+		const existingName = indicatorNames.get(row.indicatorCode);
+		if (existingName && existingName !== row.name) {
+			errors.push({
+				rowNumber: row.rowNumber,
+				field: 'name',
+				message: `Rows for Indicator ${row.indicatorCode} must use the same name.`
+			});
+		}
+		indicatorNames.set(row.indicatorCode, row.name);
+	}
+
+	const indicatorCodes = uniqueValues(validation.rows.map((row) => row.indicatorCode));
+	if (indicatorCodes.length > 0) {
+		const existingIndicators = await db
+			.select({ code: indicators.code })
+			.from(indicators)
+			.where(inArray(indicators.code, indicatorCodes));
+		for (const row of existingIndicators) {
+			errors.push({
+				rowNumber:
+					validation.rows.find((definitionRow) => definitionRow.indicatorCode === row.code)
+						?.rowNumber || 0,
+				field: 'indicator_code',
+				message: `Indicator code already exists: ${row.code}`
+			});
+		}
+	}
+
+	if (errors.length > 0) {
+		validation = withValidationErrors(validation, errors);
+		return { ok: false, validation };
+	}
+
+	const rowsByIndicator = new Map<string, ParsedDefinitionRow[]>();
+	for (const row of validation.rows) {
+		const groupedRows = rowsByIndicator.get(row.indicatorCode) || [];
+		groupedRows.push(row);
+		rowsByIndicator.set(row.indicatorCode, groupedRows);
+	}
+
+	await db.transaction(async (tx) => {
+		const existingDataSources = await tx
+			.select({ id: areas.id })
+			.from(areas)
+			.where(eq(areas.code, validation.dataSource.code))
+			.limit(1);
+		const dataSourceId = existingDataSources[0]?.id
+			? existingDataSources[0].id
+			: (
+					await tx
+						.insert(areas)
+						.values({ code: validation.dataSource.code, name: validation.dataSource.name })
+						.returning({ id: areas.id })
+				)[0].id;
+
+		const defaultGroupCode = validation.dataSource.code;
+		const existingGroups = await tx
+			.select({ id: indicatorGroups.id })
+			.from(indicatorGroups)
+			.where(
+				and(eq(indicatorGroups.areaId, dataSourceId), eq(indicatorGroups.code, defaultGroupCode))
+			)
+			.limit(1);
+		const indicatorGroupId = existingGroups[0]?.id
+			? existingGroups[0].id
+			: (
+					await tx
+						.insert(indicatorGroups)
+						.values({
+							areaId: dataSourceId,
+							code: defaultGroupCode,
+							name: validation.dataSource.name
+						})
+						.returning({ id: indicatorGroups.id })
+				)[0].id;
+
+		for (const [indicatorCode, indicatorRows] of rowsByIndicator.entries()) {
+			const frequencies = uniqueValues(indicatorRows.map((row) => row.freq)).sort((a, b) =>
+				a.localeCompare(b)
+			);
+			const [createdIndicator] = await tx
+				.insert(indicators)
+				.values({
+					indicatorGroupId,
+					code: indicatorCode,
+					name: indicatorRows[0].name,
+					frequency: frequencies[0]
+				})
+				.returning({ id: indicators.id });
+
+			await tx.insert(indicatorFrequencies).values(
+				frequencies.map((freq) => ({
+					indicatorId: createdIndicator.id,
+					freq
+				}))
+			);
+		}
+	});
+
+	return {
+		ok: true,
+		validation,
+		saved: {
+			dataSourceCode: validation.dataSource.code,
+			indicatorCount: rowsByIndicator.size,
+			frequencyCount: validation.rows.length
+		}
 	};
 }

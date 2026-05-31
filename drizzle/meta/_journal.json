@@ -22,6 +22,13 @@
       "when": 1778460000000,
       "tag": "0002_indicator_annotations",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1780225800000,
+      "tag": "0003_indicator_frequencies",
+      "breakpoints": true
     }
   ]
 }

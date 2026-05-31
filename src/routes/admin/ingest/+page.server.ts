@@ -3,14 +3,14 @@ import { asc, eq, inArray } from 'drizzle-orm';
 import { getDb } from '$lib/db/client';
 import {
 	areas,
-	dimensionDefinitions,
 	indicatorDataSources,
 	indicatorDimensions,
+	indicatorFrequencies,
 	indicatorGroups,
 	indicators
 } from '$lib/db/schema';
 import { normalizeDataSourceCode } from '$lib/ingest/definitions';
-import { validateDefinitionPaste } from '$lib/server/definition-ingest';
+import { saveDefinitionGrid } from '$lib/server/definition-ingest';
 import type { Actions, PageServerLoad } from './$types';
 
 interface IndicatorDefinitionSeed {
@@ -61,6 +61,7 @@ function canonicalizeDataSourceParams(url: URL): { code: string; name: string } 
 
 function buildDefinitions(params: {
 	indicators: IndicatorDefinitionSeed[];
+	explicitFrequencies: Array<{ indicatorId: number; freq: string }>;
 	publishedFrequencies: Array<{ indicatorId: number; freq: string }>;
 	dimensions: Array<{ indicatorId: number; freq: string; dimensionCode: string }>;
 }): FrequencyDefinition[] {
@@ -78,9 +79,17 @@ function buildDefinitions(params: {
 		dimensionsByIndicator.set(row.indicatorId, dimensions);
 	}
 
+	const explicitByIndicator = new Map<number, Set<string>>();
+	for (const row of params.explicitFrequencies) {
+		const frequencies = explicitByIndicator.get(row.indicatorId) || new Set<string>();
+		frequencies.add(row.freq);
+		explicitByIndicator.set(row.indicatorId, frequencies);
+	}
+
 	const definitions: FrequencyDefinition[] = [];
 	for (const indicator of params.indicators) {
-		const frequencies = new Set<string>(publishedByIndicator.get(indicator.indicatorId) || []);
+		const frequencies = new Set<string>(explicitByIndicator.get(indicator.indicatorId) || []);
+		for (const freq of publishedByIndicator.get(indicator.indicatorId) || []) frequencies.add(freq);
 		if (indicator.legacyFreq) frequencies.add(indicator.legacyFreq);
 
 		for (const freq of Array.from(frequencies).sort((a, b) => a.localeCompare(b))) {
@@ -108,27 +117,24 @@ function buildDefinitions(params: {
 
 export const actions: Actions = {
 	default: async ({ request }) => {
-		const db = getDb();
 		const formData = await request.formData();
-		const dimensionRows = await db
-			.select({ code: dimensionDefinitions.code })
-			.from(dimensionDefinitions);
-		const validation = validateDefinitionPaste({
+		const result = await saveDefinitionGrid({
 			dataSource: {
 				code: formValue(formData.get('data_source')),
 				name: formValue(formData.get('data_source_name'))
 			},
-			definitionText: String(formData.get('definition_text') || ''),
-			knownDimensionCodes: dimensionRows.map((row) => row.code)
+			definitionText: String(formData.get('definition_text') || '')
 		});
-		const result = {
-			validation,
-			definitionText: String(formData.get('definition_text') || ''),
-			selectedInput: validation.dataSource
-		};
 
-		if (!validation.valid) return fail(400, result);
-		return result;
+		if (!result.ok) {
+			return fail(400, {
+				validation: result.validation,
+				definitionText: String(formData.get('definition_text') || ''),
+				selectedInput: result.validation.dataSource
+			});
+		}
+
+		throw redirect(303, `/admin/ingest?data_source=${result.saved?.dataSourceCode}&saved=1`);
 	}
 };
 
@@ -163,6 +169,15 @@ export const load: PageServerLoad = async ({ url }) => {
 			.orderBy(asc(indicatorGroups.code), asc(indicators.code));
 
 		const indicatorIds = indicatorRows.map((row) => row.indicatorId);
+		const explicitFrequencyRows = indicatorIds.length
+			? await db
+					.select({
+						indicatorId: indicatorFrequencies.indicatorId,
+						freq: indicatorFrequencies.freq
+					})
+					.from(indicatorFrequencies)
+					.where(inArray(indicatorFrequencies.indicatorId, indicatorIds))
+			: [];
 		const publishedRows = indicatorIds.length
 			? await db
 					.select({
@@ -185,6 +200,7 @@ export const load: PageServerLoad = async ({ url }) => {
 
 		definitions = buildDefinitions({
 			indicators: indicatorRows,
+			explicitFrequencies: explicitFrequencyRows,
 			publishedFrequencies: publishedRows,
 			dimensions: dimensionRows
 		});
@@ -197,6 +213,7 @@ export const load: PageServerLoad = async ({ url }) => {
 			name: selectedInput.name || selectedDataSource?.name || ''
 		},
 		selectedDataSource,
-		definitions
+		definitions,
+		saved: url.searchParams.get('saved') === '1'
 	};
 };
