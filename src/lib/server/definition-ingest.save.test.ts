@@ -9,6 +9,7 @@ import * as schema from '$lib/db/schema';
 import {
 	areas,
 	dimensionDefinitions,
+	indicatorDimensions,
 	indicatorFrequencies,
 	indicatorGroups,
 	indicators
@@ -72,7 +73,17 @@ async function createTestDb() {
 			created_at text DEFAULT (CURRENT_TIMESTAMP) NOT NULL,
 			updated_at text DEFAULT (CURRENT_TIMESTAMP) NOT NULL
 		)`,
-		`CREATE UNIQUE INDEX indicator_frequencies_unique ON indicator_frequencies (indicator_id, freq)`
+		`CREATE UNIQUE INDEX indicator_frequencies_unique ON indicator_frequencies (indicator_id, freq)`,
+		`CREATE TABLE indicator_dimensions (
+			id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+			indicator_id integer NOT NULL,
+			freq text(1) DEFAULT '*' NOT NULL,
+			dimension_code text(100) NOT NULL,
+			default_value text(100),
+			is_filterable integer DEFAULT true,
+			is_splitable integer DEFAULT true
+		)`,
+		`CREATE UNIQUE INDEX indicator_dimensions_unique ON indicator_dimensions (indicator_id, freq, dimension_code)`
 	]);
 	return drizzle(client, { schema });
 }
@@ -82,7 +93,10 @@ describe('saveDefinitionGrid', () => {
 
 	beforeEach(async () => {
 		db = await createTestDb();
-		await db.insert(dimensionDefinitions).values({ code: 'SEX', name: 'Sexo' });
+		await db.insert(dimensionDefinitions).values([
+			{ code: 'SEX', name: 'Sexo' },
+			{ code: 'AGE', name: 'Edad' }
+		]);
 	});
 
 	it('saves new dimensionless definitions transactionally with normalized Data source and default group', async () => {
@@ -121,6 +135,35 @@ describe('saveDefinitionGrid', () => {
 
 		const [frequency] = await db.select().from(indicatorFrequencies);
 		expect(frequency).toMatchObject({ indicatorId: indicator.id, freq: 'M' });
+		expect(await db.select().from(indicatorDimensions)).toEqual([]);
+	});
+
+	it('persists normalized Observation dimension contracts for new definitions', async () => {
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'Dimension Source', name: 'Dimension Source' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\nDIMMED\tM\tDimmed indicator\t sex, Age '
+			},
+			db
+		);
+
+		expect(result.ok).toBe(true);
+		const [indicator] = await db.select().from(indicators).where(eq(indicators.code, 'DIMMED'));
+		const dimensions = (
+			await db
+				.select({
+					indicatorId: indicatorDimensions.indicatorId,
+					freq: indicatorDimensions.freq,
+					dimensionCode: indicatorDimensions.dimensionCode
+				})
+				.from(indicatorDimensions)
+		).sort((a, b) => a.dimensionCode.localeCompare(b.dimensionCode));
+
+		expect(dimensions).toEqual([
+			{ indicatorId: indicator.id, freq: 'M', dimensionCode: 'AGE' },
+			{ indicatorId: indicator.id, freq: 'M', dimensionCode: 'SEX' }
+		]);
 	});
 
 	it('does not save any rows when one pasted row is invalid', async () => {
@@ -128,7 +171,7 @@ describe('saveDefinitionGrid', () => {
 			{
 				dataSource: { code: 'Test Source', name: 'Test Source' },
 				definitionText:
-					'indicator_code\tfreq\tname\tdimensions\nGOOD\tA\tGood indicator\t\nBAD\tA\tBad indicator\tSEX'
+					'indicator_code\tfreq\tname\tdimensions\nGOOD\tA\tGood indicator\t\nBAD\tA\tBad indicator\tUNKNOWN'
 			},
 			db
 		);
@@ -138,11 +181,12 @@ describe('saveDefinitionGrid', () => {
 			{
 				rowNumber: 3,
 				field: 'dimensions',
-				message: 'This save step only supports dimensionless definitions; leave dimensions empty.'
+				message: 'Unknown Observation dimension code: UNKNOWN'
 			}
 		]);
 		expect(await db.select().from(areas).where(eq(areas.code, 'test_source'))).toEqual([]);
 		expect(await db.select().from(indicators)).toEqual([]);
 		expect(await db.select().from(indicatorFrequencies)).toEqual([]);
+		expect(await db.select().from(indicatorDimensions)).toEqual([]);
 	});
 });

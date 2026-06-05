@@ -3,6 +3,7 @@ import { getDb } from '$lib/db/client';
 import {
 	areas,
 	dimensionDefinitions,
+	indicatorDimensions,
 	indicatorFrequencies,
 	indicatorGroups,
 	indicators
@@ -384,14 +385,6 @@ export async function saveDefinitionGrid(
 	const frequencyKeys = new Set<string>();
 	const indicatorNames = new Map<string, string>();
 	for (const row of validation.rows) {
-		if (row.dimensions.length > 0) {
-			errors.push({
-				rowNumber: row.rowNumber,
-				field: 'dimensions',
-				message: 'This save step only supports dimensionless definitions; leave dimensions empty.'
-			});
-		}
-
 		const frequencyKey = `${row.indicatorCode}\u0000${row.freq}`;
 		if (frequencyKeys.has(frequencyKey)) {
 			errors.push({
@@ -498,6 +491,17 @@ export async function saveDefinitionGrid(
 					freq
 				}))
 			);
+
+			const dimensionValues = indicatorRows.flatMap((row) =>
+				row.dimensions.map((dimensionCode) => ({
+					indicatorId: createdIndicator.id,
+					freq: row.freq,
+					dimensionCode
+				}))
+			);
+			if (dimensionValues.length > 0) {
+				await tx.insert(indicatorDimensions).values(dimensionValues);
+			}
 		}
 	});
 

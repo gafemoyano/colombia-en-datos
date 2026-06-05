@@ -168,8 +168,9 @@
 					Grilla de definiciones
 				</div>
 				<p class="mt-2 text-sm text-slate-500">
-					Pega filas desde una hoja de cálculo con encabezados. El guardado crea definiciones
-					dimensionless de forma transaccional; cualquier error impide guardar todas las filas.
+					Pega filas desde una hoja de cálculo con encabezados. El guardado crea definiciones y
+					contratos de dimensiones de forma transaccional; cualquier error impide guardar todas las
+					filas.
 				</p>
 
 				<form method="POST" class="mt-4 space-y-4">
