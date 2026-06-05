@@ -46,6 +46,22 @@ describe('validateDefinitionPaste', () => {
 		]);
 	});
 
+	it('accepts optional annotation, group, and measurement headers', () => {
+		const result = validate(
+			'indicator_code\tfreq\tname\tdimensions\tgroup_code\tgroup_name\tshort_name\tdescription\tmethodology\tsource_citation\tunit\tunit_mult\tdecimals\tdefault_viz\tupdated\nEMP\tM\tEmpleo\t\tA1\tTabla A1\tEmp\tDesc\tMethod\tDANE\tPersonas\t0\t1\ttime_series\t2026-01'
+		);
+
+		expect(result.valid).toBe(true);
+		expect(result.errors).toEqual([]);
+		expect(result.rows[0].values).toMatchObject({
+			group_code: 'A1',
+			group_name: 'Tabla A1',
+			short_name: 'Emp',
+			source_citation: 'DANE',
+			unit: 'Personas'
+		});
+	});
+
 	it('accepts empty dimensions as dimensionless definitions', () => {
 		const result = validate('indicator_code\tfreq\tname\tdimensions\nEMP\tA\tEmpleo\t');
 

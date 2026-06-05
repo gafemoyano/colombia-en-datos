@@ -203,6 +203,61 @@ function uniqueValues(values: string[]): string[] {
 	return Array.from(new Set(values));
 }
 
+function optionalString(value: string): string | null {
+	const trimmed = value.trim();
+	return trimmed ? trimmed : null;
+}
+
+function optionalInteger(value: string): number | null {
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	const parsed = Number.parseInt(trimmed, 10);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function groupCodeForRow(row: ParsedDefinitionRow, dataSourceCode: string): string {
+	return rowValue(row.values, 'group_code') || dataSourceCode;
+}
+
+function groupNameForRow(
+	row: ParsedDefinitionRow,
+	dataSourceCode: string,
+	dataSourceName: string
+): string {
+	const groupCode = groupCodeForRow(row, dataSourceCode);
+	return (
+		rowValue(row.values, 'group_name') ||
+		(groupCode === dataSourceCode ? dataSourceName : groupCode)
+	);
+}
+
+const INDICATOR_CONSISTENCY_FIELDS = [
+	'name',
+	'group_code',
+	'group_name',
+	'short_name',
+	'description',
+	'methodology',
+	'source_citation',
+	'unit',
+	'unit_mult',
+	'decimals',
+	'default_viz',
+	'updated'
+] as const;
+
+function consistencyValue(
+	row: ParsedDefinitionRow,
+	field: (typeof INDICATOR_CONSISTENCY_FIELDS)[number],
+	dataSourceCode: string,
+	dataSourceName: string
+): string {
+	if (field === 'name') return row.name;
+	if (field === 'group_code') return groupCodeForRow(row, dataSourceCode);
+	if (field === 'group_name') return groupNameForRow(row, dataSourceCode, dataSourceName);
+	return rowValue(row.values, field);
+}
+
 export function validateDefinitionPaste(
 	input: ValidateDefinitionPasteInput
 ): DefinitionValidationResult {
@@ -383,7 +438,7 @@ export async function saveDefinitionGrid(
 	}
 
 	const frequencyKeys = new Set<string>();
-	const indicatorNames = new Map<string, string>();
+	const indicatorConsistency = new Map<string, Map<string, string>>();
 	for (const row of validation.rows) {
 		const frequencyKey = `${row.indicatorCode}\u0000${row.freq}`;
 		if (frequencyKeys.has(frequencyKey)) {
@@ -395,15 +450,25 @@ export async function saveDefinitionGrid(
 		}
 		frequencyKeys.add(frequencyKey);
 
-		const existingName = indicatorNames.get(row.indicatorCode);
-		if (existingName && existingName !== row.name) {
-			errors.push({
-				rowNumber: row.rowNumber,
-				field: 'name',
-				message: `Rows for Indicator ${row.indicatorCode} must use the same name.`
-			});
+		const existingValues = indicatorConsistency.get(row.indicatorCode) || new Map<string, string>();
+		for (const field of INDICATOR_CONSISTENCY_FIELDS) {
+			const currentValue = consistencyValue(
+				row,
+				field,
+				validation.dataSource.code,
+				validation.dataSource.name
+			);
+			const existingValue = existingValues.get(field);
+			if (existingValue !== undefined && existingValue !== currentValue) {
+				errors.push({
+					rowNumber: row.rowNumber,
+					field,
+					message: `Rows for Indicator ${row.indicatorCode} must use the same ${field}.`
+				});
+			}
+			existingValues.set(field, currentValue);
 		}
-		indicatorNames.set(row.indicatorCode, row.name);
+		indicatorConsistency.set(row.indicatorCode, existingValues);
 	}
 
 	const indicatorCodes = uniqueValues(validation.rows.map((row) => row.indicatorCode));
@@ -450,28 +515,38 @@ export async function saveDefinitionGrid(
 						.returning({ id: areas.id })
 				)[0].id;
 
-		const defaultGroupCode = validation.dataSource.code;
-		const existingGroups = await tx
-			.select({ id: indicatorGroups.id })
-			.from(indicatorGroups)
-			.where(
-				and(eq(indicatorGroups.areaId, dataSourceId), eq(indicatorGroups.code, defaultGroupCode))
-			)
-			.limit(1);
-		const indicatorGroupId = existingGroups[0]?.id
-			? existingGroups[0].id
-			: (
-					await tx
-						.insert(indicatorGroups)
-						.values({
-							areaId: dataSourceId,
-							code: defaultGroupCode,
-							name: validation.dataSource.name
-						})
-						.returning({ id: indicatorGroups.id })
-				)[0].id;
+		const groupIdsByCode = new Map<string, number>();
 
 		for (const [indicatorCode, indicatorRows] of rowsByIndicator.entries()) {
+			const firstRow = indicatorRows[0];
+			const groupCode = groupCodeForRow(firstRow, validation.dataSource.code);
+			const groupName = groupNameForRow(
+				firstRow,
+				validation.dataSource.code,
+				validation.dataSource.name
+			);
+			let indicatorGroupId = groupIdsByCode.get(groupCode);
+			if (!indicatorGroupId) {
+				const existingGroups = await tx
+					.select({ id: indicatorGroups.id })
+					.from(indicatorGroups)
+					.where(and(eq(indicatorGroups.areaId, dataSourceId), eq(indicatorGroups.code, groupCode)))
+					.limit(1);
+				indicatorGroupId = existingGroups[0]?.id
+					? existingGroups[0].id
+					: (
+							await tx
+								.insert(indicatorGroups)
+								.values({
+									areaId: dataSourceId,
+									code: groupCode,
+									name: groupName
+								})
+								.returning({ id: indicatorGroups.id })
+						)[0].id;
+				groupIdsByCode.set(groupCode, indicatorGroupId);
+			}
+
 			const frequencies = uniqueValues(indicatorRows.map((row) => row.freq)).sort((a, b) =>
 				a.localeCompare(b)
 			);
@@ -480,8 +555,17 @@ export async function saveDefinitionGrid(
 				.values({
 					indicatorGroupId,
 					code: indicatorCode,
-					name: indicatorRows[0].name,
-					frequency: frequencies[0]
+					name: firstRow.name,
+					shortName: optionalString(rowValue(firstRow.values, 'short_name')),
+					description: optionalString(rowValue(firstRow.values, 'description')),
+					methodology: optionalString(rowValue(firstRow.values, 'methodology')),
+					frequency: frequencies[0],
+					source: optionalString(rowValue(firstRow.values, 'source_citation')),
+					unit: optionalString(rowValue(firstRow.values, 'unit')),
+					unitMult: optionalInteger(rowValue(firstRow.values, 'unit_mult')),
+					decimals: optionalInteger(rowValue(firstRow.values, 'decimals')),
+					defaultViz: optionalString(rowValue(firstRow.values, 'default_viz')),
+					updated: optionalString(rowValue(firstRow.values, 'updated'))
 				})
 				.returning({ id: indicators.id });
 

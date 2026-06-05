@@ -135,7 +135,47 @@ describe('saveDefinitionGrid', () => {
 
 		const [frequency] = await db.select().from(indicatorFrequencies);
 		expect(frequency).toMatchObject({ indicatorId: indicator.id, freq: 'M' });
+		expect(indicator.description).toBeNull();
+		expect(indicator.methodology).toBeNull();
 		expect(await db.select().from(indicatorDimensions)).toEqual([]);
+	});
+
+	it('saves optional group, annotation, measurement fields, and multiple frequencies for one Indicator', async () => {
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'SME Survey', name: 'SME Survey' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\tgroup_code\tgroup_name\tshort_name\tdescription\tmethodology\tsource_citation\tunit\tunit_mult\tdecimals\tdefault_viz\tupdated\nSME_OWNSTAT\tA\tOwnership status\t\tA1.10_SME_OWNSTAT\tOwnership sheet\tOwn stat\tOwnership description\tSurvey method\tDANE SME\tBusinesses\t0\t2\tbar\t2026-01\nSME_OWNSTAT\tM\tOwnership status\t\tA1.10_SME_OWNSTAT\tOwnership sheet\tOwn stat\tOwnership description\tSurvey method\tDANE SME\tBusinesses\t0\t2\tbar\t2026-01'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(true);
+		expect(result.saved).toMatchObject({ indicatorCount: 1, frequencyCount: 2 });
+
+		const [group] = await db.select().from(indicatorGroups);
+		expect(group).toMatchObject({ code: 'A1.10_SME_OWNSTAT', name: 'Ownership sheet' });
+
+		const [indicator] = await db.select().from(indicators);
+		expect(indicator).toMatchObject({
+			indicatorGroupId: group.id,
+			code: 'SME_OWNSTAT',
+			name: 'Ownership status',
+			shortName: 'Own stat',
+			description: 'Ownership description',
+			methodology: 'Survey method',
+			source: 'DANE SME',
+			unit: 'Businesses',
+			unitMult: 0,
+			decimals: 2,
+			defaultViz: 'bar',
+			updated: '2026-01'
+		});
+
+		const frequencies = (await db.select().from(indicatorFrequencies))
+			.map((frequency) => frequency.freq)
+			.sort();
+		expect(frequencies).toEqual(['A', 'M']);
 	});
 
 	it('persists normalized Observation dimension contracts for new definitions', async () => {
@@ -164,6 +204,48 @@ describe('saveDefinitionGrid', () => {
 			{ indicatorId: indicator.id, freq: 'M', dimensionCode: 'AGE' },
 			{ indicatorId: indicator.id, freq: 'M', dimensionCode: 'SEX' }
 		]);
+	});
+
+	it('rejects inconsistent annotation fields across frequencies for the same new Indicator', async () => {
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'Consistency Source', name: 'Consistency Source' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\tshort_name\nCONSISTENT\tA\tConsistent indicator\t\tAnnual label\nCONSISTENT\tM\tConsistent indicator\t\tMonthly label'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(false);
+		expect(result.validation.errors).toEqual([
+			{
+				rowNumber: 3,
+				field: 'short_name',
+				message: 'Rows for Indicator CONSISTENT must use the same short_name.'
+			}
+		]);
+		expect(await db.select().from(indicators)).toEqual([]);
+	});
+
+	it('rejects inconsistent measurement fields across frequencies for the same new Indicator', async () => {
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'Measurement Source', name: 'Measurement Source' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\tunit\tdecimals\nMEASURE\tA\tMeasurement indicator\t\tPesos\t0\nMEASURE\tM\tMeasurement indicator\t\tDollars\t0'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(false);
+		expect(result.validation.errors).toEqual([
+			{
+				rowNumber: 3,
+				field: 'unit',
+				message: 'Rows for Indicator MEASURE must use the same unit.'
+			}
+		]);
+		expect(await db.select().from(indicators)).toEqual([]);
 	});
 
 	it('does not save any rows when one pasted row is invalid', async () => {
