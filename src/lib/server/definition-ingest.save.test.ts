@@ -248,6 +248,164 @@ describe('saveDefinitionGrid', () => {
 		expect(await db.select().from(indicators)).toEqual([]);
 	});
 
+	it('adds a new frequency to an existing same-source Indicator without renaming curated records', async () => {
+		const [dataSource] = await db
+			.insert(areas)
+			.values({ code: 'existing_source', name: 'Curated source' })
+			.returning({ id: areas.id });
+		const [group] = await db
+			.insert(indicatorGroups)
+			.values({ areaId: dataSource.id, code: 'curated_group', name: 'Curated group' })
+			.returning({ id: indicatorGroups.id });
+		const [existingIndicator] = await db
+			.insert(indicators)
+			.values({
+				indicatorGroupId: group.id,
+				code: 'CURATED',
+				name: 'Curated indicator',
+				shortName: 'Curated short',
+				description: 'Curated description',
+				methodology: 'Curated method',
+				frequency: 'A',
+				source: 'Curated source citation',
+				unit: 'People',
+				decimals: 0
+			})
+			.returning({ id: indicators.id });
+		await db.insert(indicatorFrequencies).values({ indicatorId: existingIndicator.id, freq: 'A' });
+
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'existing_source', name: 'Pasted source rename' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\tgroup_code\tgroup_name\tshort_name\tdescription\tmethodology\tsource_citation\tunit\tdecimals\nCURATED\tM\tPasted indicator rename\tSEX\tpasted_group\tPasted group\tPasted short\tPasted description\tPasted method\tPasted citation\tPesos\t2\nNEW_IN_GROUP\tA\tNew in group\t\tcurated_group\tPasted group rename\t\t\t\t\t\t'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(true);
+		const [sourceAfter] = await db.select().from(areas).where(eq(areas.code, 'existing_source'));
+		expect(sourceAfter.name).toBe('Curated source');
+
+		const [groupAfter] = await db
+			.select()
+			.from(indicatorGroups)
+			.where(eq(indicatorGroups.code, 'curated_group'));
+		expect(groupAfter.name).toBe('Curated group');
+		expect(
+			await db.select().from(indicatorGroups).where(eq(indicatorGroups.code, 'pasted_group'))
+		).toEqual([]);
+
+		const [indicatorAfter] = await db
+			.select()
+			.from(indicators)
+			.where(eq(indicators.code, 'CURATED'));
+		expect(indicatorAfter).toMatchObject({
+			indicatorGroupId: group.id,
+			name: 'Curated indicator',
+			shortName: 'Curated short',
+			description: 'Curated description',
+			methodology: 'Curated method',
+			source: 'Curated source citation',
+			unit: 'People',
+			decimals: 0
+		});
+
+		const frequencies = (await db.select().from(indicatorFrequencies))
+			.filter((frequency) => frequency.indicatorId === existingIndicator.id)
+			.map((frequency) => frequency.freq)
+			.sort();
+		expect(frequencies).toEqual(['A', 'M']);
+		const curatedDimensions = await db
+			.select({
+				indicatorId: indicatorDimensions.indicatorId,
+				freq: indicatorDimensions.freq,
+				dimensionCode: indicatorDimensions.dimensionCode
+			})
+			.from(indicatorDimensions)
+			.where(eq(indicatorDimensions.indicatorId, existingIndicator.id));
+		expect(curatedDimensions).toEqual([
+			{ indicatorId: existingIndicator.id, freq: 'M', dimensionCode: 'SEX' }
+		]);
+	});
+
+	it('rejects existing Indicator codes owned by another Data source without partial writes', async () => {
+		const [otherSource] = await db
+			.insert(areas)
+			.values({ code: 'other_source', name: 'Other source' })
+			.returning({ id: areas.id });
+		const [otherGroup] = await db
+			.insert(indicatorGroups)
+			.values({ areaId: otherSource.id, code: 'other_group', name: 'Other group' })
+			.returning({ id: indicatorGroups.id });
+		await db
+			.insert(indicators)
+			.values({ indicatorGroupId: otherGroup.id, code: 'TAKEN', name: 'Taken indicator' });
+
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'selected_source', name: 'Selected source' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\nTAKEN\tA\tTaken pasted\t\nNEW_OK\tA\tShould not save\t'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(false);
+		expect(result.validation.errors).toEqual([
+			{
+				rowNumber: 2,
+				field: 'indicator_code',
+				message: 'Indicator code TAKEN already belongs to Data source other_source.'
+			}
+		]);
+		expect(await db.select().from(areas).where(eq(areas.code, 'selected_source'))).toEqual([]);
+		expect(await db.select().from(indicators).where(eq(indicators.code, 'NEW_OK'))).toEqual([]);
+	});
+
+	it('rejects redefining an existing Indicator frequency even without observations', async () => {
+		const [dataSource] = await db
+			.insert(areas)
+			.values({ code: 'freq_source', name: 'Frequency source' })
+			.returning({ id: areas.id });
+		const [group] = await db
+			.insert(indicatorGroups)
+			.values({ areaId: dataSource.id, code: 'freq_source', name: 'Frequency source' })
+			.returning({ id: indicatorGroups.id });
+		const [indicator] = await db
+			.insert(indicators)
+			.values({ indicatorGroupId: group.id, code: 'FREQ_EXISTS', name: 'Frequency exists' })
+			.returning({ id: indicators.id });
+		await db.insert(indicatorFrequencies).values({ indicatorId: indicator.id, freq: 'A' });
+
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'freq_source', name: 'Frequency source' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\nFREQ_EXISTS\tA\tFrequency pasted\t\nNEW_BLOCKED\tA\tShould not save\t'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(false);
+		expect(result.validation.errors).toEqual([
+			{
+				rowNumber: 2,
+				field: 'freq',
+				message: 'Indicator frequency already exists: FREQ_EXISTS/A'
+			}
+		]);
+		expect(await db.select().from(indicators).where(eq(indicators.code, 'NEW_BLOCKED'))).toEqual(
+			[]
+		);
+		expect(
+			await db
+				.select()
+				.from(indicatorFrequencies)
+				.where(eq(indicatorFrequencies.indicatorId, indicator.id))
+		).toHaveLength(1);
+	});
+
 	it('does not save any rows when one pasted row is invalid', async () => {
 		const result = await saveDefinitionGrid(
 			{

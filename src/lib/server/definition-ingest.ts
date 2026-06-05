@@ -91,6 +91,15 @@ export interface SaveDefinitionGridResult {
 
 type AppDb = ReturnType<typeof getDb>;
 
+interface ExistingIndicatorOwnership {
+	id: number;
+	code: string;
+	frequency: string | null;
+	indicatorGroupId: number;
+	dataSourceId: number;
+	dataSourceCode: string;
+}
+
 interface ParsedLine {
 	lineNumber: number;
 	text: string;
@@ -437,6 +446,45 @@ export async function saveDefinitionGrid(
 		});
 	}
 
+	const indicatorCodes = uniqueValues(validation.rows.map((row) => row.indicatorCode));
+	const existingIndicatorsByCode = new Map<string, ExistingIndicatorOwnership>();
+	if (indicatorCodes.length > 0) {
+		const existingIndicators = await db
+			.select({
+				id: indicators.id,
+				code: indicators.code,
+				frequency: indicators.frequency,
+				indicatorGroupId: indicators.indicatorGroupId,
+				dataSourceId: areas.id,
+				dataSourceCode: areas.code
+			})
+			.from(indicators)
+			.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
+			.innerJoin(areas, eq(indicatorGroups.areaId, areas.id))
+			.where(inArray(indicators.code, indicatorCodes));
+		for (const row of existingIndicators) existingIndicatorsByCode.set(row.code, row);
+	}
+
+	const existingIndicatorIds = Array.from(existingIndicatorsByCode.values()).map((row) => row.id);
+	const existingFrequencyRows = existingIndicatorIds.length
+		? await db
+				.select({ indicatorId: indicatorFrequencies.indicatorId, freq: indicatorFrequencies.freq })
+				.from(indicatorFrequencies)
+				.where(inArray(indicatorFrequencies.indicatorId, existingIndicatorIds))
+		: [];
+	const existingFrequenciesByIndicatorId = new Map<number, Set<string>>();
+	for (const row of existingFrequencyRows) {
+		const frequencies = existingFrequenciesByIndicatorId.get(row.indicatorId) || new Set<string>();
+		frequencies.add(row.freq);
+		existingFrequenciesByIndicatorId.set(row.indicatorId, frequencies);
+	}
+	for (const row of existingIndicatorsByCode.values()) {
+		if (!row.frequency) continue;
+		const frequencies = existingFrequenciesByIndicatorId.get(row.id) || new Set<string>();
+		frequencies.add(row.frequency);
+		existingFrequenciesByIndicatorId.set(row.id, frequencies);
+	}
+
 	const frequencyKeys = new Set<string>();
 	const indicatorConsistency = new Map<string, Map<string, string>>();
 	for (const row of validation.rows) {
@@ -449,6 +497,29 @@ export async function saveDefinitionGrid(
 			});
 		}
 		frequencyKeys.add(frequencyKey);
+
+		const existingIndicator = existingIndicatorsByCode.get(row.indicatorCode);
+		if (existingIndicator && existingIndicator.dataSourceCode !== validation.dataSource.code) {
+			errors.push({
+				rowNumber: row.rowNumber,
+				field: 'indicator_code',
+				message: `Indicator code ${row.indicatorCode} already belongs to Data source ${existingIndicator.dataSourceCode}.`
+			});
+			continue;
+		}
+
+		if (existingIndicator) {
+			const existingFrequencies =
+				existingFrequenciesByIndicatorId.get(existingIndicator.id) || new Set<string>();
+			if (existingFrequencies.has(row.freq)) {
+				errors.push({
+					rowNumber: row.rowNumber,
+					field: 'freq',
+					message: `Indicator frequency already exists: ${row.indicatorCode}/${row.freq}`
+				});
+			}
+			continue;
+		}
 
 		const existingValues = indicatorConsistency.get(row.indicatorCode) || new Map<string, string>();
 		for (const field of INDICATOR_CONSISTENCY_FIELDS) {
@@ -469,23 +540,6 @@ export async function saveDefinitionGrid(
 			existingValues.set(field, currentValue);
 		}
 		indicatorConsistency.set(row.indicatorCode, existingValues);
-	}
-
-	const indicatorCodes = uniqueValues(validation.rows.map((row) => row.indicatorCode));
-	if (indicatorCodes.length > 0) {
-		const existingIndicators = await db
-			.select({ code: indicators.code })
-			.from(indicators)
-			.where(inArray(indicators.code, indicatorCodes));
-		for (const row of existingIndicators) {
-			errors.push({
-				rowNumber:
-					validation.rows.find((definitionRow) => definitionRow.indicatorCode === row.code)
-						?.rowNumber || 0,
-				field: 'indicator_code',
-				message: `Indicator code already exists: ${row.code}`
-			});
-		}
 	}
 
 	if (errors.length > 0) {
@@ -519,66 +573,74 @@ export async function saveDefinitionGrid(
 
 		for (const [indicatorCode, indicatorRows] of rowsByIndicator.entries()) {
 			const firstRow = indicatorRows[0];
-			const groupCode = groupCodeForRow(firstRow, validation.dataSource.code);
-			const groupName = groupNameForRow(
-				firstRow,
-				validation.dataSource.code,
-				validation.dataSource.name
-			);
-			let indicatorGroupId = groupIdsByCode.get(groupCode);
-			if (!indicatorGroupId) {
-				const existingGroups = await tx
-					.select({ id: indicatorGroups.id })
-					.from(indicatorGroups)
-					.where(and(eq(indicatorGroups.areaId, dataSourceId), eq(indicatorGroups.code, groupCode)))
-					.limit(1);
-				indicatorGroupId = existingGroups[0]?.id
-					? existingGroups[0].id
-					: (
-							await tx
-								.insert(indicatorGroups)
-								.values({
-									areaId: dataSourceId,
-									code: groupCode,
-									name: groupName
-								})
-								.returning({ id: indicatorGroups.id })
-						)[0].id;
-				groupIdsByCode.set(groupCode, indicatorGroupId);
+			const existingIndicator = existingIndicatorsByCode.get(indicatorCode);
+			let indicatorId = existingIndicator?.id;
+
+			if (!indicatorId) {
+				const groupCode = groupCodeForRow(firstRow, validation.dataSource.code);
+				const groupName = groupNameForRow(
+					firstRow,
+					validation.dataSource.code,
+					validation.dataSource.name
+				);
+				let indicatorGroupId = groupIdsByCode.get(groupCode);
+				if (!indicatorGroupId) {
+					const existingGroups = await tx
+						.select({ id: indicatorGroups.id })
+						.from(indicatorGroups)
+						.where(
+							and(eq(indicatorGroups.areaId, dataSourceId), eq(indicatorGroups.code, groupCode))
+						)
+						.limit(1);
+					indicatorGroupId = existingGroups[0]?.id
+						? existingGroups[0].id
+						: (
+								await tx
+									.insert(indicatorGroups)
+									.values({
+										areaId: dataSourceId,
+										code: groupCode,
+										name: groupName
+									})
+									.returning({ id: indicatorGroups.id })
+							)[0].id;
+					groupIdsByCode.set(groupCode, indicatorGroupId);
+				}
+
+				const frequencies = uniqueValues(indicatorRows.map((row) => row.freq)).sort((a, b) =>
+					a.localeCompare(b)
+				);
+				const [createdIndicator] = await tx
+					.insert(indicators)
+					.values({
+						indicatorGroupId,
+						code: indicatorCode,
+						name: firstRow.name,
+						shortName: optionalString(rowValue(firstRow.values, 'short_name')),
+						description: optionalString(rowValue(firstRow.values, 'description')),
+						methodology: optionalString(rowValue(firstRow.values, 'methodology')),
+						frequency: frequencies[0],
+						source: optionalString(rowValue(firstRow.values, 'source_citation')),
+						unit: optionalString(rowValue(firstRow.values, 'unit')),
+						unitMult: optionalInteger(rowValue(firstRow.values, 'unit_mult')),
+						decimals: optionalInteger(rowValue(firstRow.values, 'decimals')),
+						defaultViz: optionalString(rowValue(firstRow.values, 'default_viz')),
+						updated: optionalString(rowValue(firstRow.values, 'updated'))
+					})
+					.returning({ id: indicators.id });
+				indicatorId = createdIndicator.id;
 			}
 
-			const frequencies = uniqueValues(indicatorRows.map((row) => row.freq)).sort((a, b) =>
-				a.localeCompare(b)
-			);
-			const [createdIndicator] = await tx
-				.insert(indicators)
-				.values({
-					indicatorGroupId,
-					code: indicatorCode,
-					name: firstRow.name,
-					shortName: optionalString(rowValue(firstRow.values, 'short_name')),
-					description: optionalString(rowValue(firstRow.values, 'description')),
-					methodology: optionalString(rowValue(firstRow.values, 'methodology')),
-					frequency: frequencies[0],
-					source: optionalString(rowValue(firstRow.values, 'source_citation')),
-					unit: optionalString(rowValue(firstRow.values, 'unit')),
-					unitMult: optionalInteger(rowValue(firstRow.values, 'unit_mult')),
-					decimals: optionalInteger(rowValue(firstRow.values, 'decimals')),
-					defaultViz: optionalString(rowValue(firstRow.values, 'default_viz')),
-					updated: optionalString(rowValue(firstRow.values, 'updated'))
-				})
-				.returning({ id: indicators.id });
-
 			await tx.insert(indicatorFrequencies).values(
-				frequencies.map((freq) => ({
-					indicatorId: createdIndicator.id,
+				uniqueValues(indicatorRows.map((row) => row.freq)).map((freq) => ({
+					indicatorId,
 					freq
 				}))
 			);
 
 			const dimensionValues = indicatorRows.flatMap((row) =>
 				row.dimensions.map((dimensionCode) => ({
-					indicatorId: createdIndicator.id,
+					indicatorId,
 					freq: row.freq,
 					dimensionCode
 				}))
