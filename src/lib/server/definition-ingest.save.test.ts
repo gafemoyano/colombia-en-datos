@@ -9,11 +9,13 @@ import * as schema from '$lib/db/schema';
 import {
 	areas,
 	dimensionDefinitions,
+	indicatorDataSources,
 	indicatorDimensions,
 	indicatorFrequencies,
 	indicatorGroups,
 	indicators
 } from '$lib/db/schema';
+import { listAdminDefinitionFrequencies } from './admin-definition-catalog';
 import { saveDefinitionGrid } from './definition-ingest';
 
 async function createTestDb() {
@@ -83,7 +85,18 @@ async function createTestDb() {
 			is_filterable integer DEFAULT true,
 			is_splitable integer DEFAULT true
 		)`,
-		`CREATE UNIQUE INDEX indicator_dimensions_unique ON indicator_dimensions (indicator_id, freq, dimension_code)`
+		`CREATE UNIQUE INDEX indicator_dimensions_unique ON indicator_dimensions (indicator_id, freq, dimension_code)`,
+		`CREATE TABLE indicator_data_sources (
+			id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+			indicator_id integer NOT NULL,
+			ref_area text(50) NOT NULL,
+			freq text(1) NOT NULL,
+			year_min integer,
+			year_max integer,
+			row_count integer,
+			release_id integer
+		)`,
+		`CREATE UNIQUE INDEX indicator_data_sources_unique ON indicator_data_sources (indicator_id, ref_area, freq)`
 	]);
 	return drizzle(client, { schema });
 }
@@ -176,6 +189,64 @@ describe('saveDefinitionGrid', () => {
 			.map((frequency) => frequency.freq)
 			.sort();
 		expect(frequencies).toEqual(['A', 'M']);
+	});
+
+	it('lists definition-only frequencies in the admin definition catalog as unpublished', async () => {
+		const result = await saveDefinitionGrid(
+			{
+				dataSource: { code: 'Admin Draft Source', name: 'Admin Draft Source' },
+				definitionText: 'indicator_code\tfreq\tname\tdimensions\nADMIN_DRAFT\tA\tAdmin draft\tSEX'
+			},
+			db
+		);
+
+		expect(result.ok).toBe(true);
+		expect(await listAdminDefinitionFrequencies('admin_draft_source', db)).toEqual([
+			{
+				indicatorId: expect.any(Number),
+				indicatorCode: 'ADMIN_DRAFT',
+				indicatorName: 'Admin draft',
+				groupCode: 'admin_draft_source',
+				groupName: 'Admin Draft Source',
+				freq: 'A',
+				dimensions: ['SEX'],
+				published: false
+			}
+		]);
+	});
+
+	it('marks admin definitions with published lineage as published', async () => {
+		await saveDefinitionGrid(
+			{
+				dataSource: { code: 'Admin Published Source', name: 'Admin Published Source' },
+				definitionText:
+					'indicator_code\tfreq\tname\tdimensions\nADMIN_PUBLISHED\tM\tAdmin published\t'
+			},
+			db
+		);
+		const [indicator] = await db
+			.select()
+			.from(indicators)
+			.where(eq(indicators.code, 'ADMIN_PUBLISHED'));
+		await db.insert(indicatorDataSources).values({
+			indicatorId: indicator.id,
+			refArea: 'CO',
+			freq: 'M',
+			rowCount: 10
+		});
+
+		expect(await listAdminDefinitionFrequencies('admin_published_source', db)).toEqual([
+			{
+				indicatorId: indicator.id,
+				indicatorCode: 'ADMIN_PUBLISHED',
+				indicatorName: 'Admin published',
+				groupCode: 'admin_published_source',
+				groupName: 'Admin Published Source',
+				freq: 'M',
+				dimensions: [],
+				published: true
+			}
+		]);
 	});
 
 	it('persists normalized Observation dimension contracts for new definitions', async () => {

@@ -295,6 +295,7 @@ async function loadCatalog(): Promise<{
 			group: row.group || 'Sin grupo',
 			availableFrequencies: frequencyMap.get(row.code) || []
 		}))
+		.filter((indicator) => indicator.availableFrequencies.length > 0)
 		.sort(
 			(a, b) =>
 				a.area.localeCompare(b.area) ||

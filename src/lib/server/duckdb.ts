@@ -3,6 +3,7 @@ import {
 	indicators,
 	indicatorGroups,
 	areas,
+	indicatorDataSources,
 	indicatorDimensions,
 	dimensionDefinitions,
 	dimensionValues
@@ -404,31 +405,85 @@ export async function getAvailableFrequenciesByIndicator(
 			...params
 		);
 
-		const frequencies = new Map<string, string[]>();
+		const observedFrequencies = new Map<string, string[]>();
 		for (const row of rows) {
-			const current = frequencies.get(row.indicator_code) || [];
+			const current = observedFrequencies.get(row.indicator_code) || [];
 			if (!current.includes(row.freq)) current.push(row.freq);
-			frequencies.set(row.indicator_code, current);
+			observedFrequencies.set(row.indicator_code, current);
 		}
 
-		return frequencies;
+		return filterFrequenciesToPublishedLineage(observedFrequencies);
 	} catch (error) {
 		console.warn('[DuckDB] Could not load available frequencies from canonical store:', error);
 		return new Map();
 	}
 }
 
-export async function getAvailableIndicators(): Promise<
-	Array<{
-		code: string;
-		name: string;
-		shortName: string | null;
-		frequency: string | null;
-		availableFrequencies: string[];
-		area: string;
-		group: string;
-	}>
-> {
+async function filterFrequenciesToPublishedLineage(
+	observedFrequencies: Map<string, string[]>
+): Promise<Map<string, string[]>> {
+	const codes = Array.from(observedFrequencies.keys());
+	if (codes.length === 0) return new Map();
+
+	const db = getDb();
+	const lineageRows = await db
+		.select({ code: indicators.code, freq: indicatorDataSources.freq })
+		.from(indicatorDataSources)
+		.innerJoin(indicators, eq(indicatorDataSources.indicatorId, indicators.id))
+		.where(inArray(indicators.code, codes));
+
+	const lineageFrequencies = new Map<string, Set<string>>();
+	for (const row of lineageRows) {
+		const frequencies = lineageFrequencies.get(row.code) || new Set<string>();
+		frequencies.add(row.freq);
+		lineageFrequencies.set(row.code, frequencies);
+	}
+
+	const visibleFrequencies = new Map<string, string[]>();
+	for (const [code, frequencies] of observedFrequencies.entries()) {
+		const published = lineageFrequencies.get(code) || new Set<string>();
+		const visible = frequencies.filter((freq) => published.has(freq));
+		if (visible.length > 0) visibleFrequencies.set(code, visible);
+	}
+
+	return visibleFrequencies;
+}
+
+export interface AvailableIndicatorCatalogRow {
+	code: string;
+	name: string;
+	shortName: string | null;
+	frequency: string | null;
+	group: string;
+	area: string;
+}
+
+export interface AvailableIndicatorCatalogItem extends AvailableIndicatorCatalogRow {
+	availableFrequencies: string[];
+	frequency: string | null;
+}
+
+export function buildAvailableIndicatorCatalog(
+	rows: AvailableIndicatorCatalogRow[],
+	frequencyMap: Map<string, string[]>
+): AvailableIndicatorCatalogItem[] {
+	return rows
+		.map((indicator) => {
+			const availableFrequencies = frequencyMap.get(indicator.code) || [];
+			return {
+				code: indicator.code,
+				name: indicator.name,
+				shortName: indicator.shortName,
+				frequency: availableFrequencies[0] || null,
+				availableFrequencies,
+				area: indicator.area || 'Unknown',
+				group: indicator.group || 'Unknown'
+			};
+		})
+		.filter((indicator) => indicator.availableFrequencies.length > 0);
+}
+
+export async function getAvailableIndicators(): Promise<AvailableIndicatorCatalogItem[]> {
 	const pgDb = getDb();
 	const rows = await pgDb
 		.select({
@@ -447,18 +502,7 @@ export async function getAvailableIndicators(): Promise<
 		rows.map((indicator) => indicator.code)
 	);
 
-	return rows.map((i) => {
-		const availableFrequencies = frequencyMap.get(i.code) || (i.frequency ? [i.frequency] : []);
-		return {
-			code: i.code,
-			name: i.name,
-			shortName: i.shortName,
-			frequency: i.frequency || availableFrequencies[0] || null,
-			availableFrequencies,
-			area: i.area || 'Unknown',
-			group: i.group || 'Unknown'
-		};
-	});
+	return buildAvailableIndicatorCatalog(rows, frequencyMap);
 }
 
 export async function getIndicatorsByFrequency(frequency: string): Promise<string[]> {
