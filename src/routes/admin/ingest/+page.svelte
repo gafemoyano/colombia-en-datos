@@ -16,7 +16,7 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	const sampleDefinitionText = 'indicator_code\tfreq\tname\tdimensions\nEMP\tM\tEmpleo\tSEX';
+	const sampleDefinitionText = '';
 	let dataSourceCode = $state('');
 	let dataSourceName = $state('');
 	let definitionText = $state('');
@@ -168,12 +168,32 @@
 					Grilla de definiciones
 				</div>
 				<p class="mt-2 text-sm text-slate-500">
-					Formato requerido: columnas separadas por tabulación (TSV). CSV no está soportado. Dentro
-					de <code class="rounded bg-slate-100 px-1 font-mono">dimensions</code>, separa varios
-					códigos con coma, por ejemplo
-					<code class="rounded bg-slate-100 px-1 font-mono">SEX, AGE</code>. Cualquier error impide
-					guardar todas las filas.
+					Pega filas copiadas desde una hoja de cálculo. Las columnas se separan automáticamente por
+					tabulación; CSV no está soportado. En la columna
+					<code class="rounded bg-slate-100 px-1 font-mono">dimensions</code>, usa coma para
+					múltiples códigos.
 				</p>
+
+				<div class="mt-4 overflow-hidden rounded-lg border border-slate-200 text-xs">
+					<table class="min-w-full">
+						<thead class="bg-slate-50 text-slate-500">
+							<tr>
+								<th class="px-3 py-2 text-left font-medium">indicator_code</th>
+								<th class="px-3 py-2 text-left font-medium">freq</th>
+								<th class="px-3 py-2 text-left font-medium">name</th>
+								<th class="px-3 py-2 text-left font-medium">dimensions</th>
+							</tr>
+						</thead>
+						<tbody class="bg-white">
+							<tr>
+								<td class="px-3 py-2 font-mono">EMP</td>
+								<td class="px-3 py-2 font-mono">M</td>
+								<td class="px-3 py-2">Empleo</td>
+								<td class="px-3 py-2 font-mono">SEX, AGE</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
 
 				<form method="POST" class="mt-4 space-y-4">
 					<input type="hidden" name="data_source" value={normalizedPreview} />
@@ -182,6 +202,7 @@
 						name="definition_text"
 						class="min-h-44 font-mono text-xs"
 						value={definitionText}
+						placeholder="Pega aquí las filas copiadas desde tu hoja de cálculo…"
 						oninput={(event) =>
 							(definitionText = (event.currentTarget as HTMLTextAreaElement).value)}
 					/>
