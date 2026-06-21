@@ -16,7 +16,7 @@
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
-	const sampleDefinitionText = 'indicator_code\tfreq\tname\tdimensions\nEMP\tM\tEmpleo\tSEX, AGE';
+	const sampleDefinitionText = 'indicator_code\tfreq\tname\tdimensions\nEMP\tM\tEmpleo\tSEX';
 	let dataSourceCode = $state('');
 	let dataSourceName = $state('');
 	let definitionText = $state('');
@@ -168,9 +168,11 @@
 					Grilla de definiciones
 				</div>
 				<p class="mt-2 text-sm text-slate-500">
-					Pega filas desde una hoja de cálculo con encabezados. El guardado crea definiciones y
-					contratos de dimensiones de forma transaccional; cualquier error impide guardar todas las
-					filas.
+					Formato requerido: columnas separadas por tabulación (TSV). CSV no está soportado. Dentro
+					de <code class="rounded bg-slate-100 px-1 font-mono">dimensions</code>, separa varios
+					códigos con coma, por ejemplo
+					<code class="rounded bg-slate-100 px-1 font-mono">SEX, AGE</code>. Cualquier error impide
+					guardar todas las filas.
 				</p>
 
 				<form method="POST" class="mt-4 space-y-4">

@@ -114,43 +114,8 @@ function nonEmptyLines(text: string): ParsedLine[] {
 		.filter((line) => line.text.trim().length > 0);
 }
 
-function detectDelimiter(headerLine: string): '\t' | ',' {
-	return headerLine.includes('\t') ? '\t' : ',';
-}
-
-function parseDelimitedLine(line: string, delimiter: '\t' | ','): string[] {
-	if (delimiter === '\t') return line.split('\t').map((cell) => cell.trim());
-
-	const cells: string[] = [];
-	let current = '';
-	let inQuotes = false;
-
-	for (let index = 0; index < line.length; index += 1) {
-		const character = line[index];
-		const nextCharacter = line[index + 1];
-
-		if (character === '"' && inQuotes && nextCharacter === '"') {
-			current += '"';
-			index += 1;
-			continue;
-		}
-
-		if (character === '"') {
-			inQuotes = !inQuotes;
-			continue;
-		}
-
-		if (character === delimiter && !inQuotes) {
-			cells.push(current.trim());
-			current = '';
-			continue;
-		}
-
-		current += character;
-	}
-
-	cells.push(current.trim());
-	return cells;
+function parseDefinitionLine(line: string): string[] {
+	return line.split('\t').map((cell) => cell.trim());
 }
 
 function normalizeHeaders(rawHeaders: string[]): string[] {
@@ -294,8 +259,16 @@ export function validateDefinitionPaste(
 		};
 	}
 
-	const delimiter = detectDelimiter(lines[0].text);
-	const headers = normalizeHeaders(parseDelimitedLine(lines[0].text, delimiter));
+	if (!lines[0].text.includes('\t') && lines[0].text.includes(',')) {
+		errors.push({
+			rowNumber: lines[0].lineNumber,
+			field: 'grid',
+			message:
+				'Definition grid columns must be separated with tabs. Commas are only supported inside the dimensions cell.'
+		});
+	}
+
+	const headers = normalizeHeaders(parseDefinitionLine(lines[0].text));
 	const headerSet = new Set(headers);
 
 	for (const requiredHeader of REQUIRED_DEFINITION_HEADERS) {
@@ -342,12 +315,12 @@ export function validateDefinitionPaste(
 	);
 
 	for (const line of lines.slice(1)) {
-		const cells = parseDelimitedLine(line.text, delimiter);
+		const cells = parseDefinitionLine(line.text);
 		if (cells.length > headers.length) {
 			errors.push({
 				rowNumber: line.lineNumber,
 				field: 'row',
-				message: `Expected ${headers.length} cells but found ${cells.length}. Check the pasted delimiter and quote cells containing separators.`
+				message: `Expected ${headers.length} tab-separated cells but found ${cells.length}.`
 			});
 		}
 

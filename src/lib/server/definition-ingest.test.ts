@@ -46,6 +46,18 @@ describe('validateDefinitionPaste', () => {
 		]);
 	});
 
+	it('rejects comma-separated grid columns to keep commas reserved for dimensions', () => {
+		const result = validate('indicator_code,freq,name,dimensions\nEMP,M,Empleo,SEX');
+
+		expect(result.valid).toBe(false);
+		expect(result.errors[0]).toEqual({
+			rowNumber: 1,
+			field: 'grid',
+			message:
+				'Definition grid columns must be separated with tabs. Commas are only supported inside the dimensions cell.'
+		});
+	});
+
 	it('accepts optional annotation, group, and measurement headers', () => {
 		const result = validate(
 			'indicator_code\tfreq\tname\tdimensions\tgroup_code\tgroup_name\tshort_name\tdescription\tmethodology\tsource_citation\tunit\tunit_mult\tdecimals\tdefault_viz\tupdated\nEMP\tM\tEmpleo\t\tA1\tTabla A1\tEmp\tDesc\tMethod\tDANE\tPersonas\t0\t1\ttime_series\t2026-01'
