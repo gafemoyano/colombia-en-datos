@@ -57,8 +57,8 @@ This flow is **developer-gated at every step**.
 2. **Metadata is the source of truth for humans; the registry is the source of truth for machines**  
    What an indicator *means* (name, methodology) lives in SQLite and is editable in `/admin`. What columns an indicator *has*, and where its data *lives*, is also registered relationally so the UI and query engine never need to guess.
 
-3. **Self-service ingestion**  
-   A data scientist with a Parquet file that already matches the Observation schema should be able to upload, fix validation errors, and publish through authenticated app surfaces without asking engineering to run a script. CSV/Excel conversion and column mapping are future conveniences, not part of the ingestion contract.
+3. **Self-service ingestion with explicit canonicalization**  
+   A data scientist with a Parquet file that already matches the Observation schema should be able to upload, fix validation errors, and publish through authenticated app surfaces without asking engineering to run a script. Trusted source-shaped batch files are also first-class admin inputs: the platform may analyze a batch file, propose Indicator definitions, and apply explicit reviewed mappings into the canonical Observation schema before publishing. Canonicalization is an ingest step; the canonical store remains uniform.
 
 4. **Canonical storage over scattered files**  
    We should move from 35 000 small files to a smaller number of canonical stores (DuckDB native files or consolidated parquet) so that queries are fast, backups are simple, and object-storage migration is cheap.
@@ -161,13 +161,40 @@ is_filterable  BOOLEAN DEFAULT TRUE
 is_splitable   BOOLEAN DEFAULT TRUE  -- can be used as a "by" / trace-split dimension
 PRIMARY KEY (indicator_id, freq, dimension_code)
 
+-- ingest_batches
+-- One uploaded file / admin ingest attempt. A batch can fan out to many releases.
+id             INTEGER PRIMARY KEY
+data_source_id INTEGER REFERENCES data_sources(id)
+original_name  VARCHAR
+checksum       VARCHAR       -- sha256 of source file
+source_format  VARCHAR       -- 'parquet', 'csv', 'excel'
+row_count      INTEGER
+status         VARCHAR       -- 'uploaded', 'analyzed', 'staged', 'published', 'failed'
+profile_json   JSON          -- analyzer summary and warnings
+mappings_json  JSON          -- accepted source-to-canonical mappings
+created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+published_at   TIMESTAMP
+
+-- ingest_batch_slices
+-- One distinct indicator_code + freq slice derived from a batch.
+id             INTEGER PRIMARY KEY
+batch_id       INTEGER REFERENCES ingest_batches(id)
+indicator_id   INTEGER REFERENCES indicators(id)
+freq           VARCHAR NOT NULL
+row_count      INTEGER
+period_start   VARCHAR
+period_end     VARCHAR
+status         VARCHAR       -- 'proposed', 'staged', 'published', 'failed'
+release_id     INTEGER REFERENCES data_releases(id)
+
 -- data_releases
--- Audit trail / lineage for every batch of data loaded.
+-- Per-indicator/frequency lineage emitted by a publish action.
 id             INTEGER PRIMARY KEY
 indicator_id   INTEGER REFERENCES indicators(id)
+ingest_batch_id INTEGER REFERENCES ingest_batches(id)
 release_date   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-period_start   VARCHAR       -- earliest time_period in this batch
-period_end     VARCHAR       -- latest time_period in this batch
+period_start   VARCHAR       -- earliest time_period in this release slice
+period_end     VARCHAR       -- latest time_period in this release slice
 row_count      INTEGER
 source_format  VARCHAR       -- 'parquet', 'csv', 'excel'
 source_name    VARCHAR       -- original filename
@@ -201,25 +228,33 @@ release_id     INTEGER REFERENCES data_releases(id)
 
 ### 4.1 High-level flow
 
+The canonical `observations` table is inherently multi-indicator because `indicator_code` and `freq` are row keys. Admin ingest should therefore treat a Parquet file as a batch that can contain one or many distinct `indicator_code + freq` slices. The current single-indicator upload endpoint is a compatibility path, not the target workflow.
+
 ```
-Data scientist creates or chooses an Indicator
+Admin creates or chooses a Data source
     ↓
-Data scientist transforms source data to the Observation schema
+Admin uploads a Parquet batch file
     ↓
-Data scientist uploads a Parquet file
+System profiles columns, indicator codes, frequencies, periods, measurement fields, and dimensions
     ↓
-System validates required columns, types, registered dimensions, and row identity
+System derives distinct indicator_code + freq slices from the file
     ↓
-System previews rows and returns an uploadId
+System proposes editable Indicator frequency definitions and explicit canonicalization mappings when needed
     ↓
-Data scientist publishes
+Admin saves definitions and confirms mappings
     ↓
-System replaces observations for indicator_code + freq in observations.duckdb
+System canonicalizes observations into the Observation schema and stages every valid slice
     ↓
-System records published lineage in data_releases and indicator_data_sources
+Admin publishes the batch
     ↓
-Indicator frequency is live immediately in the Explorer view
+For each present indicator_code + freq, system replaces only that slice in observations.duckdb
+    ↓
+System fans lineage out from one ingest batch to per-indicator data_releases and indicator_data_sources rows
+    ↓
+Published Indicator frequencies become live immediately in the Explorer view
 ```
+
+A canonical batch already uses Observation-schema column names and may skip source-to-canonical mappings. A source-shaped batch, such as the GEIH delivery, additionally needs explicit mappings for columns like `INDICADOR`, `ADJUSTEMENT`, and `TIME_PERIOD = '1-2010'`.
 
 ### 4.2 Upload API
 
@@ -228,19 +263,39 @@ Indicator frequency is live immediately in the Explorer view
 // Body: { code, name, dataSourceCode, groupCode, dimensionsByFreq }
 // Response: { indicator }
 
+// Existing compatibility path: single-slice canonical upload
 // POST /api/admin/ingest/upload
 // multipart/form-data
 // Body: file, indicatorCode, freq
 // Response: { valid, errors[], rowCount, preview[], columns[], uploadId?, checksum? }
 
+// Existing compatibility path: single-slice publish
 // POST /api/admin/ingest/publish
 // Body: { uploadId, releaseNotes? }
 // Response: { releaseId, indicatorCode, freq, rowsInserted }
+
+// Target batch-first flow
+// POST /api/admin/ingest/batches/analyze
+// multipart/form-data
+// Body: file, dataSourceCode
+// Response: { batchId, profile, proposedDefinitions, proposedMappings, warnings[] }
+
+// POST /api/admin/ingest/batches/stage
+// Body: { batchId, acceptedDefinitions, acceptedMappings }
+// Response: { valid, errors[], stagedSlices[] }
+
+// POST /api/admin/ingest/batches/publish
+// Body: { batchId, sliceIds?: string[] }
+// Response: { publishedSlices[], releaseIds[], errors[] }
 ```
 
 ### 4.3 Upload schema contract
 
-Data scientists are responsible for transforming their source data into the system's **Observation schema** before upload. The system does not perform column mapping.
+There are two supported input contracts.
+
+#### Canonical observation batch
+
+Canonical batch files are already transformed into the system's **Observation schema** before upload. They may contain one or many distinct `indicator_code + freq` slices. The batch endpoint does not infer mappings for this path because the file already uses canonical column names.
 
 The uploaded file must contain at minimum these columns:
 
@@ -252,7 +307,7 @@ The uploaded file must contain at minimum these columns:
 | `time_period` | VARCHAR | `'2019-01'` (for M), `'2019'` (for A) |
 | `obs_value` | DOUBLE | `12345.6` |
 
-The file must contain every dimension registered for this **indicator + freq** combination. Missing registered dimension columns are rejected because the saved definition is the declared observation contract.
+For each distinct `indicator_code + freq` slice, the file must contain every dimension registered for that Indicator frequency. Missing registered dimension columns are rejected because the saved definition is the declared observation contract.
 
 | Optional dimension | Present only if registered for indicator+freq | Example values |
 |--------------------|-----------------------------------------------|----------------|
@@ -267,17 +322,52 @@ The file must contain every dimension registered for this **indicator + freq** c
 
 Extra columns not registered as dimensions are rejected with a clear error.
 
+#### Source-shaped batch intake
+
+Source-shaped batch files may differ from the canonical Observation schema, but only through explicit, previewed mappings accepted by an admin. The GEIH sample is the motivating example:
+
+| Source column/value | Canonical target | Rule |
+|---------------------|------------------|------|
+| `INDICADOR` | `indicator_code` | Preserve source indicator code casing unless the admin edits the proposed definition. |
+| `FREQ` | `freq` | Uppercase one-letter frequency code. |
+| `REF_AREA` | `ref_area` | Preserve source reference area. |
+| `TIME_PERIOD = '1-2010'` | `time_period = '2010-01'` | Convert monthly `M-YYYY` values to canonical `YYYY-MM`. |
+| `OBS_VALUE` | `obs_value` | Cast to double. |
+| `ADJUSTEMENT` | `adjustment` | Accept known source typo only when mapped explicitly. |
+| `UNIT`, `UNIT_MULT`, `DECIMALS` | `indicators.unit`, `unit_mult`, `decimals` | Extract stable per-indicator measurement fields into the definition grid, not observation rows. |
+| `YEAR` | none | Treat as derivable trace metadata; reject from canonical observations unless a future `source_period` policy uses it. |
+
+The analyzer must report row counts, indicator counts, frequency counts, distinct period coverage, measurement variation by indicator, dimension candidate values, duplicate-key checks, and warnings for unknown columns or unsupported time formats before any database writes.
+
+A flat Parquet file has one column set, so multi-indicator ingest has one new load-bearing invariant: all indicators in a file share the same observable dimensionality. The analyzer must validate each derived `indicator_code + freq` slice against the file's mapped dimension columns and its saved/proposed `indicator_dimensions` contract. If one indicator declares `SEX` and another does not, the batch is ambiguous unless the admin explicitly collapses fixed total columns or stages separate batches.
+
 ### 4.4 Validation rules
 
-These are target validation rules. Phase 2 implemented the core upload/publish path; codelist enforcement, duplicate-key checks, and final missing-dimension policy still need hardening before broad data-scientist self-service.
+These are target validation rules. Phase 2 implemented the core single-indicator upload/publish path; codelist enforcement, duplicate-key checks, multi-indicator batch analysis, canonicalization, and final missing-dimension policy still need hardening before broad data-scientist self-service.
 
-1. `indicator_code` must match an existing indicator.
-2. `freq` must match the frequencies registered for this indicator's dimensions (or `'*'` wildcard dimensions).
-3. `time_period` must match the declared `freq` (YYYY-MM for M, YYYY for A, YYYY-QN for Q).
-4. `obs_value` must be numeric (nulls allowed).
-5. All columns present in the file must be either required columns, registered dimensions for this indicator+freq, or `obs_status`.
-6. Dimension values must exist in `dimension_values`; unknown values are rejected.
-7. Duplicate primary keys (same indicator, freq, time, dimensions) are rejected. Uploads are always full replacement for the indicator+freq combination.
+Batch validation:
+
+1. `indicator_code` and `freq` are read from the file, not supplied by the user. The file is authoritative for which slices are being loaded.
+2. Every distinct `indicator_code` must match an existing or newly accepted Indicator definition before staging observations.
+3. Every distinct `indicator_code + freq` must match an explicit `indicator_frequencies` row before publish.
+4. `time_period` must match the declared `freq` after canonicalization (YYYY-MM for M, YYYY for A, YYYY-QN for Q).
+5. `obs_value` must be numeric (nulls allowed).
+6. Every registered dimension for each Indicator frequency must be present, and no unmapped/unregistered dimension columns may be silently stored.
+7. Dimension values must exist in `dimension_values`; unknown values are rejected or routed to a deliberate codelist-curation step before publish.
+8. Duplicate primary keys (same indicator, freq, time, dimensions) are rejected per slice.
+9. Every source-to-canonical column mapping must be explicit and persisted in the staged batch manifest.
+10. The file's mapped dimension column set must be compatible with every slice's dimension contract. Uniform dimensionality is validated, not assumed.
+11. Measurement fields extracted from the source file must be stable per Indicator; mixed units or decimals for the same Indicator are rejected until a frequency/dimension-specific measurement model exists.
+12. Generated definitions are saved before observations are published, so public visibility still requires both lineage and canonical observations.
+13. Batch publish must be all-or-nothing by default for trusted admin flows, with a future option to publish only selected valid slices.
+
+Publish replacement semantics:
+
+1. Derive the set of distinct `indicator_code + freq` pairs present in the staged canonical rows.
+2. For each pair, delete existing canonical observations for only that pair.
+3. Insert staged canonical rows for that pair.
+4. Leave indicators/frequencies absent from the batch untouched.
+5. Create one `data_releases` row and refresh `indicator_data_sources` per published pair, linked back to the parent `ingest_batches` row.
 
 ---
 
@@ -533,8 +623,9 @@ This is blocked until we have:
    - `POST /api/indicators` creates indicators and registers `dimensionsByFreq`.
 
 2. **Upload endpoint and validation engine**  
-   - `POST /api/admin/ingest/upload` accepts Parquet files matching the Observation schema.
+   - `POST /api/admin/ingest/upload` accepts single-indicator Parquet files matching the Observation schema.
    - Validation returns errors, row count, preview rows, columns, uploadId, and checksum.
+   - GEIH-style multi-indicator source batches are not covered by this endpoint; they require the future batch-first flow described in §4.
 
 3. **Publish flow**  
    - `POST /api/admin/ingest/publish` fully replaces observations for `indicator_code + freq`.
@@ -542,6 +633,21 @@ This is blocked until we have:
 
 4. **Frequency availability**  
    - Public `GET /api/indicators` and Explorer expose only published frequencies: a published release/source record must exist and observations must exist in the canonical store. Admin listing still shows saved definitions without observations.
+
+### Phase 2B: Batch-first admin ingest — planned
+
+The GEIH sample file (`data/geih_2021_2026_arq_ok_v2.parquet`) showed that trusted data-engineering deliveries may arrive as one natural multi-indicator Parquet file. The file self-identifies each indicator; the current API is what forces artificial one-indicator uploads. The next ingest work should start from the `main` schema and add a batch analyzer/canonicalizer before extending the admin UI.
+
+Planned slices:
+
+1. Port the definition-save UI/module onto the `data_sources` + `source_citation` schema from `main`. ✅ Implemented in phase 0 via `/admin/ingest`, `src/lib/server/definition-ingest.ts`, `src/lib/server/admin-definition-catalog.ts`, and tests covering explicit `indicator_frequencies` / `indicator_dimensions` writes.
+2. Add `ingest_batches` / `ingest_batch_slices` lineage scaffolding so one uploaded file can fan out to many per-indicator releases.
+3. Add a read-only batch analyzer that profiles multi-indicator Parquet files, derives slices, checks uniform dimensionality, and proposes definitions/mappings without writing observations.
+4. Generate editable definition drafts from batch profiles and save definitions transactionally.
+5. Canonicalize and stage every validated `indicator_code + freq` slice.
+6. Publish all valid slices by replacing only pairs present in the batch, then writing per-slice releases and `indicator_data_sources` records linked to the batch parent.
+
+Detailed execution plan: `plans/geih-batch-ingest/README.md`.
 
 ### Phase 3/4: Explorer vertical slices — in progress
 
@@ -562,7 +668,7 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 1. Multi-indicator comparison using common dimensions first; per-indicator overrides are future advanced behavior.
 2. Excel/download export for the current Explorer state.
 3. Saved collections or saved Explorer states.
-4. Upload UI built on top of the ingestion API.
+4. Admin batch ingest UI built on top of the analyzer, definition-save, canonicalization, and publish APIs.
 
 ### Phase 5: External access (future)
 
@@ -579,6 +685,8 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 | DuckDB native file corruption | High | Keep `data/` parquet archive read-only; nightly backup of `.duckdb` file; `db:seed` can rebuild from archive. |
 | Schema migration for new dimensions | Medium | Reserve `ext_dimensions MAP(VARCHAR, VARCHAR)` as escape hatch; promote to first-class column only when a dimension is reused across multiple indicators. |
 | Data scientist uploads bad data | Medium | Validation gate + preview + staging table; require explicit "publish" action; `data_releases` supports rollback. |
+| Multi-indicator lineage becomes hard to audit | Medium | Add a batch parent record and link each per-indicator `data_releases` row back to the originating batch. |
+| A flat file mixes indicators with incompatible dimension contracts | Medium | Validate the shared mapped dimension column set against every slice before staging. Reject ambiguous batches or require explicit fixed-total collapse. |
 | Canonical table grows very large | Medium | DuckDB handles billions of rows; if needed, partition by `indicator_code` into separate files and use `UNION ALL` views. |
 | Concurrent uploads | Low | SQLite handles metadata concurrency; DuckDB appends are safe if we use a connection queue or file locking. |
 
@@ -599,8 +707,10 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 | **Frequency is per-observation, not per-indicator** | An indicator code can have both monthly and annual data without splitting into separate indicators. Frequency lives on each observation row. The `indicators.frequency` column is dropped entirely. |
 | **Indicator frequencies are explicit definitions** | `indicator_frequencies` records every admin-defined `indicator + freq`, including dimensionless indicators. `indicator_dimensions` then records dimensions for that scope. |
 | **Dimensions are per-indicator-frequency** | Monthly `EMP` can have an `URBAN_RURAL` breakdown while annual `EMP` does not. The registry keys dimensions by `(indicator_id, freq)`. |
-| **Data scientists transform files before upload** | The system does not perform column mapping. Data scientists produce files that already match the observation schema. This keeps the upload API simple and unambiguous. |
-| **Overwrite contract for uploads** | Each upload fully replaces all observations for the given `indicator_code + freq` combination. The canonical table is the only persistent store; original files are not archived. |
+| **Multi-indicator files are first-class** | The Observation schema is already keyed by `indicator_code` and `freq`; ingest should derive slices from the file rather than force admins to split natural exports and hand-type one indicator code per upload. |
+| **Two-stage ingest: batch intake then canonical observations** | Canonical and source-shaped batch Parquet files can be accepted through an explicit analyzer/canonicalizer flow. Mappings are reviewed before publish; the canonical DuckDB table still stores only the Observation schema. |
+| **Per-slice overwrite contract for batch uploads** | Batch publish replaces only the distinct `indicator_code + freq` pairs present in the batch. Other indicators/frequencies remain untouched. |
+| **Lineage fan-out from batch parent to releases** | One uploaded file is tracked as an `ingest_batches` parent; publish emits one `data_releases` row and one or more `indicator_data_sources` rows per published indicator/frequency slice. |
 | **Published visibility requires lineage and observations** | Public catalogs expose an indicator frequency only when `data_releases`/`indicator_data_sources` mark it published and the canonical store contains observations for the same indicator/frequency. Admin surfaces can still show saved definitions without observations. |
 | **Serialized writes acceptable** | Only one upload runs at a time. This avoids DuckDB's lack of concurrent write support without adding async job queues in Phase 2. |
 | **Explorer as SvelteKit vertical slice** | `/explore` uses server load as the primary composition layer instead of orchestrating internal REST calls from the browser. |
@@ -618,8 +728,14 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
 2. **How should DANE geographic code labels be seeded?**  
    *Recommendation:* Save the DANE code reference locally, then seed `dimension_values` for `DEPT_CODE`, `MUNI_CODE`, and `GEO_LEVEL`. `departamentos` can be a seed source, but not the Explorer runtime label source.
 
-3. **How much ingestion validation hardening is required before broad self-service?**  
-   *Recommendation:* Add codelist enforcement that rejects unknown dimension values, duplicate-key detection, required registered-dimension enforcement, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
+3. **How should batch mapping rules be persisted and audited?**  
+   *Recommendation:* Store accepted mappings on `ingest_batches.mappings_json` first. Promote to reusable source-specific mapping templates only after two or more batches from the same Data source prove the rules are stable.
 
-4. **When should multi-indicator comparison support per-indicator overrides?**  
+4. **Should fixed total dimensions be stored as dimensions or collapsed into dimensionless definitions?**  
+   *Recommendation:* For v1, collapse GEIH-like national total slices into dimensionless definitions unless the source file contains multiple values for a dimension. Preserve fixed values in batch analysis metadata for audit.
+
+5. **How much ingestion validation hardening is required before broad self-service?**  
+   *Recommendation:* Add codelist enforcement that rejects unknown dimension values, duplicate-key detection, required registered-dimension enforcement, batch mapping previews, and clearer release rollback semantics before exposing upload/publish beyond trusted technical users.
+
+6. **When should multi-indicator comparison support per-indicator overrides?**  
    *Recommendation:* Start with common dimensions only. Add per-indicator filter overrides only after the single-indicator Explorer and common-dimension comparison are stable.

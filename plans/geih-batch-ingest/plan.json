@@ -1,0 +1,127 @@
+{
+  "schema_version": "1",
+  "feature": "geih-batch-ingest",
+  "created_at": "2026-06-21",
+  "updated_at": "2026-06-21",
+  "owner": "Felipe",
+  "status": "in-progress",
+  "current_phase": 0,
+  "phases": [
+    {
+      "id": 0,
+      "name": "port-definition-save",
+      "file": "phase-0-port-definition-save.md",
+      "goal": "Port the useful definition-save behavior from the old `dev` branch onto the current `main` schema. This phase creates the reusable primitive that later batch phases call after the analyzer proposes Indicator frequency definitions.",
+      "status": "in-progress",
+      "started_at": "2026-06-21",
+      "completed_at": null,
+      "tasks": [
+        {
+          "id": "0.1",
+          "title": "Create the data source normalization helper and port the parser/validator from dev",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "0.2",
+          "title": "Port saveDefinitionGrid to the main schema with all-or-nothing transactions",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "0.3",
+          "title": "Port and adapt unit and DB-backed tests for validation, duplicates, dimensions, and safety rules",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "0.4",
+          "title": "Create the admin definition catalog listing definition-only and published frequencies",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "0.5",
+          "title": "Create the /admin/ingest route shell and add admin navigation",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "0.6",
+          "title": "Run targeted definition-ingest tests and npm run check",
+          "status": "done",
+          "notes": null
+        }
+      ],
+      "deviations": []
+    },
+    {
+      "id": 1,
+      "name": "batch-lineage-schema",
+      "file": "phase-1-batch-lineage-schema.md",
+      "goal": "Add explicit batch lineage scaffolding so one uploaded Parquet file can produce many per-indicator/frequency release rows. This resolves the mental-model shift from \"upload equals one release\" to \"upload equals one batch, publishing N slices.\"",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "tasks": [],
+      "deviations": []
+    },
+    {
+      "id": 2,
+      "name": "batch-analyzer",
+      "file": "phase-2-batch-analyzer.md",
+      "goal": "Build a read-only analyzer for Parquet batches. It should derive the set of `indicator_code + freq` slices from file contents, detect canonical vs source-shaped columns, profile measurement and dimension candidates, and enforce the uniform-dimensionality invariant before any database writes.",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "tasks": [],
+      "deviations": []
+    },
+    {
+      "id": 3,
+      "name": "definition-drafts",
+      "file": "phase-3-definition-drafts.md",
+      "goal": "Generate editable Indicator frequency definition drafts from a batch profile, then save accepted definitions transactionally through the definition-save primitive. This bridges the observation half of a multi-indicator file with the metadata registry required by Explorer and publish validation.",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "tasks": [],
+      "deviations": []
+    },
+    {
+      "id": 4,
+      "name": "canonical-stage",
+      "file": "phase-4-canonical-stage.md",
+      "goal": "Canonicalize accepted batch rows into the Observation schema and stage one validated row set per `indicator_code + freq` slice. This phase stops before publish, so admins can inspect errors without mutating production observations.",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "tasks": [],
+      "deviations": []
+    },
+    {
+      "id": 5,
+      "name": "batch-publish",
+      "file": "phase-5-batch-publish.md",
+      "goal": "Publish staged batch slices into the canonical DuckDB store. Batch publish replaces only the `indicator_code + freq` pairs present in the staged batch, leaves absent slices untouched, and creates per-slice lineage linked to the parent batch.",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "tasks": [],
+      "deviations": []
+    },
+    {
+      "id": 6,
+      "name": "admin-batch-ui",
+      "file": "phase-6-admin-batch-ui.md",
+      "goal": "Build the admin UI that lets users upload one natural multi-indicator Parquet file, review analyzer output, accept/edit generated definitions and mappings, stage canonical slices, and publish the batch.",
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "tasks": [],
+      "deviations": []
+    }
+  ],
+  "decisions": [],
+  "references": []
+}

@@ -1,3 +1,5 @@
+> Status note, 2026-06-21: This PRD remains valid as the **definition-save primitive** and phase 0 of `plans/geih-batch-ingest/README.md` has now ported it onto the current `main` schema. The implemented slice adds `/admin/ingest`, a tested deep `definition-ingest` module, the admin definition catalog, and writes through `data_sources`, `indicator_groups.data_source_id`, `indicators.source_citation`, explicit `indicator_frequencies`, and `indicator_dimensions`. It is still not the recommended final user-facing GEIH workflow: the batch-first flow should analyze source-shaped multi-indicator Parquet files and generate reviewed definitions before staging or publishing observations.
+
 ## Problem Statement
 
 Data scientists need a fast, reliable way to create many Indicator definitions for a Data source before uploading observations. Today, creating an Indicator is API-oriented and one-at-a-time, while the desired workflow is a Data-source-scoped admin page where a data scientist can paste around 20 Indicator frequency definitions from a spreadsheet, validate them all at once, and save them without exposing incomplete definitions to the public Explorer.
