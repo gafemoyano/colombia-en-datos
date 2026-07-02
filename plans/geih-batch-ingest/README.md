@@ -12,7 +12,7 @@ To start a phase, open a new session, read this README for shared context, then 
 
 ## Status
 
-- **Status**: planning
+- **Status**: in-progress
 - **Created**: 2026-06-21
 - **Owner**: Felipe
 
@@ -50,8 +50,8 @@ Provide admin users with a reliable way to load GEIH-style Parquet batches into 
 
 | # | File | Goal | Status |
 |---|---|---|---|
-| 0 | [phase-0-port-definition-save.md](phase-0-port-definition-save.md) | Port the definition-save primitive from the old branch onto the `main` schema with tests. | pending |
-| 1 | [phase-1-batch-lineage-schema.md](phase-1-batch-lineage-schema.md) | Add batch parent/slice lineage scaffolding so one file can fan out to many releases. | pending |
+| 0 | [phase-0-port-definition-save.md](phase-0-port-definition-save.md) | Port the definition-save primitive from the old branch onto the `main` schema with tests. | completed |
+| 1 | [phase-1-batch-lineage-schema.md](phase-1-batch-lineage-schema.md) | Add batch parent/slice lineage scaffolding so one file can fan out to many releases. | completed |
 | 2 | [phase-2-batch-analyzer.md](phase-2-batch-analyzer.md) | Add a read-only Parquet batch profiler that derives slices and validates file-wide dimensionality. | pending |
 | 3 | [phase-3-definition-drafts.md](phase-3-definition-drafts.md) | Generate editable definition grids from batch profiles and save definitions transactionally. | pending |
 | 4 | [phase-4-canonical-stage.md](phase-4-canonical-stage.md) | Canonicalize source rows and stage validated observation slices per indicator/frequency. | pending |

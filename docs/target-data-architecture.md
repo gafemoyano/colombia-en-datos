@@ -170,22 +170,24 @@ checksum       VARCHAR       -- sha256 of source file
 source_format  VARCHAR       -- 'parquet', 'csv', 'excel'
 row_count      INTEGER
 status         VARCHAR       -- 'uploaded', 'analyzed', 'staged', 'published', 'failed'
-profile_json   JSON          -- analyzer summary and warnings
-mappings_json  JSON          -- accepted source-to-canonical mappings
 created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 published_at   TIMESTAMP
 
 -- ingest_batch_slices
 -- One distinct indicator_code + freq slice derived from a batch.
 id             INTEGER PRIMARY KEY
 batch_id       INTEGER REFERENCES ingest_batches(id)
-indicator_id   INTEGER REFERENCES indicators(id)
+indicator_code VARCHAR NOT NULL  -- analyzer can identify slices before Indicator rows exist
 freq           VARCHAR NOT NULL
+indicator_id   INTEGER REFERENCES indicators(id)
 row_count      INTEGER
 period_start   VARCHAR
 period_end     VARCHAR
 status         VARCHAR       -- 'proposed', 'staged', 'published', 'failed'
 release_id     INTEGER REFERENCES data_releases(id)
+created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 
 -- data_releases
 -- Per-indicator/frequency lineage emitted by a publish action.
@@ -355,7 +357,7 @@ Batch validation:
 6. Every registered dimension for each Indicator frequency must be present, and no unmapped/unregistered dimension columns may be silently stored.
 7. Dimension values must exist in `dimension_values`; unknown values are rejected or routed to a deliberate codelist-curation step before publish.
 8. Duplicate primary keys (same indicator, freq, time, dimensions) are rejected per slice.
-9. Every source-to-canonical column mapping must be explicit and persisted in the staged batch manifest.
+9. Every source-to-canonical column mapping must be explicit and persisted in the analyzer / definition-draft model chosen in phases 2–3; phase 1 stores only durable lineage, not mappings.
 10. The file's mapped dimension column set must be compatible with every slice's dimension contract. Uniform dimensionality is validated, not assumed.
 11. Measurement fields extracted from the source file must be stable per Indicator; mixed units or decimals for the same Indicator are rejected until a frequency/dimension-specific measurement model exists.
 12. Generated definitions are saved before observations are published, so public visibility still requires both lineage and canonical observations.
@@ -641,7 +643,7 @@ The GEIH sample file (`data/geih_2021_2026_arq_ok_v2.parquet`) showed that trust
 Planned slices:
 
 1. Port the definition-save UI/module onto the `data_sources` + `source_citation` schema from `main`. ✅ Implemented in phase 0 via `/admin/ingest`, `src/lib/server/definition-ingest.ts`, `src/lib/server/admin-definition-catalog.ts`, and tests covering explicit `indicator_frequencies` / `indicator_dimensions` writes.
-2. Add `ingest_batches` / `ingest_batch_slices` lineage scaffolding so one uploaded file can fan out to many per-indicator releases.
+2. Add `ingest_batches` / `ingest_batch_slices` lineage scaffolding so one uploaded file can fan out to many per-indicator releases. ✅ Implemented in phase 1 via `src/lib/db/schema/indicators.ts`, `drizzle/0007_batch_lineage_schema.sql`, and thin batch manifest summary helpers.
 3. Add a read-only batch analyzer that profiles multi-indicator Parquet files, derives slices, checks uniform dimensionality, and proposes definitions/mappings without writing observations.
 4. Generate editable definition drafts from batch profiles and save definitions transactionally.
 5. Canonicalize and stage every validated `indicator_code + freq` slice.
@@ -729,7 +731,7 @@ Build the new `/explore` route as a parallel prototype while leaving `/app` inta
    *Recommendation:* Save the DANE code reference locally, then seed `dimension_values` for `DEPT_CODE`, `MUNI_CODE`, and `GEO_LEVEL`. `departamentos` can be a seed source, but not the Explorer runtime label source.
 
 3. **How should batch mapping rules be persisted and audited?**  
-   *Recommendation:* Store accepted mappings on `ingest_batches.mappings_json` first. Promote to reusable source-specific mapping templates only after two or more batches from the same Data source prove the rules are stable.
+   *Recommendation:* Defer the persistence shape until the analyzer and definition-draft phases expose the real domain concepts. Phase 1 intentionally keeps `ingest_batches` / `ingest_batch_slices` as relational lineage only, without `profile_json` or `mappings_json` as source-of-truth columns. Candidate shapes for phases 2–3 include relational mapping tables, audited accepted-mapping snapshots, or both; promote reusable source-specific mapping templates only after repeated batches from the same Data source prove the rules are stable.
 
 4. **Should fixed total dimensions be stored as dimensions or collapsed into dimensionless definitions?**  
    *Recommendation:* For v1, collapse GEIH-like national total slices into dimensionless definitions unless the source file contains multiple values for a dimension. Preserve fixed values in batch analysis metadata for audit.

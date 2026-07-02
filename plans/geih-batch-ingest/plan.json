@@ -2,19 +2,19 @@
   "schema_version": "1",
   "feature": "geih-batch-ingest",
   "created_at": "2026-06-21",
-  "updated_at": "2026-06-21",
+  "updated_at": "2026-07-02",
   "owner": "Felipe",
   "status": "in-progress",
-  "current_phase": 0,
+  "current_phase": 1,
   "phases": [
     {
       "id": 0,
       "name": "port-definition-save",
       "file": "phase-0-port-definition-save.md",
       "goal": "Port the useful definition-save behavior from the old `dev` branch onto the current `main` schema. This phase creates the reusable primitive that later batch phases call after the analyzer proposes Indicator frequency definitions.",
-      "status": "in-progress",
+      "status": "completed",
       "started_at": "2026-06-21",
-      "completed_at": null,
+      "completed_at": "2026-07-02",
       "tasks": [
         {
           "id": "0.1",
@@ -60,10 +60,41 @@
       "name": "batch-lineage-schema",
       "file": "phase-1-batch-lineage-schema.md",
       "goal": "Add explicit batch lineage scaffolding so one uploaded Parquet file can produce many per-indicator/frequency release rows. This resolves the mental-model shift from \"upload equals one release\" to \"upload equals one batch, publishing N slices.\"",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
-      "tasks": [],
+      "status": "completed",
+      "started_at": "2026-07-02",
+      "completed_at": "2026-07-02",
+      "tasks": [
+        {
+          "id": "1.1",
+          "title": "Add Drizzle schema exports for relational batch lineage core",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "1.2",
+          "title": "Create additive SQLite migration for ingest_batches, ingest_batch_slices, and data_releases.ingest_batch_id",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "1.3",
+          "title": "Add thin batch-ingest manifest domain helpers without profile or mapping JSON as source of truth",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "1.4",
+          "title": "Add manifest helper tests for status validation and shape stability",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "1.5",
+          "title": "Run targeted manifest tests and npm run check",
+          "status": "done",
+          "notes": null
+        }
+      ],
       "deviations": []
     },
     {
@@ -122,6 +153,17 @@
       "deviations": []
     }
   ],
-  "decisions": [],
+  "decisions": [
+    {
+      "date": "2026-07-02",
+      "note": "Phase 1: use SQLite JSON columns (profile_json and mappings_json) as the manifest source for batch analysis and accepted mappings; defer file-based batch manifest helpers until staging artifacts require them.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-02",
+      "note": "Phase 1 supersedes the earlier SQLite JSON manifest decision: model only durable batch lineage relationally now, and defer profile/mapping persistence shape to the analyzer and definition-draft phases where the domain concepts are clearer.",
+      "adr_candidate": false
+    }
+  ],
   "references": []
 }
