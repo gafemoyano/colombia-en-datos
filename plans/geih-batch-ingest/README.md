@@ -52,10 +52,10 @@ Provide admin users with a reliable way to load GEIH-style Parquet batches into 
 |---|---|---|---|
 | 0 | [phase-0-port-definition-save.md](phase-0-port-definition-save.md) | Port the definition-save primitive from the old branch onto the `main` schema with tests. | completed |
 | 1 | [phase-1-batch-lineage-schema.md](phase-1-batch-lineage-schema.md) | Add batch parent/slice lineage scaffolding so one file can fan out to many releases. | completed |
-| 2 | [phase-2-batch-analyzer.md](phase-2-batch-analyzer.md) | Add a read-only Parquet batch profiler that derives slices and validates file-wide dimensionality. | pending |
-| 3 | [phase-3-definition-drafts.md](phase-3-definition-drafts.md) | Generate editable definition grids from batch profiles and save definitions transactionally. | pending |
-| 4 | [phase-4-canonical-stage.md](phase-4-canonical-stage.md) | Canonicalize source rows and stage validated observation slices per indicator/frequency. | pending |
-| 5 | [phase-5-batch-publish.md](phase-5-batch-publish.md) | Publish staged slices to DuckDB with per-slice replacement and lineage fan-out. | pending |
+| 2 | [phase-2-batch-analyzer.md](phase-2-batch-analyzer.md) | Add a read-only Parquet batch profiler that derives slices and validates file-wide dimensionality. | completed |
+| 3 | [phase-3-definition-drafts.md](phase-3-definition-drafts.md) | Generate editable definition grids from batch profiles and save definitions transactionally. | completed |
+| 4 | [phase-4-canonical-stage.md](phase-4-canonical-stage.md) | Canonicalize source rows and stage validated observation slices per indicator/frequency. | completed |
+| 5 | [phase-5-batch-publish.md](phase-5-batch-publish.md) | Publish staged slices to DuckDB with per-slice replacement and lineage fan-out. | completed |
 | 6 | [phase-6-admin-batch-ui.md](phase-6-admin-batch-ui.md) | Build the admin UI flow that ties analysis, review, staging, and publish together. | pending |
 
 After phase 2, engineers can repeatedly profile real data-engineering deliveries without touching production data. After phase 4, trusted admins can stage fully canonical slices. After phase 5, batch ingest is end-to-end functional behind API/admin surfaces.

@@ -2,6 +2,32 @@
 
 This document provides a high-level overview of the Colombia en Datos web application architecture.
 
+> The older diagrams below still describe parts of the landing page and compatibility APIs, but their scattered-Parquet data path is legacy. The current runtime and batch-ingest path is summarized here and detailed in `docs/target-data-architecture.md`.
+
+## Current data and batch-ingest architecture
+
+```mermaid
+flowchart LR
+    Admin[Admin batch upload] --> Analyze[Durable intake + analyzer]
+    Analyze --> Volume[(Fly volume\nDATA_PATH/ingest/batches)]
+    Analyze --> Metadata[(Turso/libSQL metadata\nand batch lineage)]
+    Volume --> Drafts[Definition drafts]
+    Drafts --> Metadata
+    Volume --> Canonicalize[Canonicalize + validate slices]
+    Metadata --> Canonicalize
+    Canonicalize --> Staged[Immutable staged Parquet\n+ versioned manifest]
+    Staged --> Volume
+    Staged --> Publish[Integrity-checked batch publish]
+    Publish --> Canonical[(observations.duckdb)]
+    Publish --> Metadata
+    Canonical --> Explorer[/explore + data APIs]
+    Metadata --> Explorer
+```
+
+The analyzer endpoint retains the original upload under `DATA_PATH/ingest/batches/<batchId>/`, records relational lineage, and writes immutable versioned manifests. Canonical staging validates each file-derived `indicator_code + freq` slice against current definitions and populated codelists, then writes one canonical Parquet artifact per valid slice without modifying production observations. Publish verifies those artifacts, promotes a copy-on-write canonical generation, and records per-slice lineage.
+
+`DATA_PATH=/data` maps to the `indicator_data` Fly volume. The canonical rebuild excludes `DATA_PATH/ingest`, keeping retained uploads and staged files separate from source discovery. See ADR 0006 and `docs/canonical-duckdb-deploy.md` for operational constraints.
+
 ## System Architecture Diagram
 
 ```mermaid
@@ -267,15 +293,16 @@ flowchart TD
 
 ### 2. **Hybrid Data Storage Pattern**
 
-- **SQLite**: Lightweight relational database for metadata, relationships, and reference data
-- **Parquet**: Columnar storage for large-scale time series data
-- **DuckDB**: In-memory analytical engine that bridges both storage systems
+- **Turso/libSQL through Drizzle**: metadata, definitions, codelists, releases, and batch lineage
+- **Canonical DuckDB**: production observation store queried by Explorer and data APIs
+- **Parquet on `DATA_PATH`**: retained source batches and immutable staged slices; legacy source Parquet remains rebuild input
+- **In-memory DuckDB connections**: analysis, canonicalization, and Parquet projection tools rather than the durable observation store itself
 
-### 3. **API-First Architecture**
+### 3. **Server-module-first architecture**
 
-- RESTful API endpoints for all data operations
-- Clear separation between UI and data layer
-- Enables future mobile app or external integrations
+- SvelteKit server modules hold the core Explorer and ingest workflows
+- Thin API routes expose only the seams currently needed by admin/client flows
+- Batch analysis and all-slices publish have HTTP endpoints; definition drafting and canonical staging remain server seams until the admin UI needs routes
 
 ### 4. **Component-Based UI**
 

@@ -1,5 +1,12 @@
-export const BATCH_STATUSES = ['uploaded', 'analyzed', 'staged', 'published', 'failed'] as const;
-export const SLICE_STATUSES = ['proposed', 'staged', 'published', 'failed'] as const;
+export const BATCH_STATUSES = [
+	'uploaded',
+	'analyzed',
+	'staged',
+	'publishing',
+	'published',
+	'failed'
+] as const;
+export const SLICE_STATUSES = ['proposed', 'staged', 'publishing', 'published', 'failed'] as const;
 
 export type BatchStatus = (typeof BATCH_STATUSES)[number];
 export type SliceStatus = (typeof SLICE_STATUSES)[number];

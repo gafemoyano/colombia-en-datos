@@ -16,7 +16,35 @@ The app resolves the canonical file in strict priority:
 2. `$DATA_PATH/observations.duckdb`, when `DATA_PATH` is set
 3. `./data/observations.duckdb` (local dev only)
 
-On Fly.io, `DATA_PATH=/data` and the volume is mounted at `/data`. The app **does not fall back** to an embedded copy if the volume file is missing — it will fail fast at startup.
+On Fly.io, `DATA_PATH=/data` and the `indicator_data` volume is mounted at `/data`. The app **does not fall back** to an embedded copy if the volume file is missing — it will fail fast at startup.
+
+## Batch ingest artifacts on the volume
+
+Batch intake and staging use the same persistent volume, but a separate namespace:
+
+```text
+/data/ingest/batches/<batchId>/
+├── source/source.parquet
+├── analysis/profile.v1.json
+├── manifests/{intake,accepted-mapping,staging-input}.v1.json
+├── staged/
+│   ├── manifest.v1.json
+│   └── slices/<sliceId>.parquet
+└── publish/journal.v1.json
+```
+
+Retained sources, staging manifests, and per-slice Parquet files are immutable and checksummed. The publish journal is updated atomically as a batch advances through candidate, promotion, and lineage checkpoints. These artifacts make staging and interrupted publish recovery reproducible across process restarts. `scripts/create-canonical-store.ts` explicitly excludes `/data/ingest`, so a canonical rebuild cannot accidentally ingest uploaded or staged files.
+
+Canonicalization currently materializes rows in memory. `BATCH_STAGE_MAX_ROWS` sets the pre-projection limit and defaults to `250000`; set it on the Fly app only after confirming the machine has sufficient memory. Invalid or non-positive values make staging fail fast.
+
+Operational implications:
+
+- Include `/data/ingest/batches` in volume capacity monitoring and backup policy.
+- Do not manually modify retained sources, manifests, journals, or staged slices; integrity checks and immutable or atomic writes protect their workflow contracts.
+- Do not overlap legacy single-slice publish, batch publish, or canonical rebuild operations. Batch publish and rebuild share a writer lease; the legacy publisher still requires manual serialization.
+- Define retention/cleanup before opening ingest broadly. No automatic artifact cleanup exists yet.
+- Fly volumes are machine-local. Preview or development environments without a persistent `DATA_PATH` do not provide durable batch artifacts.
+- Exact replay currently reloads the latest Indicator definitions and codelists; those contracts are not snapshotted in the batch directory.
 
 ## First-time volume bootstrap
 
@@ -36,7 +64,7 @@ When you need to change the DuckDB schema (add columns, new indexes, etc.):
 
 ## Local rebuild and validation
 
-Rebuild from local parquet files under `data/`:
+Rebuild from local source parquet files under `data/` (the `data/ingest` namespace is excluded):
 
 ```bash
 npm run canonical:rebuild
@@ -97,3 +125,4 @@ flyctl logs --app colombia-en-datos-webapp-dark-dust-4694 --no-tail | rg 'canoni
 - Restart after promoting a volume file; the app caches the DuckDB connection in process memory.
 - Schema changes to Turso still need Drizzle migrations. Schema/data changes to `observations.duckdb` need the canonical rebuild workflow above.
 - Because Fly volumes are tied to specific machines, you currently run a single persistent machine (`auto_stop_machines = 'off'`). Scaling to multiple machines requires either replicated volumes (one per machine) or moving to a shared backend (e.g. MotherDuck, S3-attached DuckDB).
+- Capacity and backups must cover both `/data/observations.duckdb` and `/data/ingest/batches`; canonical rebuilds intentionally read neither retained uploads nor staged slices.

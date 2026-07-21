@@ -79,6 +79,32 @@ export interface SaveDefinitionGridInput {
 	definitionText: string;
 }
 
+export type DefinitionRowValue = string | number | null | undefined;
+
+export interface DefinitionRowInput {
+	rowNumber?: number;
+	values: Record<string, DefinitionRowValue>;
+}
+
+export interface ValidateDefinitionRowsInput {
+	dataSource: {
+		code: string;
+		name: string;
+	};
+	rows: DefinitionRowInput[];
+	knownDimensionCodes: string[];
+	headers?: string[];
+}
+
+export interface SaveDefinitionRowsInput {
+	dataSource: {
+		code: string;
+		name: string;
+	};
+	rows: DefinitionRowInput[];
+	headers?: string[];
+}
+
 export interface SaveDefinitionGridResult {
 	ok: boolean;
 	validation: DefinitionValidationResult;
@@ -230,6 +256,163 @@ function consistencyValue(
 	if (field === 'group_code') return groupCodeForRow(row, dataSourceCode);
 	if (field === 'group_name') return groupNameForRow(row, dataSourceCode, dataSourceName);
 	return rowValue(row.values, field);
+}
+
+function supportedHeadersInOrder(headers: Iterable<string>): string[] {
+	const headerSet = new Set(Array.from(headers).map((header) => header.trim().toLowerCase()));
+	return [...REQUIRED_DEFINITION_HEADERS, ...OPTIONAL_DEFINITION_HEADERS].filter((header) =>
+		headerSet.has(header)
+	);
+}
+
+function rowInputValue(value: DefinitionRowValue): string {
+	if (value === null || value === undefined) return '';
+	return String(value).trim();
+}
+
+function normalizeDefinitionRowValues(
+	row: DefinitionRowInput,
+	headers: string[],
+	errors: DefinitionValidationError[]
+): Record<string, string> {
+	const valuesByHeader = new Map<string, DefinitionRowValue>();
+	for (const [field, value] of Object.entries(row.values)) {
+		const normalizedField = field.trim().toLowerCase();
+		if (!valuesByHeader.has(normalizedField)) valuesByHeader.set(normalizedField, value);
+		if (!SUPPORTED_HEADERS.has(normalizedField)) {
+			errors.push({
+				rowNumber: row.rowNumber || 0,
+				field,
+				message: `Unsupported header: ${field}`
+			});
+		}
+	}
+
+	return Object.fromEntries(
+		headers.map((header) => [header, rowInputValue(valuesByHeader.get(header))])
+	);
+}
+
+export function validateDefinitionRows(
+	input: ValidateDefinitionRowsInput
+): DefinitionValidationResult {
+	const errors: DefinitionValidationError[] = [];
+	const rows: ParsedDefinitionRow[] = [];
+	const dataSource = {
+		code: normalizeDataSourceCode(input.dataSource.code),
+		name: input.dataSource.name.trim()
+	};
+	const headers = input.headers
+		? normalizeHeaders(input.headers)
+		: supportedHeadersInOrder(input.rows.flatMap((row) => Object.keys(row.values)));
+	const headerSet = new Set(headers);
+
+	for (const requiredHeader of REQUIRED_DEFINITION_HEADERS) {
+		if (!headerSet.has(requiredHeader)) {
+			errors.push({
+				rowNumber: 1,
+				field: requiredHeader,
+				message: `Missing required header: ${requiredHeader}`
+			});
+		}
+	}
+
+	const seenHeaders = new Set<string>();
+	for (const header of headers) {
+		if (!header) {
+			errors.push({
+				rowNumber: 1,
+				field: 'header',
+				message: 'Header names cannot be blank.'
+			});
+			continue;
+		}
+
+		if (seenHeaders.has(header)) {
+			errors.push({
+				rowNumber: 1,
+				field: header,
+				message: `Duplicate header: ${header}`
+			});
+		}
+		seenHeaders.add(header);
+
+		if (!SUPPORTED_HEADERS.has(header)) {
+			errors.push({
+				rowNumber: 1,
+				field: header,
+				message: `Unsupported header: ${header}`
+			});
+		}
+	}
+
+	const knownDimensionCodes = new Set(
+		input.knownDimensionCodes.map((code) => code.trim().toUpperCase()).filter(Boolean)
+	);
+
+	input.rows.forEach((row, index) => {
+		const rowNumber = row.rowNumber || index + 2;
+		const values = normalizeDefinitionRowValues({ ...row, rowNumber }, headers, errors);
+		const indicatorCode = rowValue(values, 'indicator_code');
+		const freq = rowValue(values, 'freq').toUpperCase();
+		const name = rowValue(values, 'name');
+
+		if (headerSet.has('indicator_code') && !indicatorCode) {
+			errors.push({
+				rowNumber,
+				field: 'indicator_code',
+				message: 'Indicator code is required.'
+			});
+		}
+
+		if (headerSet.has('freq') && !freq) {
+			errors.push({
+				rowNumber,
+				field: 'freq',
+				message: 'Frequency is required.'
+			});
+		}
+
+		if (headerSet.has('name') && !name) {
+			errors.push({
+				rowNumber,
+				field: 'name',
+				message: 'Name is required.'
+			});
+		}
+
+		const dimensions = parseDimensions({
+			rowNumber,
+			value: rowValue(values, 'dimensions'),
+			knownDimensionCodes,
+			errors
+		});
+
+		rows.push({
+			rowNumber,
+			indicatorCode,
+			freq,
+			name,
+			dimensions,
+			values
+		});
+	});
+
+	if (input.rows.length === 0) {
+		errors.push({
+			rowNumber: 1,
+			field: 'grid',
+			message: 'Paste at least one definition row.'
+		});
+	}
+
+	return {
+		valid: errors.length === 0,
+		errors,
+		rows,
+		dataSource,
+		headers
+	};
 }
 
 export function validateDefinitionPaste(
@@ -389,18 +572,10 @@ export function validateDefinitionPaste(
 	};
 }
 
-export async function saveDefinitionGrid(
-	input: SaveDefinitionGridInput,
-	db: AppDb = getDb()
+async function saveValidatedDefinitionRows(
+	validation: DefinitionValidationResult,
+	db: AppDb
 ): Promise<SaveDefinitionGridResult> {
-	const dimensionRows = await db
-		.select({ code: dimensionDefinitions.code })
-		.from(dimensionDefinitions);
-	let validation = validateDefinitionPaste({
-		...input,
-		knownDimensionCodes: dimensionRows.map((row) => row.code)
-	});
-
 	if (!validation.valid) return { ok: false, validation };
 
 	const errors: DefinitionValidationError[] = [];
@@ -633,4 +808,33 @@ export async function saveDefinitionGrid(
 			frequencyCount: validation.rows.length
 		}
 	};
+}
+
+async function loadKnownDimensionCodes(db: AppDb): Promise<string[]> {
+	const rows = await db.select({ code: dimensionDefinitions.code }).from(dimensionDefinitions);
+	return rows.map((row) => row.code);
+}
+
+export async function saveDefinitionRows(
+	input: SaveDefinitionRowsInput,
+	db: AppDb = getDb()
+): Promise<SaveDefinitionGridResult> {
+	const validation = validateDefinitionRows({
+		...input,
+		knownDimensionCodes: await loadKnownDimensionCodes(db)
+	});
+
+	return saveValidatedDefinitionRows(validation, db);
+}
+
+export async function saveDefinitionGrid(
+	input: SaveDefinitionGridInput,
+	db: AppDb = getDb()
+): Promise<SaveDefinitionGridResult> {
+	const validation = validateDefinitionPaste({
+		...input,
+		knownDimensionCodes: await loadKnownDimensionCodes(db)
+	});
+
+	return saveValidatedDefinitionRows(validation, db);
 }

@@ -11,14 +11,23 @@ import {
 
 describe('batch ingest manifest helpers', () => {
 	it('validates supported batch and slice statuses', () => {
-		expect(BATCH_STATUSES).toEqual(['uploaded', 'analyzed', 'staged', 'published', 'failed']);
-		expect(SLICE_STATUSES).toEqual(['proposed', 'staged', 'published', 'failed']);
+		expect(BATCH_STATUSES).toEqual([
+			'uploaded',
+			'analyzed',
+			'staged',
+			'publishing',
+			'published',
+			'failed'
+		]);
+		expect(SLICE_STATUSES).toEqual(['proposed', 'staged', 'publishing', 'published', 'failed']);
 
 		expect(isBatchStatus('uploaded')).toBe(true);
+		expect(isBatchStatus('publishing')).toBe(true);
 		expect(isBatchStatus('draft')).toBe(false);
 		expect(isBatchStatus(null)).toBe(false);
 
 		expect(isSliceStatus('proposed')).toBe(true);
+		expect(isSliceStatus('publishing')).toBe(true);
 		expect(isSliceStatus('analyzed')).toBe(false);
 		expect(isSliceStatus(undefined)).toBe(false);
 	});

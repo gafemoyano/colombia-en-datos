@@ -2,10 +2,10 @@
   "schema_version": "1",
   "feature": "geih-batch-ingest",
   "created_at": "2026-06-21",
-  "updated_at": "2026-07-02",
+  "updated_at": "2026-07-21",
   "owner": "Felipe",
   "status": "in-progress",
-  "current_phase": 1,
+  "current_phase": null,
   "phases": [
     {
       "id": 0,
@@ -102,21 +102,119 @@
       "name": "batch-analyzer",
       "file": "phase-2-batch-analyzer.md",
       "goal": "Build a read-only analyzer for Parquet batches. It should derive the set of `indicator_code + freq` slices from file contents, detect canonical vs source-shaped columns, profile measurement and dimension candidates, and enforce the uniform-dimensionality invariant before any database writes.",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
-      "tasks": [],
-      "deviations": []
+      "status": "completed",
+      "started_at": "2026-07-02",
+      "completed_at": "2026-07-02",
+      "tasks": [
+        {
+          "id": "2.1",
+          "title": "Define a generic BatchProfile workflow contract for columns, mappings, derived slices, diagnostics, admin-review questions, and persistence-free analyzer output",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "2.2",
+          "title": "Implement conservative source-to-canonical mapping proposals for canonical files and GEIH-like source-shaped files without hard-coding GEIH as the only workflow",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "2.3",
+          "title": "Implement DuckDB-backed read-only profiling that derives indicator_code plus freq slices, row counts, period coverage, measurement summaries, dimension candidates, and duplicate-key diagnostics from file contents",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "2.4",
+          "title": "Represent uniform-dimensionality results and fixed-total dimension candidates so later definition-draft review can decide whether to collapse or keep dimensions",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "2.5",
+          "title": "Add a thin analyze endpoint that returns the generic BatchProfile for manual workflow validation without saving definitions, staging rows, or publishing observations",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "2.6",
+          "title": "Add minimal workflow-focused smoke coverage for canonical and GEIH-like source-shaped analyzer outputs, avoiding dependence on the large real GEIH file",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "2.7",
+          "title": "Run targeted analyzer checks and npm run check",
+          "status": "done",
+          "notes": null
+        }
+      ],
+      "deviations": [
+        {
+          "date": "2026-07-02",
+          "kind": "scope-change",
+          "note": "Phase 2 scope emphasis changed from data-level GEIH fixture completeness to a generic analyzer workflow contract with minimal smoke coverage and an earlier thin analyze endpoint for workflow validation."
+        }
+      ]
     },
     {
       "id": 3,
       "name": "definition-drafts",
       "file": "phase-3-definition-drafts.md",
       "goal": "Generate editable Indicator frequency definition drafts from a batch profile, then save accepted definitions transactionally through the definition-save primitive. This bridges the observation half of a multi-indicator file with the metadata registry required by Explorer and publish validation.",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
-      "tasks": [],
+      "status": "completed",
+      "started_at": "2026-07-02",
+      "completed_at": "2026-07-13",
+      "tasks": [
+        {
+          "id": "3.1",
+          "title": "Define DefinitionDraftRow and generation result shapes from BatchProfile, including provenance and admin review notes",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.2",
+          "title": "Generate one editable definition draft per derived slice with explicit admin-required fields when analyzer data lacks human labels",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.3",
+          "title": "Extract stable unit, unit_mult, and decimals metadata from BatchProfile measurement summaries and report mixed values as draft errors",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.4",
+          "title": "Apply fixed-total dimension policy by proposing dimensionless definitions while preserving collapsed fixed values for audit",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.5",
+          "title": "Add a row-array definition save seam in definition-ingest.ts so generated drafts can reuse existing validation and transactional save rules without TSV plumbing",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.6",
+          "title": "Save accepted definition draft rows transactionally through the Phase 0 definition-save primitive",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.7",
+          "title": "Add behavior tests for draft generation, fixed-total collapse, mixed measurements, and save integration",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "3.8",
+          "title": "Run targeted definition-draft tests and npm run check",
+          "status": "done",
+          "notes": null
+        }
+      ],
       "deviations": []
     },
     {
@@ -124,22 +222,175 @@
       "name": "canonical-stage",
       "file": "phase-4-canonical-stage.md",
       "goal": "Canonicalize accepted batch rows into the Observation schema and stage one validated row set per `indicator_code + freq` slice. This phase stops before publish, so admins can inspect errors without mutating production observations.",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
-      "tasks": [],
-      "deviations": []
+      "status": "completed",
+      "started_at": "2026-07-13",
+      "completed_at": "2026-07-13",
+      "tasks": [
+        {
+          "id": "4.1",
+          "title": "Add DATA_PATH-aware durable batch intake, retain uploaded source files on the Fly volume, create ingest_batches records, and make analysis reproducible",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "4.2",
+          "title": "Define and persist versioned accepted-mapping, collapsed-dimension, source-integrity, and staged-manifest contracts",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "4.3",
+          "title": "Implement canonical row projection from accepted mappings with lowercase Observation columns and exclusion of measurement and trace-only fields",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "4.4",
+          "title": "Normalize supported periods and observation values while rejecting invalid periods and non-numeric non-null obs_value values",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "4.5",
+          "title": "Validate saved frequency and dimension contracts, populated codelists, collapsed fixed values, duplicate keys, and slice isolation",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "4.6",
+          "title": "Persist immutable staged Parquet slices, checksums, validation summaries, and batch/slice statuses without touching production observations",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "4.7",
+          "title": "Add workflow tests for canonical and source-shaped staging and run targeted tests plus npm run check",
+          "status": "done",
+          "notes": null
+        }
+      ],
+      "deviations": [
+        {
+          "date": "2026-07-13",
+          "kind": "scope-change",
+          "note": "Phase 4 must modify the existing batch analyze endpoint and add durable batch artifact/storage contracts because Phase 2 currently deletes its temporary upload, making staging unreproducible."
+        },
+        {
+          "date": "2026-07-13",
+          "kind": "note",
+          "note": "Resolved the durable artifact contract into new batch-ingest/storage.ts and intake.ts modules with adjacent tests; reserve DATA_PATH/ingest/batches for batch artifacts and exclude DATA_PATH/ingest from canonical rebuild discovery so source and staged Parquet files cannot be ingested accidentally."
+        },
+        {
+          "date": "2026-07-13",
+          "kind": "decision",
+          "note": "Canonical duplicate detection treats NULL values in registered key dimensions as equal, conservatively rejecting repeated keys that differ only by SQL NULL distinctness."
+        },
+        {
+          "date": "2026-07-13",
+          "kind": "note",
+          "note": "Retained canonical rows in memory for Phase 4, but added a configurable pre-projection BATCH_STAGE_MAX_ROWS guard (default 250,000) and writes each slice through a temporary NDJSON file into DuckDB COPY to avoid an additional unbounded in-memory serialization."
+        },
+        {
+          "date": "2026-07-13",
+          "kind": "note",
+          "note": "Exact staging replay remains dependent on current Indicator definitions and dimension codelists because those metadata contracts are not snapshotted in Phase 4 artifacts."
+        }
+      ]
     },
     {
       "id": 5,
       "name": "batch-publish",
       "file": "phase-5-batch-publish.md",
       "goal": "Publish staged batch slices into the canonical DuckDB store. Batch publish replaces only the `indicator_code + freq` pairs present in the staged batch, leaves absent slices untouched, and creates per-slice lineage linked to the parent batch.",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
-      "tasks": [],
-      "deviations": []
+      "status": "completed",
+      "started_at": "2026-07-18",
+      "completed_at": "2026-07-20",
+      "tasks": [
+        {
+          "id": "5.1",
+          "title": "Add the shared DATA_PATH writer lease and make canonical rebuilds honor it",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "5.2",
+          "title": "Add query draining, DuckDB close/reopen, atomic generation promotion, and one-generation backup retention",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "5.3",
+          "title": "Add publishing workflow states plus the durable publish journal and startup reconciliation",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "5.4",
+          "title": "Build and validate a candidate database from staged checksums, replacing only present slices",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "5.5",
+          "title": "Implement idempotent per-slice lineage fan-out and finalize batch and slice statuses",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "5.6",
+          "title": "Add the all-slices publish endpoint while keeping partial slice selection unsupported",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "5.7",
+          "title": "Add locking, rollback, recovery, replacement, lineage, and public-visibility tests; run targeted tests and npm run check",
+          "status": "done",
+          "notes": null
+        }
+      ],
+      "deviations": [
+        {
+          "date": "2026-07-17",
+          "kind": "scope-change",
+          "note": "Phase 5 will use copy-on-write DuckDB file promotion with a controlled connection hot swap instead of mutating the active canonical database in place; the implementation scope must include the DuckDB connection lifecycle and query-drain boundary."
+        },
+        {
+          "date": "2026-07-17",
+          "kind": "scope-change",
+          "note": "The canonical rebuild script must participate in the new DATA_PATH writer lease so manual rebuilds cannot race batch candidate generation or promotion."
+        },
+        {
+          "date": "2026-07-17",
+          "kind": "scope-change",
+          "note": "The existing batch manifest status contract must add the publishing intermediate state and a durable per-batch publish journal because uploaded/analyzed/staged/published/failed alone cannot represent recoverable file promotion."
+        },
+        {
+          "date": "2026-07-19",
+          "kind": "note",
+          "note": "Resolved the revised task 5.1 file location as src/lib/server/canonical-writer-lease.ts with an adjacent test because the phase file's original file table predates the shared writer-lease decision."
+        },
+        {
+          "date": "2026-07-19",
+          "kind": "note",
+          "note": "Resolved revised task 5.3 into src/lib/server/batch-ingest/publish-journal.ts with adjacent tests; the module exposes durable checkpoint and reconciliation seams without implementing candidate replacement or lineage fan-out."
+        },
+        {
+          "date": "2026-07-19",
+          "kind": "scope-change",
+          "note": "Risk accepted by the user: because operational volume and publish frequency are low, Phase 5 will not retrofit the legacy single-slice publisher with the shared writer lease. Operators must serialize legacy publish, batch publish, and canonical rebuild operations manually."
+        },
+        {
+          "date": "2026-07-19",
+          "kind": "scope-change",
+          "note": "Risk accepted by the user: a lineage transaction failure after DuckDB promotion may temporarily expose the promoted observations against previous lineage. Manual retry or reconciliation is acceptable given infrequent publishing; automatic cross-store rollback is deferred."
+        },
+        {
+          "date": "2026-07-19",
+          "kind": "scope-change",
+          "note": "Risk accepted by the user: a process crash inside the two-rename promotion window may require manually restoring the previous or candidate DuckDB generation. Automatic executable startup recovery is deferred because its complexity is not justified by current publish volume."
+        }
+      ]
     },
     {
       "id": 6,
@@ -162,6 +413,66 @@
     {
       "date": "2026-07-02",
       "note": "Phase 1 supersedes the earlier SQLite JSON manifest decision: model only durable batch lineage relationally now, and defer profile/mapping persistence shape to the analyzer and definition-draft phases where the domain concepts are clearer.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-02",
+      "note": "Phase 2: represent fixed-total source dimensions as candidate dimensions marked fixedTotalCandidate in BatchProfile; defer collapse into dimensionless definitions to the definition-drafts phase.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-02",
+      "note": "Phase 2: implement the batch analyzer as a generic upload/analyze workflow boundary; GEIH remains a representative source-shaped example, not the hard-coded target. Prioritize BatchProfile/API output that helps admins review mappings, slices, dimensions, warnings, and next decisions before persistence.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-02",
+      "note": "Phase 3: take the shortest path by implementing definition-draft generation and save integration as server modules first; skip a new route until the admin UI or row-staging phase needs one.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-13",
+      "note": "Repository process note: skip service-map updates for this repo during feature close-out; batch ingest changes are tracked in the local plan and docs instead.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-13",
+      "note": "Phase 4: use file-based staging on the Fly.io persistent volume. Resolve batch artifact storage from DATA_PATH, retain the uploaded source file, persist a versioned accepted-mapping manifest, and write immutable staged Parquet slices for Phase 5.",
+      "adr_candidate": true
+    },
+    {
+      "date": "2026-07-13",
+      "note": "Phase 4: treat a registered dimension with no dimension_values rows as unconstrained; enforce codelist membership only when the dimension has an explicit populated codelist.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-17",
+      "note": "Phase 5: define all-or-nothing batch publish as a recoverable, idempotent state machine across SQLite, DuckDB, and filesystem manifests: mark publishing, verify staged integrity, replace every staged slice in one DuckDB transaction, commit lineage in one SQLite transaction, then finalize the manifest; interrupted publishes must be safely retryable and reconcilable.",
+      "adr_candidate": true
+    },
+    {
+      "date": "2026-07-17",
+      "note": "Phase 5: publish through a copy-on-write canonical DuckDB generation on the DATA_PATH volume. Build and validate a candidate from the active store, replace only staged indicator-frequency pairs in the candidate, then briefly drain queries, close the cached DuckDB handle, atomically promote the candidate on the same volume, reopen the canonical store, and retain the previous generation for recovery.",
+      "adr_candidate": true
+    },
+    {
+      "date": "2026-07-17",
+      "note": "Phase 5: serialize every canonical-store writer with a DATA_PATH-backed lease acquired through atomic file creation. The lease records the operation/publish ID and heartbeat metadata; stale-lock recovery must reconcile against the durable publish journal. Batch publish and canonical rebuild tooling must honor the same lease.",
+      "adr_candidate": true
+    },
+    {
+      "date": "2026-07-17",
+      "note": "Phase 5: treat the immutable staged manifest and Parquet checksums as the publish authority. Publish verifies artifact integrity and referenced relational IDs but does not revalidate staged rows against definitions or codelists that may have changed after staging.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-17",
+      "note": "Phase 5: extend batch and slice workflow states with publishing, use the batch ID as the idempotency key, and maintain an atomically written per-batch publish journal that records candidate generation, backup, promotion, lineage, manifest, and recovery checkpoints.",
+      "adr_candidate": true
+    },
+    {
+      "date": "2026-07-18",
+      "note": "Phase 5: retain exactly one known-good previous canonical DuckDB generation until the next successful publish. Remove that backup only before constructing the next candidate, keeping canonical-store peak usage near two generations plus staged artifacts.",
       "adr_candidate": false
     }
   ],

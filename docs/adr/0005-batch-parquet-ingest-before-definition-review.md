@@ -39,7 +39,7 @@ Canonical single-slice upload can remain as a compatibility path for technical u
 
 - Future implementation sessions should use `plans/geih-batch-ingest/README.md` as the entry point.
 - The useful parser/validation/safety behavior from the old definition-ingest branch should be ported to the `main` schema instead of merged wholesale.
-- Batch mappings must be explicit, previewed, and persisted in a staged manifest before publish.
+- Batch mappings must be explicit and previewed before publish. Phase 4 implements this as separate immutable, versioned artifacts: an accepted-mapping manifest, a staging-input manifest, and a staged-result manifest.
 - The canonical DuckDB `observations` table remains schema-uniform and multi-indicator; source quirks are handled at ingest boundaries.
 - The batch analyzer must enforce the new load-bearing invariant: all indicators in one flat file share the same observable column set, and each indicator/frequency definition contract must be compatible with that set.
 - `data_releases` should still be emitted per indicator/frequency slice, linked back to a batch parent so lineage can answer both "which upload did this release come from?" and "which indicators did this upload publish?".
@@ -50,3 +50,7 @@ Canonical single-slice upload can remain as a compatibility path for technical u
 - **Continue with the old definition-first branch as-is.** Rejected because it targets stale schema names and does not address source-shaped multi-indicator batch files.
 - **Require data engineering to split natural exports into canonical one-indicator files.** Rejected as the only path because the observations model is already multi-indicator, the file self-identifies indicators, and splitting creates workflow friction without improving data quality.
 - **Store source-shaped Parquet directly.** Rejected because Explorer and public APIs depend on the canonical Observation schema, lineage, and dimension registry.
+
+## Follow-up
+
+Phase 4 selected immutable file-based staging under `DATA_PATH/ingest/batches` on the Fly persistent volume. See [ADR 0006](0006-file-based-batch-staging-on-data-path.md) for the artifact layout, rebuild exclusion, memory guard, and operational consequences.

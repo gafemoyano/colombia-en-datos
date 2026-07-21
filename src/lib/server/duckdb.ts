@@ -1,4 +1,5 @@
 import { existsSync } from 'fs';
+import { access, rename, rm } from 'node:fs/promises';
 import { getDb } from '$lib/db/client';
 import {
 	indicators,
@@ -12,7 +13,7 @@ import {
 	indicatorFrequencies
 } from '$lib/db/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
-import { join, resolve } from 'path';
+import { dirname, join, resolve } from 'path';
 
 export const CANONICAL_SCHEMA_VERSION = 1;
 
@@ -45,6 +46,7 @@ interface DuckDbStatement {
 
 interface DuckDbDatabase {
 	prepare(query: string): DuckDbStatement;
+	close(callback: (error: Error | null) => void): void;
 }
 
 interface DuckDbModule {
@@ -53,6 +55,49 @@ interface DuckDbModule {
 
 let duckDbModule: DuckDbModule | null = null;
 let canonicalDb: DuckDbDatabase | null = null;
+let openingCanonicalDb: Promise<DuckDbDatabase> | null = null;
+
+export class CanonicalQueryDrain {
+	private activeQueries = 0;
+	private drainGate: Promise<void> | null = null;
+	private resolveIdle: (() => void) | null = null;
+
+	async run<T>(query: () => Promise<T>): Promise<T> {
+		while (this.drainGate) await this.drainGate;
+		this.activeQueries += 1;
+		try {
+			return await query();
+		} finally {
+			this.activeQueries -= 1;
+			if (this.activeQueries === 0) {
+				this.resolveIdle?.();
+				this.resolveIdle = null;
+			}
+		}
+	}
+
+	async drain<T>(operation: () => Promise<T>): Promise<T> {
+		if (this.drainGate) throw new Error('Canonical DuckDB queries are already being drained.');
+		let releaseGate!: () => void;
+		this.drainGate = new Promise((resolveGate) => {
+			releaseGate = resolveGate;
+		});
+
+		try {
+			if (this.activeQueries > 0) {
+				await new Promise<void>((resolveIdle) => {
+					this.resolveIdle = resolveIdle;
+				});
+			}
+			return await operation();
+		} finally {
+			this.drainGate = null;
+			releaseGate();
+		}
+	}
+}
+
+const canonicalQueryDrain = new CanonicalQueryDrain();
 
 async function loadDuckDB(): Promise<DuckDbModule> {
 	if (duckDbModule) return duckDbModule;
@@ -87,18 +132,51 @@ async function validateCanonicalSchema(db: DuckDbDatabase): Promise<void> {
 	}
 }
 
-async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {
-	if (canonicalDb) return canonicalDb;
-
+async function openCanonicalDuckDB(): Promise<DuckDbDatabase> {
 	const dbPath = getCanonicalDbPath();
 	if (!existsSync(dbPath)) {
 		throw new Error(`Canonical DuckDB not found at ${dbPath}`);
 	}
 
 	const duckdb = await loadDuckDB();
-	canonicalDb = new duckdb.Database(dbPath);
-	await validateCanonicalSchema(canonicalDb);
-	return canonicalDb;
+	const database = new duckdb.Database(dbPath);
+	try {
+		await validateCanonicalSchema(database);
+		return database;
+	} catch (error) {
+		await closeDuckDb(database).catch(() => undefined);
+		throw error;
+	}
+}
+
+async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {
+	if (canonicalDb) return canonicalDb;
+	if (openingCanonicalDb) return openingCanonicalDb;
+
+	openingCanonicalDb = openCanonicalDuckDB();
+	try {
+		canonicalDb = await openingCanonicalDb;
+		return canonicalDb;
+	} finally {
+		openingCanonicalDb = null;
+	}
+}
+
+function closeDuckDb(database: DuckDbDatabase): Promise<void> {
+	return new Promise((resolveClose, reject) => {
+		database.close((error) => {
+			if (error) reject(error);
+			else resolveClose();
+		});
+	});
+}
+
+async function closeCanonicalDuckDB(): Promise<void> {
+	if (openingCanonicalDb) await openingCanonicalDb;
+	const database = canonicalDb;
+	if (!database) return;
+	await closeDuckDb(database);
+	canonicalDb = null;
 }
 
 function runStmt<T = any>(stmt: DuckDbStatement, ...params: any[]): Promise<T[]> {
@@ -112,9 +190,106 @@ function runStmt<T = any>(stmt: DuckDbStatement, ...params: any[]): Promise<T[]>
 }
 
 export async function runCanonicalQuery<T = any>(query: string, ...params: any[]): Promise<T[]> {
-	const duckDb = await getCanonicalDuckDB();
-	const stmt = duckDb.prepare(query);
-	return runStmt<T>(stmt, ...params);
+	return canonicalQueryDrain.run(async () => {
+		const duckDb = await getCanonicalDuckDB();
+		const stmt = duckDb.prepare(query);
+		return runStmt<T>(stmt, ...params);
+	});
+}
+
+export interface CanonicalGenerationPaths {
+	canonicalPath: string;
+	candidatePath: string;
+	previousPath: string;
+}
+
+export function resolveCanonicalGenerationPaths(candidatePath: string): CanonicalGenerationPaths {
+	const canonicalPath = getCanonicalDbPath();
+	const resolvedCandidatePath = resolve(candidatePath);
+	if (resolvedCandidatePath === canonicalPath) {
+		throw new Error('Canonical DuckDB candidate path must differ from the active store path.');
+	}
+	if (dirname(resolvedCandidatePath) !== dirname(canonicalPath)) {
+		throw new Error(
+			'Canonical DuckDB candidate must be on the same volume and directory as the active store.'
+		);
+	}
+
+	const previousPath = `${canonicalPath}.previous`;
+	if (resolvedCandidatePath === previousPath) {
+		throw new Error(
+			'Canonical DuckDB candidate path must differ from the previous generation path.'
+		);
+	}
+	return { canonicalPath, candidatePath: resolvedCandidatePath, previousPath };
+}
+
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+		throw error;
+	}
+}
+
+export async function prepareCanonicalGeneration(
+	candidatePath: string
+): Promise<CanonicalGenerationPaths> {
+	const paths = resolveCanonicalGenerationPaths(candidatePath);
+	await rm(paths.previousPath, { force: true });
+	await rm(paths.candidatePath, { force: true });
+	return paths;
+}
+
+export async function promoteCanonicalGeneration(
+	candidatePath: string
+): Promise<CanonicalGenerationPaths> {
+	const paths = resolveCanonicalGenerationPaths(candidatePath);
+	if (!(await pathExists(paths.candidatePath))) {
+		throw new Error(`Canonical DuckDB candidate not found at ${paths.candidatePath}`);
+	}
+	if (!(await pathExists(paths.canonicalPath))) {
+		throw new Error(`Canonical DuckDB not found at ${paths.canonicalPath}`);
+	}
+	if (await pathExists(paths.previousPath)) {
+		throw new Error(
+			`Previous canonical generation still exists at ${paths.previousPath}; prepare the next generation before building its candidate.`
+		);
+	}
+
+	return canonicalQueryDrain.drain(async () => {
+		await closeCanonicalDuckDB();
+		let activeMovedToPrevious = false;
+		let candidatePromoted = false;
+
+		try {
+			await rename(paths.canonicalPath, paths.previousPath);
+			activeMovedToPrevious = true;
+			await rename(paths.candidatePath, paths.canonicalPath);
+			candidatePromoted = true;
+			await getCanonicalDuckDB();
+			return paths;
+		} catch (error) {
+			await closeCanonicalDuckDB().catch(() => undefined);
+			let rollbackError: unknown;
+			try {
+				if (candidatePromoted) await rename(paths.canonicalPath, paths.candidatePath);
+				if (activeMovedToPrevious) await rename(paths.previousPath, paths.canonicalPath);
+				await getCanonicalDuckDB();
+			} catch (caughtRollbackError) {
+				rollbackError = caughtRollbackError;
+			}
+			if (rollbackError) {
+				throw new AggregateError(
+					[error, rollbackError],
+					'Canonical DuckDB promotion failed and the previous generation could not be restored.'
+				);
+			}
+			throw error;
+		}
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -239,14 +414,11 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 	console.log('[DuckDB] Query:', query);
 	console.log('[DuckDB] Params:', queryParams);
 
-	const duckDb = await getCanonicalDuckDB();
-
 	try {
-		const stmt = duckDb.prepare(query);
-		const rows = await runStmt(stmt, ...queryParams);
+		const rows = await runCanonicalQuery(query, ...queryParams);
 		console.log(`[DuckDB] Retrieved ${rows.length} rows`);
 
-		const result: IndicatorData[] = rows.map((row: any) => {
+		return rows.map((row: any) => {
 			const dataPoint: IndicatorData = {
 				time: row.time,
 				value: row.value,
@@ -257,8 +429,6 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 			}
 			return dataPoint;
 		});
-
-		return result;
 	} catch (error) {
 		console.error('[DuckDB] Query error:', error);
 		return [];
@@ -474,12 +644,10 @@ export async function getPublishedFrequenciesByIndicator(
 
 	if (metadataRows.length === 0) return new Map();
 
-	const metadataPairs = new Set(
-		metadataRows.map((row) => `${row.indicatorCode}\u0000${row.freq}`)
-	);
-	const observedFrequencies = await getAvailableFrequenciesByIndicator(
-		[...new Set(metadataRows.map((row) => row.indicatorCode))]
-	);
+	const metadataPairs = new Set(metadataRows.map((row) => `${row.indicatorCode}\u0000${row.freq}`));
+	const observedFrequencies = await getAvailableFrequenciesByIndicator([
+		...new Set(metadataRows.map((row) => row.indicatorCode))
+	]);
 	const result = new Map<string, string[]>();
 
 	for (const [indicatorCode, frequencies] of observedFrequencies.entries()) {
