@@ -2,10 +2,10 @@
   "schema_version": "1",
   "feature": "geih-batch-ingest",
   "created_at": "2026-06-21",
-  "updated_at": "2026-07-21",
+  "updated_at": "2026-08-03",
   "owner": "Felipe",
-  "status": "in-progress",
-  "current_phase": null,
+  "status": "completed",
+  "current_phase": 6,
   "phases": [
     {
       "id": 0,
@@ -397,11 +397,75 @@
       "name": "admin-batch-ui",
       "file": "phase-6-admin-batch-ui.md",
       "goal": "Build the admin UI that lets users upload one natural multi-indicator Parquet file, review analyzer output, accept/edit generated definitions and mappings, stage canonical slices, and publish the batch.",
-      "status": "pending",
-      "started_at": null,
-      "completed_at": null,
-      "tasks": [],
-      "deviations": []
+      "status": "completed",
+      "started_at": "2026-08-02",
+      "completed_at": "2026-08-03",
+      "tasks": [
+        {
+          "id": "6.1",
+          "title": "Add the tested admin workflow service for Data source creation/reuse, durable batch reconstruction, and structured retry errors",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "6.2",
+          "title": "Add page-server load/actions for analyze, definition save, mapping acceptance and staging, publish, and batchId query redirects",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "6.3",
+          "title": "Build the route shell, batch-level Data source metadata form, upload flow, and admin navigation",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "6.4",
+          "title": "Build profile and slice summaries covering periods, measurements, dimensions, duplicates, and warnings",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "6.5",
+          "title": "Build editable definition and mapping review with fixed-total audit output and immutable-mapping guardrails",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "6.6",
+          "title": "Build staging and publishing controls, accessible retry states, replacement confirmation, and per-slice lineage results",
+          "status": "done",
+          "notes": null
+        },
+        {
+          "id": "6.7",
+          "title": "Add workflow and route coverage and run targeted tests, npm run check, and lint",
+          "status": "done",
+          "notes": null
+        }
+      ],
+      "deviations": [
+        {
+          "date": "2026-07-20",
+          "kind": "note",
+          "note": "Phase 6 implementation will treat the current uncommitted Phase 2-5 backend working tree as the authoritative baseline."
+        },
+        {
+          "date": "2026-08-02",
+          "kind": "scope-change",
+          "note": "Phase 6 will add a tested src/lib/server/batch-ingest/admin-workflow.ts composition seam so the page server stays thin and durable batch reload/retry state has a structured contract."
+        },
+        {
+          "date": "2026-08-02",
+          "kind": "note",
+          "note": "Resolved the optional admin component placeholder into BatchProfileSummary.svelte, DefinitionDraftEditor.svelte, MappingReview.svelte, and BatchPublishSummary.svelte; the route page retains workflow state and form ownership."
+        },
+        {
+          "date": "2026-08-02",
+          "kind": "scope-change",
+          "note": "The admin workflow will extend upload orchestration to capture shared Data source metadata and create or reuse that source before durable batch intake; the existing analyze endpoint currently accepts only an existing optional dataSourceCode."
+        }
+      ]
     }
   ],
   "decisions": [
@@ -473,6 +537,41 @@
     {
       "date": "2026-07-18",
       "note": "Phase 5: retain exactly one known-good previous canonical DuckDB generation until the next successful publish. Remove that backup only before constructing the next candidate, keeping canonical-store peak usage near two generations plus staged artifacts.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-20",
+      "note": "Phase 6: orchestrate the admin batch workflow with SvelteKit page-server form actions that call existing server modules directly; do not add JSON endpoints for intermediate definition, mapping, or staging operations.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-21",
+      "note": "Phase 6: preserve workflow context at /admin/ingest/batches?batchId=<id>; redirect there after analysis and reconstruct durable batch state in the page loader for reload and retry.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-21",
+      "note": "Phase 6: accepted mapping artifacts remain immutable. Mapping corrections after acceptance or a staging attempt require a new uploaded batch; only transient staging failures may retry the same batch.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-07-21",
+      "note": "Phase 6: apply generated fixed-total dimension collapse proposals automatically and show the collapsed source values as a read-only audit summary rather than adding per-dimension controls.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-08-02",
+      "note": "Phase 6: treat one Data source as batch-level upload metadata shared by every derived indicator. On upload submission, create or reuse the Data source before analysis and link the resulting batch immediately.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-08-02",
+      "note": "Phase 6: batch-level Data source metadata uses the existing schema only: required code and name, plus optional description. Do not expand Data source metadata in this phase.",
+      "adr_candidate": false
+    },
+    {
+      "date": "2026-08-02",
+      "note": "Phase 6: Data source code is the stable identity. If an entered code already exists, use its stored name and description as read-only metadata and reject conflicting submitted metadata rather than silently ignoring or updating it.",
       "adr_candidate": false
     }
   ],

@@ -12,7 +12,7 @@ To start a phase, open a new session, read this README for shared context, then 
 
 ## Status
 
-- **Status**: in-progress
+- **Status**: completed
 - **Created**: 2026-06-21
 - **Owner**: Felipe
 
@@ -56,7 +56,7 @@ Provide admin users with a reliable way to load GEIH-style Parquet batches into 
 | 3 | [phase-3-definition-drafts.md](phase-3-definition-drafts.md) | Generate editable definition grids from batch profiles and save definitions transactionally. | completed |
 | 4 | [phase-4-canonical-stage.md](phase-4-canonical-stage.md) | Canonicalize source rows and stage validated observation slices per indicator/frequency. | completed |
 | 5 | [phase-5-batch-publish.md](phase-5-batch-publish.md) | Publish staged slices to DuckDB with per-slice replacement and lineage fan-out. | completed |
-| 6 | [phase-6-admin-batch-ui.md](phase-6-admin-batch-ui.md) | Build the admin UI flow that ties analysis, review, staging, and publish together. | pending |
+| 6 | [phase-6-admin-batch-ui.md](phase-6-admin-batch-ui.md) | Build the admin UI flow that ties analysis, review, staging, and publish together. | completed |
 
 After phase 2, engineers can repeatedly profile real data-engineering deliveries without touching production data. After phase 4, trusted admins can stage fully canonical slices. After phase 5, batch ingest is end-to-end functional behind API/admin surfaces.
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BarChart3, Database, FileSpreadsheet, Home, Shield } from 'lucide-svelte';
+	import { BarChart3, Database, FileSpreadsheet, Home, Layers3, Shield } from 'lucide-svelte';
 	import { buttonVariants } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 
@@ -34,7 +34,14 @@
 					class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}
 				>
 					<FileSpreadsheet class="h-4 w-4" />
-					Ingesta
+					Definiciones
+				</a>
+				<a
+					href="/admin/ingest/batches"
+					class={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'hidden sm:inline-flex')}
+				>
+					<Layers3 class="h-4 w-4" />
+					Lotes
 				</a>
 				<a href="/explore" class={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}>
 					<BarChart3 class="h-4 w-4" />

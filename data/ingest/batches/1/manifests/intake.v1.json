@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "batchId": 1,
+  "createdAt": "2026-08-03T02:07:17.361Z",
+  "dataSourceCode": "geih",
+  "source": {
+    "artifact": "source/source.parquet",
+    "originalName": "geih_2021_2026_arq_ok_v2.parquet",
+    "format": "parquet",
+    "integrity": {
+      "algorithm": "sha256",
+      "digest": "7110622fcd547280f922c70ca50d0c37de76b613a345a955f1c5ef754514f5b3",
+      "byteLength": 27009
+    }
+  },
+  "analysis": {
+    "artifact": "analysis/profile.v1.json",
+    "profileSchemaVersion": 1,
+    "analyzedAt": "2026-08-03T02:07:18.518Z"
+  }
+}

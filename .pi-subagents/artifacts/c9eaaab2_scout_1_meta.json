@@ -1,0 +1,124 @@
+{
+  "runId": "c9eaaab2",
+  "agent": "scout",
+  "task": "Read-only data profiling. Analyze /home/gafe/Projects/colombia-en-datos/data/emicron-single/EMICRON_indicadores_SDMX.parquet and metadata_emicron.json deeply: schemas, row/indicator/collection counts, dimensions/cardinalities, nulls, duplicates, code alignment between parquet and JSON, SDMX conventions, quality anomalies. Use DuckDB/jq/node as available. Compare against expected canonical format in /home/gafe/Projects/colombia-en-datos-emicron-single. Cite concrete counts and file:line for code expectations. Do not edit.\n\n---\n**Output:**\nWrite your findings to exactly this path: /home/gafe/Projects/colombia-en-datos/.pi-subagents/artifacts/outputs/c9eaaab2/dataset-profile.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 51038,
+    "output": 6927,
+    "cacheRead": 313344,
+    "cacheWrite": 0,
+    "cost": 0.6196720000000001,
+    "turns": 18
+  },
+  "model": "openai-codex/gpt-5.6-sol:low",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-sol:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-sol:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 51038,
+        "output": 6927,
+        "cacheRead": 313344,
+        "cacheWrite": 0,
+        "cost": 0.6196720000000001,
+        "turns": 18
+      }
+    }
+  ],
+  "durationMs": 269852,
+  "toolCount": 29,
+  "acceptance": {
+    "status": "attested",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": true,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete severity-ranked findings cite source paths/line ranges and measured parquet/JSON counts; review-findings and residual-risks are included."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "node /tmp/profile.cjs and node /tmp/deep.cjs (DuckDB 1.4.1)",
+          "result": "passed",
+          "summary": "Profiled schema, 944667 rows, cardinalities, nulls, duplicate keys, code alignment, and consistency constraints."
+        },
+        {
+          "command": "jq metadata_emicron.json catalog and field analyses",
+          "result": "passed",
+          "summary": "Verified 133 indicators, 11 collections, membership integrity, metadata fields, dimensions, frequencies, and units."
+        }
+      ],
+      "validationOutput": [
+        "Zero exact duplicates and zero canonical observation-key duplicates.",
+        "Zero required-field nulls; only MONTH and METHODOLOGY_NOTE contain nulls.",
+        "Parquet and JSON indicator code sets align exactly (133/133).",
+        "Zero tested time, geography, class/urban-rural, and year consistency violations."
+      ],
+      "residualRisks": [
+        "No external DANE benchmark was available for statistical/outlier validation.",
+        "Formal SDMX DSD and OBS_STATUS codelist were not supplied.",
+        "Current canonical application schema cannot represent every source dimension without extension or explicit mapping."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Read-only profiling; no project files changed. The requested report artifact was written outside the working tree.",
+      "reviewFindings": [
+        "high: src/lib/server/ingest.ts:8-21,231-264 - uppercase SDMX file uses INDICATOR and many unsupported columns, so direct canonical ingestion fails.",
+        "medium: src/lib/server/explorer.ts:12-21 - multiple series-defining source dimensions are unsupported and cannot safely be dropped.",
+        "medium: metadata_emicron.json:_schema - declared schema omits most dimensions and observation attributes present in the data.",
+        "info: no row-level null, duplicate-key, period, geography, or code-alignment blocker found."
+      ],
+      "manualNotes": "Temporary tooling was installed under /tmp only; repository contents were not edited."
+    }
+  },
+  "transcriptPath": "/home/gafe/Projects/colombia-en-datos/.pi-subagents/artifacts/c9eaaab2_scout_1_transcript.jsonl",
+  "timestamp": 1785721132124
+}
