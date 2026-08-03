@@ -1,0 +1,4 @@
+Subagent exceeded turn budget after 34 assistant turns (soft limit 24 + grace 4).
+
+Partial output before turn-budget abort:
+{"status":"done","executive_summary":"Implemented tasks 6.1–6.2 (2/2): added the tested admin workflow service and page-server load/actions for the durable batch lifecycle.","tasks_done":["6.1","6.2"],"tasks_blocked":[],"tasks_partial":[],"files_changed":["plans/geih-batch-ingest/plan.json","src/lib/server/batch-ingest/admin-workflow.ts","src/lib/server/batch-ingest/admin-workflow.test.ts","src/routes/admin/ingest/batches/+page.server.ts","src/routes/admin/ingest/batches/page.server.test.ts"],"deviations_logged":[],"risks":["Targeted ESLint validation could not run because the repository has no ESLint 9 flat configuration file; targeted tests and svelte-check pass."],"next_recommended":"apply"}

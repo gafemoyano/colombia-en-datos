@@ -3,9 +3,10 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { getAvailableIndicators } from '$lib/server/duckdb';
 import { getDb } from '$lib/db/client';
 import {
-	areas,
+	dataSources,
 	dimensionDefinitions,
 	indicatorDimensions,
+	indicatorFrequencies,
 	indicatorGroups,
 	indicators
 } from '$lib/db/schema';
@@ -17,15 +18,15 @@ const FREQ_PATTERN = /^[A-Z]$/;
 interface NormalizedCreateIndicatorPayload {
 	code: string;
 	name: string;
-	areaCode: string;
-	areaName: string;
+	dataSourceCode: string;
+	dataSourceName: string;
 	groupCode: string;
 	groupName: string;
 	dimensionsByFreq: Record<string, string[]>;
 	shortName: string | null;
 	description: string | null;
 	methodology: string | null;
-	source: string | null;
+	sourceCitation: string | null;
 	unit: string | null;
 	unitMult: number | null;
 	decimals: number | null;
@@ -69,7 +70,7 @@ function normalizePayload(
 
 	const code = stringValue(body.code);
 	const name = stringValue(body.name);
-	const areaCode = stringValue(body.areaCode);
+	const dataSourceCode = stringValue(body.dataSourceCode) || stringValue(body.areaCode);
 	const groupCode = stringValue(body.groupCode);
 
 	if (!code) errors.push('code is required');
@@ -77,9 +78,9 @@ function normalizePayload(
 		errors.push('code may only contain letters, numbers, _, . and -');
 
 	if (!name) errors.push('name is required');
-	if (!areaCode) errors.push('areaCode is required');
-	else if (!CODE_PATTERN.test(areaCode)) {
-		errors.push('areaCode may only contain letters, numbers, _, . and -');
+	if (!dataSourceCode) errors.push('dataSourceCode is required');
+	else if (!CODE_PATTERN.test(dataSourceCode)) {
+		errors.push('dataSourceCode may only contain letters, numbers, _, . and -');
 	}
 
 	if (!groupCode) errors.push('groupCode is required');
@@ -148,7 +149,7 @@ function normalizePayload(
 		errors.push('decimals must be an integer');
 	}
 
-	if (errors.length > 0 || !code || !name || !areaCode || !groupCode) {
+	if (errors.length > 0 || !code || !name || !dataSourceCode || !groupCode) {
 		return { ok: false, errors };
 	}
 
@@ -157,15 +158,16 @@ function normalizePayload(
 		value: {
 			code,
 			name,
-			areaCode,
-			areaName: stringValue(body.areaName) || humanizeCode(areaCode),
+			dataSourceCode,
+			dataSourceName:
+				stringValue(body.dataSourceName) || stringValue(body.areaName) || humanizeCode(dataSourceCode),
 			groupCode,
 			groupName: stringValue(body.groupName) || humanizeCode(groupCode),
 			dimensionsByFreq,
 			shortName: stringValue(body.shortName),
 			description: stringValue(body.description),
 			methodology: stringValue(body.methodology),
-			source: stringValue(body.source),
+			sourceCitation: stringValue(body.sourceCitation) || stringValue(body.source),
 			unit: stringValue(body.unit),
 			unitMult,
 			decimals,
@@ -240,25 +242,30 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	try {
 		const created = await db.transaction(async (tx) => {
-			const existingArea = await tx
-				.select({ id: areas.id })
-				.from(areas)
-				.where(eq(areas.code, payload.areaCode))
+			const existingDataSource = await tx
+				.select({ id: dataSources.id })
+				.from(dataSources)
+				.where(eq(dataSources.code, payload.dataSourceCode))
 				.limit(1);
 
-			const areaId =
-				existingArea[0]?.id ??
+			const dataSourceId =
+				existingDataSource[0]?.id ??
 				(
 					await tx
-						.insert(areas)
-						.values({ code: payload.areaCode, name: payload.areaName })
-						.returning({ id: areas.id })
+						.insert(dataSources)
+						.values({ code: payload.dataSourceCode, name: payload.dataSourceName })
+						.returning({ id: dataSources.id })
 				)[0].id;
 
 			const existingGroup = await tx
 				.select({ id: indicatorGroups.id })
 				.from(indicatorGroups)
-				.where(and(eq(indicatorGroups.areaId, areaId), eq(indicatorGroups.code, payload.groupCode)))
+				.where(
+					and(
+						eq(indicatorGroups.dataSourceId, dataSourceId),
+						eq(indicatorGroups.code, payload.groupCode)
+					)
+				)
 				.limit(1);
 
 			const groupId =
@@ -267,7 +274,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					await tx
 						.insert(indicatorGroups)
 						.values({
-							areaId,
+							dataSourceId,
 							code: payload.groupCode,
 							name: payload.groupName,
 							sourceType: 'api'
@@ -284,7 +291,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					shortName: payload.shortName,
 					description: payload.description,
 					methodology: payload.methodology,
-					source: payload.source,
+					sourceCitation: payload.sourceCitation,
 					unit: payload.unit,
 					unitMult: payload.unitMult,
 					decimals: payload.decimals,
@@ -292,6 +299,13 @@ export const POST: RequestHandler = async ({ request }) => {
 					updated: payload.updated
 				})
 				.returning({ id: indicators.id });
+
+			const frequencyRows = Object.keys(payload.dimensionsByFreq).map((freq) => ({
+				indicatorId: indicator.id,
+				freq
+			}));
+
+			await tx.insert(indicatorFrequencies).values(frequencyRows);
 
 			const dimensionRows = Object.entries(payload.dimensionsByFreq).flatMap(([freq, dimensions]) =>
 				dimensions.map((dimensionCode) => ({
@@ -309,7 +323,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			return {
 				id: indicator.id,
-				areaId,
+				dataSourceId,
 				groupId
 			};
 		});
@@ -320,7 +334,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					id: created.id,
 					code: payload.code,
 					name: payload.name,
-					areaCode: payload.areaCode,
+					dataSourceCode: payload.dataSourceCode,
 					groupCode: payload.groupCode,
 					dimensionsByFreq: payload.dimensionsByFreq
 				}

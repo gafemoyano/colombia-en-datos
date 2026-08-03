@@ -1,5 +1,5 @@
 import { db } from '../db/script-client';
-import { areas, indicatorGroups, indicators, indicatorFiles } from '../db/schema';
+import { dataSources, indicatorGroups, indicators, indicatorFiles } from '../db/schema';
 import { scanDataDirectory, type ParquetFile } from './scanner';
 import { and, eq } from 'drizzle-orm';
 import { existsSync, readFileSync } from 'fs';
@@ -41,13 +41,13 @@ interface ParquetAnnotationSample {
 	cuadroTitle?: string | null;
 }
 
-const AREA_DISPLAY_NAMES: Record<string, string> = {
+const DATA_SOURCE_DISPLAY_NAMES: Record<string, string> = {
 	empleo: 'Empleo',
 	emicron: 'Empresas (EMICRON)',
 	calidad_vida: 'Calidad de vida'
 };
 
-const AREA_SOURCE_NAMES: Record<string, string> = {
+const DATA_SOURCE_CITATION_NAMES: Record<string, string> = {
 	empleo: 'DANE-GEIH',
 	emicron: 'DANE-EMICRON',
 	calidad_vida: 'DANE-ECV'
@@ -263,7 +263,7 @@ export async function seedIndicators(dataPath: string) {
 	const { indicatorsByCode, collectionsByCode } = buildMetadataIndex(catalog);
 	const inspectParquet = await createParquetInspector(dataPath);
 
-	const areaMap = new Map<string, number>();
+	const dataSourceMap = new Map<string, number>();
 	const groupMap = new Map<string, number>();
 	const indicatorMap = new Map<string, number>();
 	const firstFileByIndicator = new Map<string, ParquetFile>();
@@ -272,29 +272,33 @@ export async function seedIndicators(dataPath: string) {
 		if (!firstFileByIndicator.has(file.indicator)) firstFileByIndicator.set(file.indicator, file);
 	}
 
-	const uniqueAreas = [...new Set(files.map((f) => f.area))];
-	for (const areaCode of uniqueAreas) {
-		const name = AREA_DISPLAY_NAMES[areaCode] || humanizeFolderName(areaCode);
-		const existing = await db.select().from(areas).where(eq(areas.code, areaCode)).limit(1);
+	const uniqueDataSources = [...new Set(files.map((f) => f.area))];
+	for (const dataSourceCode of uniqueDataSources) {
+		const name = DATA_SOURCE_DISPLAY_NAMES[dataSourceCode] || humanizeFolderName(dataSourceCode);
+		const existing = await db
+			.select()
+			.from(dataSources)
+			.where(eq(dataSources.code, dataSourceCode))
+			.limit(1);
 
-		let areaId: number;
+		let dataSourceId: number;
 		if (existing.length > 0) {
-			areaId = existing[0].id;
-			if (shouldBootstrapValue(existing[0].name, areaCode)) {
-				await db.update(areas).set({ name }).where(eq(areas.id, areaId));
+			dataSourceId = existing[0].id;
+			if (shouldBootstrapValue(existing[0].name, dataSourceCode)) {
+				await db.update(dataSources).set({ name }).where(eq(dataSources.id, dataSourceId));
 			}
 		} else {
 			const [inserted] = await db
-				.insert(areas)
+				.insert(dataSources)
 				.values({
-					code: areaCode,
+					code: dataSourceCode,
 					name
 				})
 				.returning();
-			areaId = inserted.id;
+			dataSourceId = inserted.id;
 		}
-		areaMap.set(areaCode, areaId);
-		console.log(`Area: ${areaCode} -> ${areaId}`);
+		dataSourceMap.set(dataSourceCode, dataSourceId);
+		console.log(`Data source: ${dataSourceCode} -> ${dataSourceId}`);
 	}
 
 	const uniqueGroups = [...new Set(files.map((f) => `${f.area}|${f.category}`))].map((key) => {
@@ -303,8 +307,8 @@ export async function seedIndicators(dataPath: string) {
 	});
 
 	for (const { area, group: groupCode } of uniqueGroups) {
-		const areaId = areaMap.get(area);
-		if (!areaId) continue;
+		const dataSourceId = dataSourceMap.get(area);
+		if (!dataSourceId) continue;
 
 		const collection = collectionsByCode.get(groupCode);
 		const groupName = cleanTitle(collection?.title) || humanizeFolderName(groupCode);
@@ -314,7 +318,9 @@ export async function seedIndicators(dataPath: string) {
 		const existing = await db
 			.select()
 			.from(indicatorGroups)
-			.where(and(eq(indicatorGroups.areaId, areaId), eq(indicatorGroups.code, groupCode)))
+			.where(
+				and(eq(indicatorGroups.dataSourceId, dataSourceId), eq(indicatorGroups.code, groupCode))
+			)
 			.limit(1);
 
 		let groupId: number;
@@ -332,7 +338,7 @@ export async function seedIndicators(dataPath: string) {
 			const [inserted] = await db
 				.insert(indicatorGroups)
 				.values({
-					areaId,
+					dataSourceId,
 					code: groupCode,
 					name: groupName,
 					sourceType,
@@ -359,7 +365,7 @@ export async function seedIndicators(dataPath: string) {
 		const metadata = indicatorsByCode.get(indicatorCode);
 		const sampleFile = firstFileByIndicator.get(indicatorCode);
 		const parquetSample = sampleFile ? await inspectParquet(sampleFile) : {};
-		const sourceName = metadata?.source || AREA_SOURCE_NAMES[area] || null;
+		const sourceCitation = metadata?.source || DATA_SOURCE_CITATION_NAMES[area] || null;
 		const metadataTitle = cleanTitle(metadata?.title);
 		const name =
 			metadataTitle && metadataTitle !== indicatorCode
@@ -373,7 +379,7 @@ export async function seedIndicators(dataPath: string) {
 			description: null,
 			methodology: metadata?.methodology || null,
 			frequency,
-			source: sourceName,
+			sourceCitation,
 			unit: metadata?.unit || parquetSample.unit || null,
 			unitMult: metadata?.unit_mult ?? parquetSample.unitMult ?? null,
 			decimals: metadata?.decimals ?? parquetSample.decimals ?? null,
@@ -398,7 +404,7 @@ export async function seedIndicators(dataPath: string) {
 						? values.name
 						: existing[0].name,
 					methodology: existing[0].methodology || values.methodology,
-					source: existing[0].source || values.source,
+					sourceCitation: existing[0].sourceCitation || values.sourceCitation,
 					unit: existing[0].unit || values.unit,
 					unitMult: existing[0].unitMult ?? values.unitMult,
 					decimals: existing[0].decimals ?? values.decimals,

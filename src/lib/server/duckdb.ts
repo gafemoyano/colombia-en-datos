@@ -1,15 +1,19 @@
 import { existsSync } from 'fs';
+import { access, rename, rm } from 'node:fs/promises';
 import { getDb } from '$lib/db/client';
 import {
 	indicators,
 	indicatorGroups,
-	areas,
+	dataSources,
 	indicatorDimensions,
 	dimensionDefinitions,
-	dimensionValues
+	dimensionValues,
+	indicatorDataSources,
+	dataReleases,
+	indicatorFrequencies
 } from '$lib/db/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
-import { join, resolve } from 'path';
+import { dirname, join, resolve } from 'path';
 
 export const CANONICAL_SCHEMA_VERSION = 1;
 
@@ -42,6 +46,7 @@ interface DuckDbStatement {
 
 interface DuckDbDatabase {
 	prepare(query: string): DuckDbStatement;
+	close(callback: (error: Error | null) => void): void;
 }
 
 interface DuckDbModule {
@@ -50,6 +55,49 @@ interface DuckDbModule {
 
 let duckDbModule: DuckDbModule | null = null;
 let canonicalDb: DuckDbDatabase | null = null;
+let openingCanonicalDb: Promise<DuckDbDatabase> | null = null;
+
+export class CanonicalQueryDrain {
+	private activeQueries = 0;
+	private drainGate: Promise<void> | null = null;
+	private resolveIdle: (() => void) | null = null;
+
+	async run<T>(query: () => Promise<T>): Promise<T> {
+		while (this.drainGate) await this.drainGate;
+		this.activeQueries += 1;
+		try {
+			return await query();
+		} finally {
+			this.activeQueries -= 1;
+			if (this.activeQueries === 0) {
+				this.resolveIdle?.();
+				this.resolveIdle = null;
+			}
+		}
+	}
+
+	async drain<T>(operation: () => Promise<T>): Promise<T> {
+		if (this.drainGate) throw new Error('Canonical DuckDB queries are already being drained.');
+		let releaseGate!: () => void;
+		this.drainGate = new Promise((resolveGate) => {
+			releaseGate = resolveGate;
+		});
+
+		try {
+			if (this.activeQueries > 0) {
+				await new Promise<void>((resolveIdle) => {
+					this.resolveIdle = resolveIdle;
+				});
+			}
+			return await operation();
+		} finally {
+			this.drainGate = null;
+			releaseGate();
+		}
+	}
+}
+
+const canonicalQueryDrain = new CanonicalQueryDrain();
 
 async function loadDuckDB(): Promise<DuckDbModule> {
 	if (duckDbModule) return duckDbModule;
@@ -84,18 +132,51 @@ async function validateCanonicalSchema(db: DuckDbDatabase): Promise<void> {
 	}
 }
 
-async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {
-	if (canonicalDb) return canonicalDb;
-
+async function openCanonicalDuckDB(): Promise<DuckDbDatabase> {
 	const dbPath = getCanonicalDbPath();
 	if (!existsSync(dbPath)) {
 		throw new Error(`Canonical DuckDB not found at ${dbPath}`);
 	}
 
 	const duckdb = await loadDuckDB();
-	canonicalDb = new duckdb.Database(dbPath);
-	await validateCanonicalSchema(canonicalDb);
-	return canonicalDb;
+	const database = new duckdb.Database(dbPath);
+	try {
+		await validateCanonicalSchema(database);
+		return database;
+	} catch (error) {
+		await closeDuckDb(database).catch(() => undefined);
+		throw error;
+	}
+}
+
+async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {
+	if (canonicalDb) return canonicalDb;
+	if (openingCanonicalDb) return openingCanonicalDb;
+
+	openingCanonicalDb = openCanonicalDuckDB();
+	try {
+		canonicalDb = await openingCanonicalDb;
+		return canonicalDb;
+	} finally {
+		openingCanonicalDb = null;
+	}
+}
+
+function closeDuckDb(database: DuckDbDatabase): Promise<void> {
+	return new Promise((resolveClose, reject) => {
+		database.close((error) => {
+			if (error) reject(error);
+			else resolveClose();
+		});
+	});
+}
+
+async function closeCanonicalDuckDB(): Promise<void> {
+	if (openingCanonicalDb) await openingCanonicalDb;
+	const database = canonicalDb;
+	if (!database) return;
+	await closeDuckDb(database);
+	canonicalDb = null;
 }
 
 function runStmt<T = any>(stmt: DuckDbStatement, ...params: any[]): Promise<T[]> {
@@ -109,9 +190,106 @@ function runStmt<T = any>(stmt: DuckDbStatement, ...params: any[]): Promise<T[]>
 }
 
 export async function runCanonicalQuery<T = any>(query: string, ...params: any[]): Promise<T[]> {
-	const duckDb = await getCanonicalDuckDB();
-	const stmt = duckDb.prepare(query);
-	return runStmt<T>(stmt, ...params);
+	return canonicalQueryDrain.run(async () => {
+		const duckDb = await getCanonicalDuckDB();
+		const stmt = duckDb.prepare(query);
+		return runStmt<T>(stmt, ...params);
+	});
+}
+
+export interface CanonicalGenerationPaths {
+	canonicalPath: string;
+	candidatePath: string;
+	previousPath: string;
+}
+
+export function resolveCanonicalGenerationPaths(candidatePath: string): CanonicalGenerationPaths {
+	const canonicalPath = getCanonicalDbPath();
+	const resolvedCandidatePath = resolve(candidatePath);
+	if (resolvedCandidatePath === canonicalPath) {
+		throw new Error('Canonical DuckDB candidate path must differ from the active store path.');
+	}
+	if (dirname(resolvedCandidatePath) !== dirname(canonicalPath)) {
+		throw new Error(
+			'Canonical DuckDB candidate must be on the same volume and directory as the active store.'
+		);
+	}
+
+	const previousPath = `${canonicalPath}.previous`;
+	if (resolvedCandidatePath === previousPath) {
+		throw new Error(
+			'Canonical DuckDB candidate path must differ from the previous generation path.'
+		);
+	}
+	return { canonicalPath, candidatePath: resolvedCandidatePath, previousPath };
+}
+
+async function pathExists(path: string): Promise<boolean> {
+	try {
+		await access(path);
+		return true;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+		throw error;
+	}
+}
+
+export async function prepareCanonicalGeneration(
+	candidatePath: string
+): Promise<CanonicalGenerationPaths> {
+	const paths = resolveCanonicalGenerationPaths(candidatePath);
+	await rm(paths.previousPath, { force: true });
+	await rm(paths.candidatePath, { force: true });
+	return paths;
+}
+
+export async function promoteCanonicalGeneration(
+	candidatePath: string
+): Promise<CanonicalGenerationPaths> {
+	const paths = resolveCanonicalGenerationPaths(candidatePath);
+	if (!(await pathExists(paths.candidatePath))) {
+		throw new Error(`Canonical DuckDB candidate not found at ${paths.candidatePath}`);
+	}
+	if (!(await pathExists(paths.canonicalPath))) {
+		throw new Error(`Canonical DuckDB not found at ${paths.canonicalPath}`);
+	}
+	if (await pathExists(paths.previousPath)) {
+		throw new Error(
+			`Previous canonical generation still exists at ${paths.previousPath}; prepare the next generation before building its candidate.`
+		);
+	}
+
+	return canonicalQueryDrain.drain(async () => {
+		await closeCanonicalDuckDB();
+		let activeMovedToPrevious = false;
+		let candidatePromoted = false;
+
+		try {
+			await rename(paths.canonicalPath, paths.previousPath);
+			activeMovedToPrevious = true;
+			await rename(paths.candidatePath, paths.canonicalPath);
+			candidatePromoted = true;
+			await getCanonicalDuckDB();
+			return paths;
+		} catch (error) {
+			await closeCanonicalDuckDB().catch(() => undefined);
+			let rollbackError: unknown;
+			try {
+				if (candidatePromoted) await rename(paths.canonicalPath, paths.candidatePath);
+				if (activeMovedToPrevious) await rename(paths.previousPath, paths.canonicalPath);
+				await getCanonicalDuckDB();
+			} catch (caughtRollbackError) {
+				rollbackError = caughtRollbackError;
+			}
+			if (rollbackError) {
+				throw new AggregateError(
+					[error, rollbackError],
+					'Canonical DuckDB promotion failed and the previous generation could not be restored.'
+				);
+			}
+			throw error;
+		}
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -236,14 +414,11 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 	console.log('[DuckDB] Query:', query);
 	console.log('[DuckDB] Params:', queryParams);
 
-	const duckDb = await getCanonicalDuckDB();
-
 	try {
-		const stmt = duckDb.prepare(query);
-		const rows = await runStmt(stmt, ...queryParams);
+		const rows = await runCanonicalQuery(query, ...queryParams);
 		console.log(`[DuckDB] Retrieved ${rows.length} rows`);
 
-		const result: IndicatorData[] = rows.map((row: any) => {
+		return rows.map((row: any) => {
 			const dataPoint: IndicatorData = {
 				time: row.time,
 				value: row.value,
@@ -254,8 +429,6 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 			}
 			return dataPoint;
 		});
-
-		return result;
 	} catch (error) {
 		console.error('[DuckDB] Query error:', error);
 		return [];
@@ -348,7 +521,7 @@ export interface IndicatorMetadata {
 	shortName: string | null;
 	description: string | null;
 	methodology: string | null;
-	source: string | null;
+	sourceCitation: string | null;
 	frequency: string | null;
 	unit: string | null;
 	unitMult: number | null;
@@ -395,7 +568,7 @@ export async function getIndicatorMetadata(
 		shortName: indicator.shortName,
 		description: indicator.description,
 		methodology: indicator.methodology,
-		source: indicator.source,
+		sourceCitation: indicator.sourceCitation,
 		frequency: indicator.frequency,
 		unit: indicator.unit,
 		unitMult: indicator.unitMult,
@@ -448,6 +621,47 @@ export async function getAvailableFrequenciesByIndicator(
 	}
 }
 
+export async function getPublishedFrequenciesByIndicator(
+	indicatorCodes?: string[]
+): Promise<Map<string, string[]>> {
+	if (indicatorCodes && indicatorCodes.length === 0) return new Map();
+
+	const pgDb = getDb();
+	const metadataRows = await pgDb
+		.select({
+			indicatorCode: indicators.code,
+			freq: indicatorDataSources.freq
+		})
+		.from(indicatorDataSources)
+		.innerJoin(indicators, eq(indicatorDataSources.indicatorId, indicators.id))
+		.innerJoin(dataReleases, eq(indicatorDataSources.releaseId, dataReleases.id))
+		.where(
+			and(
+				eq(dataReleases.status, 'published'),
+				indicatorCodes ? inArray(indicators.code, indicatorCodes) : undefined
+			)
+		);
+
+	if (metadataRows.length === 0) return new Map();
+
+	const metadataPairs = new Set(metadataRows.map((row) => `${row.indicatorCode}\u0000${row.freq}`));
+	const observedFrequencies = await getAvailableFrequenciesByIndicator([
+		...new Set(metadataRows.map((row) => row.indicatorCode))
+	]);
+	const result = new Map<string, string[]>();
+
+	for (const [indicatorCode, frequencies] of observedFrequencies.entries()) {
+		for (const freq of frequencies) {
+			if (!metadataPairs.has(`${indicatorCode}\u0000${freq}`)) continue;
+			const current = result.get(indicatorCode) || [];
+			if (!current.includes(freq)) current.push(freq);
+			result.set(indicatorCode, current);
+		}
+	}
+
+	return result;
+}
+
 export async function getAvailableIndicators(): Promise<
 	Array<{
 		code: string;
@@ -455,7 +669,7 @@ export async function getAvailableIndicators(): Promise<
 		shortName: string | null;
 		frequency: string | null;
 		availableFrequencies: string[];
-		area: string;
+		dataSource: string;
 		group: string;
 	}>
 > {
@@ -467,33 +681,39 @@ export async function getAvailableIndicators(): Promise<
 			shortName: indicators.shortName,
 			frequency: indicators.frequency,
 			group: indicatorGroups.name,
-			area: areas.name
+			dataSource: dataSources.name
 		})
 		.from(indicators)
 		.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
-		.innerJoin(areas, eq(indicatorGroups.areaId, areas.id));
+		.innerJoin(dataSources, eq(indicatorGroups.dataSourceId, dataSources.id));
 
-	const frequencyMap = await getAvailableFrequenciesByIndicator(
+	const frequencyMap = await getPublishedFrequenciesByIndicator(
 		rows.map((indicator) => indicator.code)
 	);
 
-	return rows.map((i) => {
-		const availableFrequencies = frequencyMap.get(i.code) || (i.frequency ? [i.frequency] : []);
-		return {
-			code: i.code,
-			name: i.name,
-			shortName: i.shortName,
-			frequency: i.frequency || availableFrequencies[0] || null,
-			availableFrequencies,
-			area: i.area || 'Unknown',
-			group: i.group || 'Unknown'
-		};
-	});
+	return rows
+		.map((i) => {
+			const availableFrequencies = frequencyMap.get(i.code) || [];
+			return {
+				code: i.code,
+				name: i.name,
+				shortName: i.shortName,
+				frequency: availableFrequencies[0] || null,
+				availableFrequencies,
+				dataSource: i.dataSource || 'Unknown',
+				group: i.group || 'Unknown'
+			};
+		})
+		.filter((indicator) => indicator.availableFrequencies.length > 0);
 }
 
 export async function getIndicatorsByFrequency(frequency: string): Promise<string[]> {
 	const pgDb = getDb();
-	const results = await pgDb.select().from(indicators).where(eq(indicators.frequency, frequency));
+	const results = await pgDb
+		.select({ code: indicators.code })
+		.from(indicatorFrequencies)
+		.innerJoin(indicators, eq(indicatorFrequencies.indicatorId, indicators.id))
+		.where(eq(indicatorFrequencies.freq, frequency));
 	return results.map((i) => i.code);
 }
 

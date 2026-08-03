@@ -1,6 +1,7 @@
 import duckdb from 'duckdb';
 import { dirname, resolve, join } from 'path';
 import { existsSync, readdirSync, symlinkSync, unlinkSync, mkdirSync, renameSync, rmSync } from 'fs';
+import { withCanonicalWriterLease } from '../src/lib/server/canonical-writer-lease';
 
 const DATA_PATH = process.env.DATA_PATH ? resolve(process.env.DATA_PATH) : resolve(process.cwd(), 'data');
 const CANONICAL_PATH = process.env.CANONICAL_DUCKDB_PATH
@@ -10,8 +11,11 @@ const BUILD_PATH = process.env.CANONICAL_BUILD_PATH
 	? resolve(process.env.CANONICAL_BUILD_PATH)
 	: `${CANONICAL_PATH}.next-${Date.now()}`;
 const TEMP_DIR = resolve('/tmp', 'ced-canonical-' + Date.now());
+const INGEST_ARTIFACT_PATH = resolve(DATA_PATH, 'ingest');
+const REBUILD_ID =
+	process.env.CANONICAL_REBUILD_ID || `canonical-rebuild-${process.pid}-${Date.now()}`;
 
-async function run() {
+async function buildCanonicalStore() {
 	console.log('[canonical] Data path:', DATA_PATH);
 	console.log('[canonical] Building store at', BUILD_PATH);
 	console.log('[canonical] Final store path', CANONICAL_PATH);
@@ -62,6 +66,7 @@ async function run() {
 		for (const entry of entries) {
 			if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
 			const full = resolve(dir, entry.name);
+			if (full === INGEST_ARTIFACT_PATH) continue;
 			if (entry.isDirectory()) {
 				files.push(...findParquetFiles(full));
 			} else if (entry.name.endsWith('.parquet')) {
@@ -242,6 +247,14 @@ async function run() {
 	}
 
 	console.log(`[canonical] Done! ${totalRows.toLocaleString()} rows, ${allFiles.length} files`);
+}
+
+async function run() {
+	await withCanonicalWriterLease({
+		operation: 'canonical-rebuild',
+		operationId: REBUILD_ID,
+		run: buildCanonicalStore
+	});
 }
 
 run().catch((err) => {

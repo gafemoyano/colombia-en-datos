@@ -36,6 +36,27 @@
       "when": 1779214883376,
       "tag": "0004_fix_antioquia_departamento_code",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1779556980000,
+      "tag": "0005_data_sources_source_citation",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1779557040000,
+      "tag": "0006_indicator_frequencies",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1782950400000,
+      "tag": "0007_batch_lineage_schema",
+      "breakpoints": true
     }
   ]
 }

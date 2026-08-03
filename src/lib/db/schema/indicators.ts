@@ -1,7 +1,7 @@
 import { sqliteTable, integer, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
-export const areas = sqliteTable('areas', {
+export const dataSources = sqliteTable('data_sources', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	code: text('code', { length: 50 }).notNull().unique(),
 	name: text('name', { length: 255 }).notNull(),
@@ -18,8 +18,8 @@ export const indicatorGroups = sqliteTable(
 	'indicator_groups',
 	{
 		id: integer('id').primaryKey({ autoIncrement: true }),
-		areaId: integer('area_id')
-			.references(() => areas.id)
+		dataSourceId: integer('data_source_id')
+			.references(() => dataSources.id)
 			.notNull(),
 		code: text('code', { length: 255 }).notNull(),
 		name: text('name', { length: 255 }).notNull(),
@@ -34,8 +34,8 @@ export const indicatorGroups = sqliteTable(
 			.notNull()
 	},
 	(table) => ({
-		indicatorGroupsUnique: uniqueIndex('indicator_groups_area_code_unique').on(
-			table.areaId,
+		indicatorGroupsUnique: uniqueIndex('indicator_groups_data_source_code_unique').on(
+			table.dataSourceId,
 			table.code
 		)
 	})
@@ -54,7 +54,7 @@ export const indicators = sqliteTable('indicators', {
 	// Deprecated: frequency is per-observation, not per-indicator.
 	// Kept for backward compatibility during migration. Will be removed in Phase 3.
 	frequency: text('frequency', { length: 1 }),
-	source: text('source', { length: 255 }),
+	sourceCitation: text('source_citation', { length: 255 }),
 	unit: text('unit', { length: 100 }),
 	unitMult: integer('unit_mult'),
 	decimals: integer('decimals'),
@@ -129,6 +129,29 @@ export const dimensionValues = sqliteTable(
 	})
 );
 
+export const indicatorFrequencies = sqliteTable(
+	'indicator_frequencies',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		indicatorId: integer('indicator_id')
+			.notNull()
+			.references(() => indicators.id),
+		freq: text('freq', { length: 1 }).notNull(),
+		createdAt: text('created_at')
+			.default(sql`(CURRENT_TIMESTAMP)`)
+			.notNull(),
+		updatedAt: text('updated_at')
+			.default(sql`(CURRENT_TIMESTAMP)`)
+			.notNull()
+	},
+	(table) => ({
+		uniqueIndicatorFrequency: uniqueIndex('indicator_frequencies_unique').on(
+			table.indicatorId,
+			table.freq
+		)
+	})
+);
+
 export const indicatorDimensions = sqliteTable(
 	'indicator_dimensions',
 	{
@@ -154,14 +177,32 @@ export const indicatorDimensions = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
-// Phase 1: Data lineage / releases
+// Phase 1: Batch lineage / releases
 // ---------------------------------------------------------------------------
+
+export const ingestBatches = sqliteTable('ingest_batches', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	dataSourceId: integer('data_source_id').references(() => dataSources.id),
+	originalName: text('original_name'),
+	checksum: text('checksum'),
+	sourceFormat: text('source_format', { length: 50 }),
+	rowCount: integer('row_count'),
+	status: text('status', { length: 50 }).notNull().default('uploaded'),
+	createdAt: text('created_at')
+		.default(sql`(CURRENT_TIMESTAMP)`)
+		.notNull(),
+	updatedAt: text('updated_at')
+		.default(sql`(CURRENT_TIMESTAMP)`)
+		.notNull(),
+	publishedAt: text('published_at')
+});
 
 export const dataReleases = sqliteTable('data_releases', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	indicatorId: integer('indicator_id')
 		.notNull()
 		.references(() => indicators.id),
+	ingestBatchId: integer('ingest_batch_id').references(() => ingestBatches.id),
 	releaseDate: text('release_date').default(sql`(CURRENT_TIMESTAMP)`),
 	periodStart: text('period_start'),
 	periodEnd: text('period_end'),
@@ -172,6 +213,37 @@ export const dataReleases = sqliteTable('data_releases', {
 	status: text('status', { length: 50 }).default('published'),
 	checksum: text('checksum')
 });
+
+export const ingestBatchSlices = sqliteTable(
+	'ingest_batch_slices',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		batchId: integer('batch_id')
+			.notNull()
+			.references(() => ingestBatches.id),
+		indicatorCode: text('indicator_code', { length: 100 }).notNull(),
+		freq: text('freq', { length: 1 }).notNull(),
+		indicatorId: integer('indicator_id').references(() => indicators.id),
+		rowCount: integer('row_count'),
+		periodStart: text('period_start'),
+		periodEnd: text('period_end'),
+		status: text('status', { length: 50 }).notNull().default('proposed'),
+		releaseId: integer('release_id').references(() => dataReleases.id),
+		createdAt: text('created_at')
+			.default(sql`(CURRENT_TIMESTAMP)`)
+			.notNull(),
+		updatedAt: text('updated_at')
+			.default(sql`(CURRENT_TIMESTAMP)`)
+			.notNull()
+	},
+	(table) => ({
+		uniqueIngestBatchSlice: uniqueIndex('ingest_batch_slices_unique').on(
+			table.batchId,
+			table.indicatorCode,
+			table.freq
+		)
+	})
+);
 
 // ---------------------------------------------------------------------------
 // Phase 1: Canonical data sources

@@ -5,7 +5,7 @@
 		shortName: string | null;
 		frequency: string | null;
 		availableFrequencies?: string[];
-		area: string;
+		dataSource: string;
 		group: string;
 	}
 
@@ -14,10 +14,10 @@
 		selected: string[];
 		onSelectionChange: (selected: string[]) => void;
 		currentFrequency?: string;
-		currentArea?: string;
+		currentDataSource?: string;
 	}
 
-	let { available, selected, onSelectionChange, currentFrequency, currentArea }: Props = $props();
+	let { available, selected, onSelectionChange, currentFrequency, currentDataSource }: Props = $props();
 
 	let searchQuery = $state('');
 
@@ -40,8 +40,8 @@
 			filtered = filtered.filter((i) => frequenciesFor(i).includes(currentFrequency));
 		}
 
-		if (currentArea) {
-			filtered = filtered.filter((i) => i.area === currentArea);
+		if (currentDataSource) {
+			filtered = filtered.filter((i) => i.dataSource === currentDataSource);
 		}
 
 		if (searchQuery.trim()) {

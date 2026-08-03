@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { getDb } from '$lib/db/client';
-import { areas, indicatorGroups, indicators } from '$lib/db/schema';
+import { dataSources, indicatorGroups, indicators } from '$lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -29,20 +29,20 @@ export const load: PageServerLoad = async ({ params, url }) => {
 			description: indicators.description,
 			methodology: indicators.methodology,
 			frequency: indicators.frequency,
-			source: indicators.source,
+			sourceCitation: indicators.sourceCitation,
 			unit: indicators.unit,
 			unitMult: indicators.unitMult,
 			decimals: indicators.decimals,
 			defaultViz: indicators.defaultViz,
 			updated: indicators.updated,
-			area: areas.name,
+			dataSource: dataSources.name,
 			group: indicatorGroups.name,
 			groupCode: indicatorGroups.code,
 			filterWhitelist: indicatorGroups.filterWhitelist
 		})
 		.from(indicators)
 		.innerJoin(indicatorGroups, eq(indicators.indicatorGroupId, indicatorGroups.id))
-		.innerJoin(areas, eq(indicatorGroups.areaId, areas.id))
+		.innerJoin(dataSources, eq(indicatorGroups.dataSourceId, dataSources.id))
 		.where(eq(indicators.code, code))
 		.limit(1);
 
@@ -74,7 +74,7 @@ export const actions: Actions = {
 				shortName: optionalString(formData.get('shortName')),
 				description: optionalString(formData.get('description')),
 				methodology: optionalString(formData.get('methodology')),
-				source: optionalString(formData.get('source')),
+				sourceCitation: optionalString(formData.get('sourceCitation')),
 				unit: optionalString(formData.get('unit')),
 				unitMult: optionalInteger(formData.get('unitMult')),
 				decimals: optionalInteger(formData.get('decimals')),

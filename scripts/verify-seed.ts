@@ -1,24 +1,24 @@
 import 'dotenv/config';
 import { db } from '../src/lib/db/script-client';
-import { indicators, indicatorGroups, areas, indicatorFiles } from '../src/lib/db/schema';
+import { indicators, indicatorGroups, dataSources, indicatorFiles } from '../src/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
 (async () => {
 	console.log('=== Verifying Seeded Data ===\n');
 
-	const allAreas = await db.select().from(areas);
-	console.log('Areas:', allAreas.map((a) => a.code).join(', '));
+	const allDataSources = await db.select().from(dataSources);
+	console.log('Data sources:', allDataSources.map((a) => a.code).join(', '));
 
-	const calidadVidaArea = allAreas.find((a) => a.code === 'calidad_vida');
-	if (!calidadVidaArea) {
-		console.log('calidad_vida area not found!');
+	const calidadVidaDataSource = allDataSources.find((a) => a.code === 'calidad_vida');
+	if (!calidadVidaDataSource) {
+		console.log('calidad_vida data source not found!');
 		process.exit(1);
 	}
 
 	const cvGroups = await db
 		.select()
 		.from(indicatorGroups)
-		.where(eq(indicatorGroups.areaId, calidadVidaArea.id));
+		.where(eq(indicatorGroups.dataSourceId, calidadVidaDataSource.id));
 	console.log('\nCalidad Vida Indicator groups:', cvGroups.length);
 	console.log('Sample indicator groups:');
 	cvGroups.slice(0, 5).forEach((c) => console.log(`  - ${c.name}`));

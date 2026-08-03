@@ -1,8 +1,9 @@
 import { env } from '$env/dynamic/private';
 import { dev } from '$app/environment';
-import type { Handle } from '@sveltejs/kit';
+import type { Handle, ServerInit } from '@sveltejs/kit';
 import { existsSync, copyFileSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
+import { reconcilePublishJournals } from '$lib/server/batch-ingest/publish-journal';
 
 function unauthorized() {
 	return new Response('Authentication required', {
@@ -56,9 +57,22 @@ function bootstrapCanonicalDb() {
 	copyFileSync(template, target);
 }
 
-export const handle: Handle = async ({ event, resolve }) => {
+export const init: ServerInit = async () => {
 	bootstrapCanonicalDb();
+	const reconciliation = await reconcilePublishJournals();
+	for (const entry of reconciliation.entries) {
+		if (entry.action !== 'complete') {
+			console.warn(
+				`[batch-publish] Batch ${entry.journal.batchId} requires startup reconciliation action: ${entry.action}`
+			);
+		}
+	}
+	if (reconciliation.staleLeaseRemoved) {
+		console.warn('[batch-publish] Removed a stale canonical writer lease after journal recovery.');
+	}
+};
 
+export const handle: Handle = async ({ event, resolve }) => {
 	if (
 		requiresAdminAuth(event.url.pathname, event.request.method) &&
 		!isAdminAuthorized(event.request)

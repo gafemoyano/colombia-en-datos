@@ -8,6 +8,7 @@ import {
 	dataReleases,
 	indicatorDataSources,
 	indicatorDimensions,
+	indicatorFrequencies,
 	indicators
 } from '$lib/db/schema';
 import { runCanonicalQuery } from '$lib/server/duckdb';
@@ -160,6 +161,17 @@ async function countRows(
 	return toNumber(rows[0]?.count);
 }
 
+async function indicatorFrequencyExists(indicatorId: number, freq: string): Promise<boolean> {
+	const db = getDb();
+	const rows = await db
+		.select({ id: indicatorFrequencies.id })
+		.from(indicatorFrequencies)
+		.where(and(eq(indicatorFrequencies.indicatorId, indicatorId), eq(indicatorFrequencies.freq, freq)))
+		.limit(1);
+
+	return rows.length > 0;
+}
+
 async function getRegisteredDimensionColumns(indicatorId: number, freq: string): Promise<string[]> {
 	const db = getDb();
 	const dimensions = await db
@@ -203,6 +215,17 @@ async function validateUploadFile(
 	}
 
 	const indicatorId = indicatorRows[0].id;
+	if (!(await indicatorFrequencyExists(indicatorId, freq))) {
+		return {
+			valid: false,
+			errors: [`Indicator frequency ${indicatorCode}/${freq} is not defined`],
+			rowCount,
+			preview,
+			columns,
+			indicatorId
+		};
+	}
+
 	const registeredDimensionColumns = await getRegisteredDimensionColumns(indicatorId, freq);
 
 	try {

@@ -1,0 +1,2289 @@
+{
+  "schemaVersion": 1,
+  "analyzedAt": "2026-08-03T02:07:18.518Z",
+  "source": {
+    "filePath": "/home/gafe/Projects/colombia-en-datos/data/ingest/batches/1/source/source.parquet",
+    "originalName": "geih_2021_2026_arq_ok_v2.parquet",
+    "format": "parquet",
+    "rowCount": 2145
+  },
+  "columns": [
+    {
+      "name": "FREQ",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "freq"
+    },
+    {
+      "name": "INDICADOR",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "indicator_code"
+    },
+    {
+      "name": "REF_AREA",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "ref_area"
+    },
+    {
+      "name": "DEPT_CODE",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "dept_code"
+    },
+    {
+      "name": "MUNI_CODE",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "muni_code"
+    },
+    {
+      "name": "GEO_LEVEL",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "geo_level"
+    },
+    {
+      "name": "URBAN_RURAL",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "urban_rural"
+    },
+    {
+      "name": "SEX",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "sex"
+    },
+    {
+      "name": "AGE",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "age"
+    },
+    {
+      "name": "ADJUSTEMENT",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "adjustment"
+    },
+    {
+      "name": "TIME_PERIOD",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "time_period"
+    },
+    {
+      "name": "OBS_VALUE",
+      "type": "DOUBLE",
+      "nullable": true,
+      "mappedField": "obs_value"
+    },
+    {
+      "name": "UNIT",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "unit"
+    },
+    {
+      "name": "UNIT_MULT",
+      "type": "DOUBLE",
+      "nullable": true,
+      "mappedField": "unit_mult"
+    },
+    {
+      "name": "OBS_STATUS",
+      "type": "VARCHAR",
+      "nullable": true,
+      "mappedField": "obs_status"
+    },
+    {
+      "name": "DECIMALS",
+      "type": "DOUBLE",
+      "nullable": true,
+      "mappedField": "decimals"
+    },
+    {
+      "name": "YEAR",
+      "type": "INTEGER",
+      "nullable": true,
+      "mappedField": null
+    }
+  ],
+  "mappings": {
+    "mappings": [
+      {
+        "sourceColumn": "FREQ",
+        "canonicalField": "freq",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "INDICADOR",
+        "canonicalField": "indicator_code",
+        "confidence": "source-alias",
+        "transforms": [
+          "trim"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "REF_AREA",
+        "canonicalField": "ref_area",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "DEPT_CODE",
+        "canonicalField": "dept_code",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "MUNI_CODE",
+        "canonicalField": "muni_code",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "GEO_LEVEL",
+        "canonicalField": "geo_level",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "URBAN_RURAL",
+        "canonicalField": "urban_rural",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "SEX",
+        "canonicalField": "sex",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "AGE",
+        "canonicalField": "age",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "ADJUSTEMENT",
+        "canonicalField": "adjustment",
+        "confidence": "source-alias",
+        "transforms": [
+          "trim",
+          "uppercase"
+        ],
+        "warning": "Mapped source typo ADJUSTEMENT to canonical adjustment."
+      },
+      {
+        "sourceColumn": "TIME_PERIOD",
+        "canonicalField": "time_period",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "OBS_VALUE",
+        "canonicalField": "obs_value",
+        "confidence": "canonical",
+        "transforms": [
+          "numeric"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "UNIT",
+        "canonicalField": "unit",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "UNIT_MULT",
+        "canonicalField": "unit_mult",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "OBS_STATUS",
+        "canonicalField": "obs_status",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "DECIMALS",
+        "canonicalField": "decimals",
+        "confidence": "canonical",
+        "transforms": [
+          "identity"
+        ],
+        "warning": null
+      },
+      {
+        "sourceColumn": "YEAR",
+        "canonicalField": null,
+        "confidence": "unsupported",
+        "transforms": [],
+        "warning": "Column YEAR is not mapped to the canonical batch contract."
+      }
+    ],
+    "missingRequiredFields": [],
+    "duplicateCanonicalFields": [],
+    "unmappedColumns": [
+      "YEAR"
+    ]
+  },
+  "uniformDimensionality": {
+    "compatible": true,
+    "flatDimensionFields": [
+      "geo_level",
+      "dept_code",
+      "muni_code",
+      "urban_rural",
+      "sex",
+      "age",
+      "adjustment"
+    ],
+    "fixedTotalCandidateFields": [
+      "geo_level",
+      "urban_rural",
+      "sex",
+      "age"
+    ],
+    "variableDimensionFields": [
+      "dept_code",
+      "muni_code",
+      "adjustment"
+    ],
+    "sliceResults": [
+      {
+        "sliceKey": "desocupados/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "hogares/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "mean_personas_hogar/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "ocupados/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "pea/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "pet/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "pob_total/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "tdsi/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "tgp/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "to/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      },
+      {
+        "sliceKey": "viviendas/M",
+        "contractSource": "proposed-from-file",
+        "expectedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "observedFields": [
+          "geo_level",
+          "dept_code",
+          "muni_code",
+          "urban_rural",
+          "sex",
+          "age",
+          "adjustment"
+        ],
+        "missingFromFile": [],
+        "extraInFile": [],
+        "fixedTotalCandidateFields": [
+          "geo_level",
+          "urban_rural",
+          "sex",
+          "age"
+        ],
+        "compatible": true
+      }
+    ]
+  },
+  "slices": [
+    {
+      "key": "desocupados/M",
+      "indicatorCode": "desocupados",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 1763467.3070653505,
+        "max": 4695062.581892596,
+        "average": 2528184.015287774,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "hogares/M",
+      "indicatorCode": "hogares",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 11623793.999999747,
+        "max": 18706941.999996774,
+        "average": 14912504.9649579,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "mean_personas_hogar/M",
+      "indicatorCode": "mean_personas_hogar",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 2.8021985100506956,
+        "max": 3.6712359148831353,
+        "average": 3.213154067600197,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "ocupados/M",
+      "indicatorCode": "ocupados",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 15987842.982842742,
+        "max": 24598644.73983866,
+        "average": 20964230.10237515,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "pea/M",
+      "indicatorCode": "pea",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 20106764.77351432,
+        "max": 26699817.30729338,
+        "average": 23492414.117662914,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "pet/M",
+      "indicatorCode": "pet",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 30913794.00000279,
+        "max": 41061464.999997705,
+        "average": 35951431.98942521,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "pob_total/M",
+      "indicatorCode": "pob_total",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 42673690.00000217,
+        "max": 52420564.99999574,
+        "average": 47363174.933237605,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "tdsi/M",
+      "indicatorCode": "tdsi",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 0.07024857664550131,
+        "max": 0.21971973443280646,
+        "average": 0.1080643352526309,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "PERCENT",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "tgp/M",
+      "indicatorCode": "tgp",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 0.5344557835336724,
+        "max": 0.7061752788692912,
+        "average": 0.655050874816987,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "PERCENT",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "to/M",
+      "indicatorCode": "to",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 0.42497115993838025,
+        "max": 0.6400804504166014,
+        "average": 0.5846200275208321,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "PERCENT",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    },
+    {
+      "key": "viviendas/M",
+      "indicatorCode": "viviendas",
+      "freq": "M",
+      "rowCount": 195,
+      "periodStart": "2010-01",
+      "periodEnd": "2026-03",
+      "sourcePeriodStart": "1-2010",
+      "sourcePeriodEnd": "9-2025",
+      "measurement": {
+        "rowCount": 195,
+        "nonNullCount": 195,
+        "nullCount": 0,
+        "min": 11256892.11004329,
+        "max": 18599951.149602134,
+        "average": 14635994.803362017,
+        "distinctValueCount": 195,
+        "unitValues": [
+          {
+            "value": "NUMBER",
+            "rowCount": 195
+          }
+        ],
+        "unitMultValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ],
+        "decimalValues": [
+          {
+            "value": "0.0",
+            "rowCount": 195
+          }
+        ]
+      },
+      "dimensions": [
+        {
+          "field": "geo_level",
+          "sourceColumn": "GEO_LEVEL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NAT",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "dept_code",
+          "sourceColumn": "DEPT_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "00",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "muni_code",
+          "sourceColumn": "MUNI_CODE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "0000",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        },
+        {
+          "field": "urban_rural",
+          "sourceColumn": "URBAN_RURAL",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "sex",
+          "sourceColumn": "SEX",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "T",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "age",
+          "sourceColumn": "AGE",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "TOTAL",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": true
+        },
+        {
+          "field": "adjustment",
+          "sourceColumn": "ADJUSTEMENT",
+          "nonNullCount": 195,
+          "nullCount": 0,
+          "distinctValueCount": 1,
+          "values": [
+            {
+              "value": "NSA",
+              "rowCount": 195
+            }
+          ],
+          "fixedTotalCandidate": false
+        }
+      ],
+      "duplicateKeys": {
+        "duplicateKeyCount": 0,
+        "duplicateRowCount": 0,
+        "sampleKeys": []
+      },
+      "diagnostics": []
+    }
+  ],
+  "totals": {
+    "sliceCount": 11,
+    "rowCount": 2145,
+    "errorCount": 0,
+    "warningCount": 1
+  },
+  "diagnostics": [
+    {
+      "severity": "info",
+      "code": "source_alias_mapping",
+      "message": "Mapped source typo ADJUSTEMENT to canonical adjustment.",
+      "details": {
+        "sourceColumn": "ADJUSTEMENT",
+        "canonicalField": "adjustment"
+      }
+    },
+    {
+      "severity": "warning",
+      "code": "unsupported_column",
+      "message": "Column YEAR is not mapped to the canonical batch contract.",
+      "details": {
+        "sourceColumn": "YEAR",
+        "canonicalField": null
+      }
+    },
+    {
+      "severity": "info",
+      "code": "source_period_converted",
+      "message": "2145 monthly source period value(s) were converted to YYYY-MM.",
+      "details": {
+        "convertedCount": 2145
+      }
+    }
+  ],
+  "adminReviewQuestions": [
+    {
+      "id": "review-unmapped-columns",
+      "severity": "warning",
+      "message": "Review unmapped source columns before accepting definitions or staging rows.",
+      "relatedFields": [
+        "YEAR"
+      ]
+    },
+    {
+      "id": "review-derived-slices",
+      "severity": "info",
+      "message": "Confirm the derived indicator/frequency slices before generating definition drafts.",
+      "relatedSliceKeys": [
+        "desocupados/M",
+        "hogares/M",
+        "mean_personas_hogar/M",
+        "ocupados/M",
+        "pea/M",
+        "pet/M",
+        "pob_total/M",
+        "tdsi/M",
+        "tgp/M",
+        "to/M",
+        "viviendas/M"
+      ]
+    },
+    {
+      "id": "review-fixed-total-dimensions",
+      "severity": "info",
+      "message": "Review fixed-total dimension candidates; the definition-drafts phase decides whether to collapse or keep them.",
+      "relatedFields": [
+        "geo_level",
+        "urban_rural",
+        "sex",
+        "age"
+      ]
+    }
+  ]
+}

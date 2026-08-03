@@ -32,6 +32,10 @@ _Avoid_: Indicator annotation, metadata
 A formal definition, formula, or source explanation that clarifies how an **Indicator** is constructed.
 _Avoid_: Description, notes
 
+**Source citation**:
+Human-facing provenance text for an **Indicator**, such as the originating institution, table, or publication note.
+_Avoid_: Source, data source
+
 **Attention need**:
 A missing or low-quality **Indicator annotation** that should prompt an admin to improve it.
 _Avoid_: Review state, approval status
@@ -104,8 +108,11 @@ A user who reviews and improves Spanish-facing indicator annotations (names, des
 
 - An **Indicator** has zero or more **Indicator annotations**.
 - **Methodology** is part of an **Indicator annotation** when a formal definition or formula is available.
+- **Source citation** is part of an **Indicator annotation** when indicator-specific provenance text is available.
+- A **Data source** is identified by a globally unique stable lowercase snake-case code and a name.
 - A **Data source** provides one or more **Indicator groups**.
 - An **Indicator group** belongs to exactly one **Data source**.
+- An **Indicator group** code may preserve source-native table, sheet, or collection identifiers.
 - An **Indicator group** contains one or more **Indicators**.
 - An **Indicator** belongs to exactly one **Indicator group**.
 - When a **Data source** has no meaningful grouping, it uses a default **Indicator group** named after the **Data source**.
@@ -123,21 +130,25 @@ A user who reviews and improves Spanish-facing indicator annotations (names, des
 - **Explorer view** URLs identify **Observation dimensions** by their registry codes.
 - **Discovery controls** choose the **Indicator**; **Visualization controls** constrain or split its observations.
 - An **Indicator** can have observations at different **Frequencies** without becoming a different indicator.
+- **Indicator annotations** are shared across all **Indicator frequencies** of the same **Indicator**.
+- **Measurement format** can differ by **Indicator frequency**.
 - An **Indicator frequency** belongs to exactly one **Indicator**.
 - A **Published indicator** is visible in the **Explorer view**.
 - A single **Observation** has exactly one **Frequency**.
 - The `indicators` table does not store **Frequency**; it is purely a property of each **Observation** row.
 - An **Attention need** belongs to an **Indicator annotation**.
+- Missing optional **Indicator annotations** can create **Attention needs** for **Curators** after observations are published.
 - A **Data scientist** creates **Indicators** and their observations through the ingestion pipeline.
 - A **Data scientist** is responsible for transforming source data into the system's **Observation schema** before upload. The system does not perform column mapping.
 
 ## Example dialogue
 
-> **Dev:** "Should the unit and source appear as **Indicator annotations**?"
-> **Domain expert:** "Source is an **Indicator annotation**; unit belongs to the **Measurement format** because it can vary by series, while sex and age are **Observation dimensions** because they slice the observations."
+> **Dev:** "Should the unit and source citation appear as **Indicator annotations**?"
+> **Domain expert:** "The **Source citation** is an **Indicator annotation**; unit belongs to the **Measurement format** because it can vary by series, while sex and age are **Observation dimensions** because they slice the observations."
 
 ## Flagged ambiguities
 
 - "metadata" was used to mean all non-measure data from the data engineering perspective; resolved: use **Indicator annotation** for human-facing context and avoid using "metadata" as the domain term.
 - "Area", "survey", and "encuesta" were used as possible parents for ingestion; resolved: use **Data source** as the generic parent, with a survey/encuesta being one kind of **Data source**.
 - "Area" was considered as a separate top-level grouping for indicators; resolved: do not use **Area** as a domain concept until a real product taxonomy exists.
+- "source" was used for both the parent origin of data and indicator-specific provenance text; resolved: use **Data source** for the parent and **Source citation** for the annotation.
