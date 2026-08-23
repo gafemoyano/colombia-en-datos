@@ -1,6 +1,10 @@
 import duckdb from 'duckdb';
-import { dirname, resolve, join } from 'path';
+import { basename, dirname, resolve, join } from 'path';
 import { existsSync, readdirSync, symlinkSync, unlinkSync, mkdirSync, renameSync, rmSync } from 'fs';
+import {
+	EXPORTACIONES_PARQUET_BASENAME,
+	exportacionesInsert
+} from '../src/lib/server/contracts/exportaciones-load';
 
 const DATA_PATH = process.env.DATA_PATH ? resolve(process.env.DATA_PATH) : resolve(process.cwd(), 'data');
 const CANONICAL_PATH = process.env.CANONICAL_DUCKDB_PATH
@@ -71,8 +75,17 @@ async function run() {
 		return files;
 	}
 
-	const allFiles = findParquetFiles(DATA_PATH);
-	console.log(`[canonical] Found ${allFiles.length} parquet files`);
+	// Exportaciones carries its breakdown in CATEGORY, which the generic SELECT
+	// below has no column for. It is loaded separately from its own contract so
+	// the breakdown survives; see contracts/exportaciones-load.
+	const scanned = findParquetFiles(DATA_PATH);
+	const contractFiles = scanned.filter(
+		(file) => basename(file) === EXPORTACIONES_PARQUET_BASENAME
+	);
+	const allFiles = scanned.filter((file) => basename(file) !== EXPORTACIONES_PARQUET_BASENAME);
+	console.log(
+		`[canonical] Found ${scanned.length} parquet files (${allFiles.length} generic, ${contractFiles.length} contract-loaded)`
+	);
 
 	let totalRows = 0;
 	let processed = 0;
@@ -189,6 +202,27 @@ async function run() {
 		}
 	}
 
+	for (const filePath of contractFiles) {
+		console.log('[canonical] Loading via contract:', basename(filePath));
+		await new Promise<void>((res, rej) => {
+			db.run(exportacionesInsert(filePath), (err: Error | null) => {
+				if (err) rej(err);
+				else res();
+			});
+		});
+	}
+
+	if (contractFiles.length > 0) {
+		const countResult = await new Promise<{ count: number }[]>((res, rej) => {
+			db.all('SELECT COUNT(*) as count FROM observations', (err: Error | null, rows: any) => {
+				if (err) rej(err);
+				else res(rows as { count: number }[]);
+			});
+		});
+		totalRows = Number(countResult[0].count);
+		console.log(`[canonical] After contract loads → ${totalRows.toLocaleString()} rows`);
+	}
+
 	console.log('[canonical] Creating indexes...');
 	await new Promise<void>((res, rej) => {
 		db.run(
@@ -241,7 +275,7 @@ async function run() {
 		console.log('[canonical] Atomically replaced', CANONICAL_PATH);
 	}
 
-	console.log(`[canonical] Done! ${totalRows.toLocaleString()} rows, ${allFiles.length} files`);
+	console.log(`[canonical] Done! ${totalRows.toLocaleString()} rows, ${scanned.length} files`);
 }
 
 run().catch((err) => {

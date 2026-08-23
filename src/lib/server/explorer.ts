@@ -10,7 +10,19 @@ import {
 	indicators
 } from '$lib/db/schema';
 import { getPublishedFrequenciesByIndicator, runCanonicalQuery } from '$lib/server/duckdb';
+import {
+	EXPORTACIONES_CANONICAL_COLUMN,
+	EXPORTACIONES_DIMENSIONS
+} from '$lib/server/contracts/exportaciones';
 
+// Dimension code -> canonical observations column.
+//
+// Several codes may share a column. The canonical store carries three generic
+// extension columns, and a product whose indicators each have exactly one
+// breakdown puts all of its breakdowns in one of them; the registry
+// (`indicator_dimensions`) is what says which code applies to which indicator,
+// so a shared column is never ambiguous at query time. Only the code -> column
+// direction is ever used.
 const DIMENSION_COLUMNS = new Map<string, string>([
 	['GEO_LEVEL', 'geo_level'],
 	['DEPT_CODE', 'dept_code'],
@@ -18,7 +30,10 @@ const DIMENSION_COLUMNS = new Map<string, string>([
 	['URBAN_RURAL', 'urban_rural'],
 	['SEX', 'sex'],
 	['AGE', 'age'],
-	['ADJUSTMENT', 'adjustment']
+	['ADJUSTMENT', 'adjustment'],
+	...EXPORTACIONES_DIMENSIONS.map(
+		(dimension) => [dimension.code, EXPORTACIONES_CANONICAL_COLUMN] as const
+	)
 ]);
 
 export interface ExplorerCatalogIndicator {
