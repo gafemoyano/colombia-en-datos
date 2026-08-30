@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+if [[ ! -x "$HOME/.local/bin/mise" ]]; then
+	printf 'mise is missing; rerun .agents/setup\n' >&2
+	exit 1
+fi
+
+expected_node="v$(awk '$1 == "nodejs" { print $2 }' .tool-versions)"
+actual_node="$("$HOME/.local/bin/mise" exec -- node --version)"
+
+if [[ "$actual_node" != "$expected_node" ]] || [[ ! -x node_modules/.bin/vite ]]; then
+	printf 'The pinned toolchain or dependencies are missing; rerun .agents/setup\n' >&2
+	exit 1
+fi
+
+printf 'Orb ready (Node %s)\n' "$actual_node"

@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+run_step() {
+	local description="$1"
+	shift
+	local started_at=$SECONDS
+
+	printf '==> %s\n' "$description"
+	"$@"
+	printf '    completed in %ss\n' "$((SECONDS - started_at))"
+}
+
+install_mise() {
+	curl -fsSL https://mise.run | sh
+}
+
+if [[ ! -x "$HOME/.local/bin/mise" ]]; then
+	run_step 'Installing mise' install_mise
+fi
+
+export PATH="$HOME/.local/bin:$PATH"
+
+profile_marker='# colombia-en-datos mise activation'
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+	cat >> "$HOME/.bash_profile" <<'EOF'
+
+# colombia-en-datos mise activation
+if [[ -x "$HOME/.local/bin/mise" ]]; then
+	eval "$("$HOME/.local/bin/mise" activate bash)"
+fi
+EOF
+fi
+
+run_step 'Installing pinned toolchain' mise install --yes
+
+dependency_fingerprint="$({ sha256sum package.json package-lock.json .tool-versions; } | sha256sum | cut -d' ' -f1)"
+dependency_marker='node_modules/.amp-dependency-fingerprint'
+
+if [[ -x node_modules/.bin/vite ]] && [[ -f "$dependency_marker" ]] &&
+	[[ "$(<"$dependency_marker")" == "$dependency_fingerprint" ]]; then
+	printf '==> Dependencies already match package-lock.json\n'
+else
+	run_step 'Installing npm dependencies' mise exec -- npm ci --no-audit --no-fund
+	printf '%s\n' "$dependency_fingerprint" > "$dependency_marker"
+fi
+
+printf '==> Orb setup complete (Node %s)\n' "$(mise exec -- node --version)"
