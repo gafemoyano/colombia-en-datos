@@ -14,7 +14,7 @@ import {
 import { eq, and, inArray, or } from 'drizzle-orm';
 import { join, resolve } from 'path';
 
-export const CANONICAL_SCHEMA_VERSION = 1;
+export const CANONICAL_SCHEMA_VERSION = 2;
 
 export interface IndicatorData {
 	time: string;
@@ -48,7 +48,8 @@ interface DuckDbDatabase {
 }
 
 interface DuckDbModule {
-	Database: new (path: string) => DuckDbDatabase;
+	Database: new (path: string, mode?: number) => DuckDbDatabase;
+	OPEN_READONLY: number;
 }
 
 let duckDbModule: DuckDbModule | null = null;
@@ -96,7 +97,12 @@ async function getCanonicalDuckDB(): Promise<DuckDbDatabase> {
 	}
 
 	const duckdb = await loadDuckDB();
-	canonicalDb = new duckdb.Database(dbPath);
+	// Read-only, because the app only ever reads. DuckDB allows a single
+	// read-write process per file, so opening it read-write means a running dev
+	// server locks the store against the test suite, the validator and any
+	// second server -- and leaves the file writable by a process that has no
+	// reason to write to it.
+	canonicalDb = new duckdb.Database(dbPath, duckdb.OPEN_READONLY);
 	await validateCanonicalSchema(canonicalDb);
 	return canonicalDb;
 }
@@ -191,40 +197,46 @@ export async function queryTimeSeries(params: TimeSeriesQueryParams): Promise<In
 		queryParams.push(endDate);
 	}
 
-	const dimFilters: Record<string, string | undefined> = {
-		urban_rural: urbanRural,
-		sex: sex,
-		age: age,
-		adjustment: adjustment,
-		geo_level: geoLevel,
-		dept_code: deptCode,
-		muni_code: muniCode
+	const explicitFilters: Record<string, string | undefined> = {
+		URBAN_RURAL: urbanRural,
+		SEX: sex,
+		AGE: age,
+		ADJUSTMENT: adjustment,
+		GEO_LEVEL: geoLevel,
+		DEPT_CODE: deptCode,
+		MUNI_CODE: muniCode
 	};
 
-	for (const [dim, val] of Object.entries(dimFilters)) {
-		if (val !== undefined) {
-			const hasDim = registeredDims.some(
-				(d) => d.dimensionCode.toUpperCase() === dim.toUpperCase()
-			);
-			if (hasDim) {
-				conditions.push(`${dim} = ?`);
-				queryParams.push(val);
-			}
-		}
+	const byCode = by?.toUpperCase() ?? null;
+
+	// Every registered dimension has to be pinned to a single value unless we
+	// are splitting by it. The canonical store keeps one row per combination of
+	// all 13 dimensions, so leaving one unpinned multiplies the result set: an
+	// EMICRON indicator with SEX unpinned returns the M, F and _T rows and the
+	// chart draws three overlapping series for what looks like one category.
+	//
+	// The pin comes from `indicator_dimensions.default_value`, which the
+	// canonical registry import sets to the dimension's total ('_T', or 'NAT' /
+	// 'CO' / '00' / '0000' / 'N' for the dimensions that have no '_T').
+	for (const dim of registeredDims) {
+		const code = dim.dimensionCode.toUpperCase();
+		if (code === byCode) continue;
+		// ref_area is already pinned above from the caller's refArea. Applying the
+		// registry default here too would AND a second, different value onto it
+		// and silently return nothing for any non-national request.
+		if (code === 'REF_AREA') continue;
+
+		const value = explicitFilters[code] ?? dim.defaultValue ?? undefined;
+		if (value === undefined) continue;
+
+		conditions.push(`${code.toLowerCase()} = ?`);
+		queryParams.push(value);
 	}
 
-	if (by) {
-		const byLower = by.toLowerCase();
-		const hasBy = registeredDims.some((d) => d.dimensionCode.toUpperCase() === by.toUpperCase());
+	if (byCode) {
+		const hasBy = registeredDims.some((d) => d.dimensionCode.toUpperCase() === byCode);
 		if (hasBy) {
-			selectCols.push(byLower);
-		}
-	} else {
-		const hasUrbanRural = registeredDims.some(
-			(d) => d.dimensionCode.toUpperCase() === 'URBAN_RURAL'
-		);
-		if (hasUrbanRural && urbanRural === undefined) {
-			conditions.push("urban_rural = 'T'");
+			selectCols.push(byCode.toLowerCase());
 		}
 	}
 

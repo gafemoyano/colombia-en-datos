@@ -15,36 +15,58 @@ import { runCanonicalQuery } from '$lib/server/duckdb';
 
 const REQUIRED_COLUMNS = ['indicator_code', 'freq', 'ref_area', 'time_period', 'obs_value'];
 const OPTIONAL_CANONICAL_COLUMNS = [
+	'dataflow',
 	'geo_level',
 	'dept_code',
 	'muni_code',
+	'area',
+	'domain',
+	'clase',
 	'urban_rural',
 	'sex',
+	'head_sex',
 	'age',
+	'category',
 	'adjustment',
-	'ext_1',
-	'ext_2',
-	'ext_3',
-	'obs_status'
+	'unit',
+	'unit_mult',
+	'decimals',
+	'obs_status',
+	'weight_type',
+	'estimation_scope',
+	'representative',
+	'year',
+	'month'
 ].map((column) => column.trim());
 
 const OBSERVATION_COLUMNS = [
+	'dataflow',
 	'indicator_code',
 	'freq',
-	'ref_area',
 	'time_period',
-	'obs_value',
-	'geo_level',
+	'ref_area',
 	'dept_code',
 	'muni_code',
+	'geo_level',
+	'area',
+	'domain',
+	'clase',
 	'urban_rural',
 	'sex',
+	'head_sex',
 	'age',
+	'category',
 	'adjustment',
-	'ext_1',
-	'ext_2',
-	'ext_3',
-	'obs_status'
+	'obs_value',
+	'unit',
+	'unit_mult',
+	'decimals',
+	'obs_status',
+	'weight_type',
+	'estimation_scope',
+	'representative',
+	'year',
+	'month'
 ];
 
 export interface UploadValidationResult {

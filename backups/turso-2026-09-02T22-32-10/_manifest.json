@@ -1,0 +1,20 @@
+{
+  "takenAt": "2026-09-02T22:32:13.978Z",
+  "tables": {
+    "__drizzle_migrations": 8,
+    "data_releases": 325,
+    "data_sources": 5,
+    "departamentos": 33,
+    "dimension_definitions": 16,
+    "dimension_values": 759,
+    "indicator_data_sources": 8435,
+    "indicator_dimensions": 2077,
+    "indicator_files": 34731,
+    "indicator_frequencies": 325,
+    "indicator_groups": 32,
+    "indicators": 325,
+    "ingest_batch_slices": 133,
+    "ingest_batches": 1,
+    "users": 0
+  }
+}

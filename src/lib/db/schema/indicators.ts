@@ -60,6 +60,20 @@ export const indicators = sqliteTable('indicators', {
 	decimals: integer('decimals'),
 	defaultViz: text('default_viz', { length: 50 }),
 	updated: text('updated', { length: 50 }),
+	// --- canonical SDMX fields, imported from the survey metadata JSON -------
+	// Which survey produced this indicator (GEIH, ECV, EMICRON, Exportaciones).
+	survey: text('survey', { length: 50 }),
+	// SDMX dataflow id, e.g. COL_DATOS:GEIH_POSSIBLE_INDICATORS(1.0).
+	dataflow: text('dataflow', { length: 255 }),
+	// Free-text Spanish theme. The stable identifier is the collection code on
+	// indicator_groups; this is the display string the survey ships.
+	theme: text('theme', { length: 255 }),
+	universe: text('universe'),
+	formula: text('formula'),
+	sourceVariables: text('source_variables'),
+	// Observed coverage in the canonical store, as TIME_PERIOD strings.
+	timeMin: text('time_min', { length: 10 }),
+	timeMax: text('time_max', { length: 10 }),
 	createdAt: text('created_at')
 		.default(sql`(CURRENT_TIMESTAMP)`)
 		.notNull(),
@@ -124,6 +138,39 @@ export const dimensionValues = sqliteTable(
 	(table) => ({
 		uniqueDimensionValue: uniqueIndex('dimension_values_unique').on(
 			table.dimensionCode,
+			table.code
+		)
+	})
+);
+
+/**
+ * Per-indicator CATEGORY codelists.
+ *
+ * CATEGORY codes are only meaningful inside one indicator -- GEIH's '1' is
+ * "Hombre" in GEIH_PI_028, "Contributivo" in GEIH_PI_034 and "Indígena" in
+ * GEIH_PI_110. Every survey's metadata says so explicitly:
+ * `_schema.codelists.CATEGORY = {"scope": "INDICATOR"}`.
+ *
+ * So these cannot live in `dimension_values`, which is keyed on
+ * (dimension_code, code) and would collapse 93 distinct meanings onto a
+ * handful of numeric codes. Global dimensions (SEX, GEO_LEVEL, URBAN_RURAL,
+ * ...) still belong there.
+ */
+export const indicatorCategories = sqliteTable(
+	'indicator_categories',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		indicatorId: integer('indicator_id')
+			.notNull()
+			.references(() => indicators.id),
+		code: text('code', { length: 100 }).notNull(),
+		labelEs: text('label_es', { length: 512 }),
+		sortOrder: integer('sort_order'),
+		obsCount: integer('obs_count')
+	},
+	(table) => ({
+		uniqueIndicatorCategory: uniqueIndex('indicator_categories_unique').on(
+			table.indicatorId,
 			table.code
 		)
 	})

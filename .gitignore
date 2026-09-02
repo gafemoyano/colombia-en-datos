@@ -21,6 +21,10 @@ Thumbs.db
 # Database files (local dev only; Turso is used in production)
 drizzle/db.sqlite
 
+# Generated canonical store (rebuild with `npm run canonical:rebuild`)
+data/observations.duckdb
+data/observations.duckdb.next-*
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*

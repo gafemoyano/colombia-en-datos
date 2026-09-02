@@ -5,35 +5,33 @@ import {
 	departamentos,
 	dimensionDefinitions,
 	dimensionValues,
+	indicatorCategories,
 	indicatorDimensions,
 	indicatorGroups,
 	indicators
 } from '$lib/db/schema';
 import { getPublishedFrequenciesByIndicator, runCanonicalQuery } from '$lib/server/duckdb';
-import {
-	EXPORTACIONES_CANONICAL_COLUMN,
-	EXPORTACIONES_DIMENSIONS
-} from '$lib/server/contracts/exportaciones';
 
 // Dimension code -> canonical observations column.
 //
-// Several codes may share a column. The canonical store carries three generic
-// extension columns, and a product whose indicators each have exactly one
-// breakdown puts all of its breakdowns in one of them; the registry
-// (`indicator_dimensions`) is what says which code applies to which indicator,
-// so a shared column is never ambiguous at query time. Only the code -> column
-// direction is ever used.
+// One dimension, one column, the same for every survey. Each canonical parquet
+// ships the same 36 columns, so there is nothing to remap per product -- the
+// generic extension columns and the exportaciones-specific mapping that used
+// to live here are gone with them.
 const DIMENSION_COLUMNS = new Map<string, string>([
 	['GEO_LEVEL', 'geo_level'],
+	['REF_AREA', 'ref_area'],
 	['DEPT_CODE', 'dept_code'],
 	['MUNI_CODE', 'muni_code'],
+	['AREA', 'area'],
+	['DOMAIN', 'domain'],
+	['CLASE', 'clase'],
 	['URBAN_RURAL', 'urban_rural'],
 	['SEX', 'sex'],
+	['HEAD_SEX', 'head_sex'],
 	['AGE', 'age'],
-	['ADJUSTMENT', 'adjustment'],
-	...EXPORTACIONES_DIMENSIONS.map(
-		(dimension) => [dimension.code, EXPORTACIONES_CANONICAL_COLUMN] as const
-	)
+	['CATEGORY', 'category'],
+	['ADJUSTMENT', 'adjustment']
 ]);
 
 export interface ExplorerCatalogIndicator {
@@ -157,6 +155,13 @@ interface RegisteredDimension {
 	name: string;
 	isFilterable: boolean;
 	isSplitable: boolean;
+	/**
+	 * Value this dimension collapses to when the user has not filtered or split
+	 * on it. Null means there is no sensible total -- CATEGORY is the only such
+	 * dimension, because 216 of the 230 indicators with a breakdown ship no
+	 * '_T' category row.
+	 */
+	defaultValue: string | null;
 }
 
 function asNumber(value: unknown): number {
@@ -404,7 +409,8 @@ async function loadRegisteredDimensions(
 				code: indicatorDimensions.dimensionCode,
 				name: dimensionDefinitions.name,
 				isFilterable: indicatorDimensions.isFilterable,
-				isSplitable: indicatorDimensions.isSplitable
+				isSplitable: indicatorDimensions.isSplitable,
+				defaultValue: indicatorDimensions.defaultValue
 			})
 			.from(indicatorDimensions)
 			.innerJoin(
@@ -424,7 +430,8 @@ async function loadRegisteredDimensions(
 					code: row.code.toUpperCase(),
 					name: row.name,
 					isFilterable: row.isFilterable ?? true,
-					isSplitable: row.isSplitable ?? true
+					isSplitable: row.isSplitable ?? true,
+					defaultValue: row.defaultValue ?? null
 				}))
 				.filter((dimension) => DIMENSION_COLUMNS.has(dimension.code))
 				.sort((a, b) => a.name.localeCompare(b.name)),
@@ -441,7 +448,9 @@ async function loadRegisteredDimensions(
 }
 
 async function loadValueLabels(
-	dimensionCodes: string[]
+	dimensionCodes: string[],
+	indicatorCodes: string[] = [],
+	warnings: string[] = []
 ): Promise<Map<string, Map<string, string>>> {
 	if (dimensionCodes.length === 0) return new Map();
 
@@ -485,6 +494,43 @@ async function loadValueLabels(
 
 		if (dimensionCodes.includes('MUNI_CODE')) {
 			setLabel('MUNI_CODE', '0000', 'Todos los municipios');
+		}
+
+		// CATEGORY codes are scoped to one indicator: '1' is "Hombre" in
+		// GEIH_PI_028 and "Contributivo" in GEIH_PI_034. They therefore live in
+		// indicator_categories rather than dimension_values, and are resolved
+		// against the indicators actually selected.
+		if (dimensionCodes.includes('CATEGORY') && indicatorCodes.length > 0) {
+			const categoryRows = await db
+				.select({
+					indicatorCode: indicators.code,
+					code: indicatorCategories.code,
+					labelEs: indicatorCategories.labelEs
+				})
+				.from(indicatorCategories)
+				.innerJoin(indicators, eq(indicatorCategories.indicatorId, indicators.id))
+				.where(inArray(indicators.code, indicatorCodes));
+
+			// Comparing two indicators whose codelists disagree on a code would
+			// silently mislabel one of them, so say so rather than pick a winner.
+			const seen = new Map<string, string>();
+			const conflicting = new Set<string>();
+			for (const row of categoryRows) {
+				const label = row.labelEs || row.code;
+				const previous = seen.get(row.code);
+				if (previous !== undefined && previous !== label) conflicting.add(row.code);
+				seen.set(row.code, label);
+				setLabel('CATEGORY', row.code, label);
+			}
+			if (conflicting.size > 0 && indicatorCodes.length > 1) {
+				warnings.push(
+					`Los indicadores seleccionados usan el mismo código de desagregación con distinto significado (${[
+						...conflicting
+					]
+						.slice(0, 5)
+						.join(', ')}). Compáralos por separado.`
+				);
+			}
 		}
 
 		return labels;
@@ -941,6 +987,41 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		state.by = null;
 	}
 
+	// Collapse every dimension the user has not chosen down to its registry
+	// default. The canonical store holds one row per combination of all 13
+	// dimensions, so an unpinned dimension does not mean "all" -- it means the
+	// query returns that dimension's total row *and* each of its parts, and the
+	// chart draws them on top of each other.
+	//
+	// CATEGORY is the exception: it has no default because 216 of the 230
+	// indicators with a breakdown ship no '_T' category row, so filtering to a
+	// total would empty the chart. Splitting by it is the useful default -- an
+	// indicator like "Régimen de salud del jefe/a" *is* its breakdown.
+	if (!state.by) {
+		// Specifically CATEGORY, not merely the first dimension without a default.
+		// REF_AREA also lacks one for department-only indicators, and splitting by
+		// it would draw 24 department series for an indicator whose actual subject
+		// is its breakdown. Geography is a filter the user picks; the breakdown is
+		// what the indicator is about.
+		//
+		// A dimension is only registered when it actually varies for the
+		// indicator, so presence here already means it has more than one value.
+		const breakdown = commonRegisteredDimensions.find(
+			(dimension) =>
+				dimension.code === 'CATEGORY' &&
+				dimension.defaultValue === null &&
+				dimension.isSplitable &&
+				!state.filters[dimension.code]
+		);
+		if (breakdown) state.by = breakdown.code;
+	}
+
+	for (const dimension of commonRegisteredDimensions) {
+		if (state.filters[dimension.code]) continue;
+		if (state.by === dimension.code) continue;
+		if (dimension.defaultValue) state.filters[dimension.code] = dimension.defaultValue;
+	}
+
 	const commonAvailableValueMaps = await Promise.all(
 		selectedIndicators.map((indicator) =>
 			loadAvailableValues({
@@ -959,7 +1040,11 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			)
 		)
 	);
-	const valueLabels = await loadValueLabels(allRegisteredCodes);
+	const valueLabels = await loadValueLabels(
+		allRegisteredCodes,
+		selectedIndicators.map((indicator) => indicator.code),
+		warnings
+	);
 	const dimensions = resolveDimensions({
 		registeredDimensions: commonRegisteredDimensions,
 		availableValues: commonAvailableValues,

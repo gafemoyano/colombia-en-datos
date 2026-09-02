@@ -21,12 +21,13 @@
 		"db:studio": "drizzle-kit studio",
 		"db:seed": "tsx scripts/seed.ts",
 		"db:seed:annotations": "node scripts/seed-annotations.mjs",
-		"canonical:build": "tsx scripts/create-canonical-store.ts",
+		"canonical:build": "tsx scripts/build-canonical-store.ts",
 		"canonical:validate": "tsx scripts/validate-canonical-store.ts",
 		"canonical:rebuild": "npm run canonical:build && npm run canonical:validate",
 		"data:backfill-releases": "tsx scripts/backfill-data-releases.ts",
-		"data:exportaciones": "tsx scripts/seed-exportaciones.ts",
-		"duckdb:rebuild": "npm rebuild duckdb"
+		"duckdb:rebuild": "npm rebuild duckdb",
+		"registry:import": "tsx scripts/import-canonical-registry.ts",
+		"registry:deploy": "tsx scripts/import-canonical-registry.ts --prod"
 	},
 	"devDependencies": {
 		"@fontsource-variable/inter": "^5.2.8",

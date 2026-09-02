@@ -50,6 +50,13 @@
       "when": 1779557040000,
       "tag": "0006_indicator_frequencies",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1788387600000,
+      "tag": "0007_canonical_v2",
+      "breakpoints": true
     }
   ]
 }
