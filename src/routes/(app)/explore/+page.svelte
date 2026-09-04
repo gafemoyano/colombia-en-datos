@@ -21,6 +21,7 @@
 	let { data }: { data: PageData } = $props();
 
 	const EMPTY_DATA_SOURCE = '__data_source_all__';
+	const EMPTY_THEME = '__theme_all__';
 	const EMPTY_FREQ = '__freq_empty__';
 	const EMPTY_BY = '__by_empty__';
 	const EMPTY_FILTER = '__filter_all__';
@@ -30,10 +31,24 @@
 	let indicatorPopoverOpen = $state(false);
 	let indicatorSearch = $state('');
 
-	const indicatorsForDataSource = $derived(
+	const indicatorsForDiscovery = $derived(
+		data.indicators.filter(
+			(indicator) =>
+				(!data.state.dataSource || indicator.dataSourceCode === data.state.dataSource) &&
+				(!data.state.theme || indicator.theme === data.state.theme)
+		)
+	);
+
+	const themesForDataSource = $derived(
 		data.state.dataSource
-			? data.indicators.filter((indicator) => indicator.dataSourceCode === data.state.dataSource)
-			: data.indicators
+			? [
+					...new Set(
+						data.indicators
+							.filter((indicator) => indicator.dataSourceCode === data.state.dataSource)
+							.map((indicator) => indicator.theme)
+					)
+				].sort((a, b) => a.localeCompare(b))
+			: data.themes
 	);
 
 	const selectedDataSourceLabel = $derived(
@@ -42,6 +57,8 @@
 				data.state.dataSource
 			: 'Todas las fuentes de datos'
 	);
+
+	const selectedThemeLabel = $derived(data.state.theme || 'Todos los temas');
 
 	const selectedFrequencyLabel = $derived(
 		data.state.freq ? frequencyLabel(data.state.freq) : 'Selecciona'
@@ -127,6 +144,7 @@
 	function canonicalizeParams(params: URLSearchParams): URLSearchParams {
 		const canonical = new URLSearchParams();
 		const dataSource = params.get('data_source')?.trim();
+		const theme = params.get('theme')?.trim();
 		const indicators = params
 			.getAll('indicator')
 			.map((indicator) => indicator.trim())
@@ -141,6 +159,7 @@
 			.sort(([a], [b]) => a.localeCompare(b));
 
 		if (dataSource) canonical.set('data_source', dataSource);
+		if (theme) canonical.set('theme', theme);
 		for (const indicator of indicators) canonical.append('indicator', indicator);
 		if (freq) canonical.set('freq', freq);
 		if (by) canonical.set('by', by);
@@ -174,25 +193,49 @@
 		});
 	}
 
+	function keepMatchingIndicators(params: URLSearchParams, dataSource: string, theme: string) {
+		const selectedIndicators = params.getAll('indicator');
+		const keptIndicators = selectedIndicators.filter((code) => {
+			const indicator = data.indicators.find((candidate) => candidate.code === code);
+			return (
+				indicator &&
+				(!dataSource || indicator.dataSourceCode === dataSource) &&
+				(!theme || indicator.theme === theme)
+			);
+		});
+
+		deleteIndicatorParams(params);
+		for (const code of keptIndicators) params.append('indicator', code);
+		if (keptIndicators.length !== selectedIndicators.length) {
+			params.delete('freq');
+			deleteVisualizationParams(params);
+		}
+	}
+
 	function handleDataSourceSelect(selectedValue: string) {
 		const dataSource = selectedValue === EMPTY_DATA_SOURCE ? '' : selectedValue;
 		navigateWith((params) => {
 			setParamOrDelete(params, 'data_source', dataSource);
-
-			if (dataSource) {
-				const keptIndicators = params.getAll('indicator').filter((code) => {
-					const indicatorDataSource = data.indicators.find(
-						(indicator) => indicator.code === code
-					)?.dataSourceCode;
-					return indicatorDataSource === dataSource;
-				});
-				deleteIndicatorParams(params);
-				for (const code of keptIndicators) params.append('indicator', code);
-				if (keptIndicators.length !== data.state.selectedIndicators.length) {
-					params.delete('freq');
-					deleteVisualizationParams(params);
-				}
+			let theme = params.get('theme')?.trim() || '';
+			if (
+				dataSource &&
+				theme &&
+				!data.indicators.some(
+					(indicator) => indicator.dataSourceCode === dataSource && indicator.theme === theme
+				)
+			) {
+				params.delete('theme');
+				theme = '';
 			}
+			keepMatchingIndicators(params, dataSource, theme);
+		});
+	}
+
+	function handleThemeSelect(selectedValue: string) {
+		const theme = selectedValue === EMPTY_THEME ? '' : selectedValue;
+		navigateWith((params) => {
+			setParamOrDelete(params, 'theme', theme);
+			keepMatchingIndicators(params, params.get('data_source')?.trim() || '', theme);
 		});
 	}
 
@@ -265,6 +308,7 @@
 	function clearVisualizationHref(): string {
 		const params = new URLSearchParams();
 		if (data.state.dataSource) params.set('data_source', data.state.dataSource);
+		if (data.state.theme) params.set('theme', data.state.theme);
 		for (const indicator of data.state.selectedIndicators) params.append('indicator', indicator);
 		if (data.state.freq) params.set('freq', data.state.freq);
 		return exploreHref(params);
@@ -304,7 +348,7 @@
 			</div>
 		</Card.CardHeader>
 		<Card.CardContent class="px-5 pb-5">
-			<div class="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)_180px] lg:items-end">
+			<div class="grid gap-5 lg:grid-cols-[200px_200px_minmax(0,1fr)_160px] lg:items-end">
 				<div class="space-y-2">
 					<Label id="data-source-label">Fuente de datos</Label>
 					<Select.Root
@@ -319,6 +363,25 @@
 							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas las fuentes de datos">Todas las fuentes de datos</Select.Item>
 							{#each data.dataSources as dataSource}
 								<Select.Item value={dataSource.code} label={dataSource.name}>{dataSource.name}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
+
+				<div class="space-y-2">
+					<Label id="theme-label">Tema</Label>
+					<Select.Root
+						type="single"
+						value={data.state.theme || EMPTY_THEME}
+						onValueChange={handleThemeSelect}
+					>
+						<Select.Trigger aria-labelledby="theme-label" class="h-9 w-full">
+							<span class="truncate">{selectedThemeLabel}</span>
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value={EMPTY_THEME} label="Todos los temas">Todos los temas</Select.Item>
+							{#each themesForDataSource as theme}
+								<Select.Item value={theme} label={theme}>{theme}</Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
@@ -344,21 +407,34 @@
 							<Command.Root>
 								<Command.Input
 									bind:value={indicatorSearch}
-									placeholder="Busca por código, nombre, grupo o fuente de datos..."
+									placeholder="Busca por código, nombre, grupo, tema o fuente de datos..."
 								/>
-								<Command.List class="max-h-96">
+								<Command.List class="max-h-[368px]">
 									<Command.Empty>No hay indicadores para esa búsqueda.</Command.Empty>
-									<Command.Group heading={data.state.dataSource ? 'Indicadores de la fuente de datos' : 'Indicadores'}>
-										{#each indicatorsForDataSource as indicator}
+									<Command.Group
+										heading={data.state.dataSource || data.state.theme
+											? 'Indicadores filtrados'
+											: 'Indicadores'}
+									>
+										{#each indicatorsForDiscovery as indicator}
 											<Command.Item
 												value={`${indicator.code} ${indicator.name}`}
-												keywords={[indicator.code, indicator.name, indicator.group, indicator.dataSource]}
+												keywords={[
+													indicator.code,
+													indicator.name,
+													indicator.group,
+													indicator.theme,
+													indicator.dataSource
+												]}
 												onSelect={() => selectIndicator(indicator)}
 											>
 												<div class="min-w-0 flex-1 py-1">
 													<div class="truncate font-medium">{indicator.name}</div>
 													<div class="text-muted-foreground truncate text-xs">
-														{indicator.code} · {indicator.dataSource} · {indicator.group}
+														{indicator.code} · {indicator.dataSource} · {indicator.theme}{indicator.group ===
+														indicator.theme
+															? ''
+															: ` · ${indicator.group}`}
 													</div>
 												</div>
 											</Command.Item>

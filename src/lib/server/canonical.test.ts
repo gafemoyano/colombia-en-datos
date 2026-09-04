@@ -159,4 +159,16 @@ describe.skipIf(!ready)('the Explorer, for every survey', () => {
 		expect(result.chart.status).toBe('chartable');
 		expect(result.chart.series.length).toBeGreaterThan(0);
 	});
+
+	it('maps themes into the catalog and applies them to indicator discovery', async () => {
+		const result = await model('theme=Salud&indicator=GEIH_PI_034');
+
+		expect(result.themes).toContain('Salud');
+		expect(
+			result.indicators.filter((indicator) => indicator.theme === 'Salud').length
+		).toBeGreaterThan(0);
+		expect(result.state.theme).toBe('Salud');
+		expect(result.selectedIndicators).toEqual([]);
+		expect(result.canonicalSearch).toBe('theme=Salud');
+	});
 });

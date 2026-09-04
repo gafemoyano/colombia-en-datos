@@ -40,6 +40,7 @@ export interface ExplorerCatalogIndicator {
 	shortName: string | null;
 	dataSource: string;
 	dataSourceCode: string;
+	theme: string;
 	group: string;
 	availableFrequencies: string[];
 }
@@ -102,6 +103,7 @@ export interface ExplorerTimeAxis {
 
 export interface ExplorerState {
 	dataSource: string;
+	theme: string;
 	selectedIndicators: string[];
 	indicator: string | null;
 	freq: string | null;
@@ -134,6 +136,7 @@ export interface ExplorerMeasurementCompatibility {
 export interface ExplorerPageModel {
 	state: ExplorerState;
 	dataSources: Array<{ code: string; name: string }>;
+	themes: string[];
 	indicators: ExplorerCatalogIndicator[];
 	selectedIndicator: ExplorerCatalogIndicator | null;
 	selectedIndicators: ExplorerCatalogIndicator[];
@@ -261,6 +264,7 @@ function parseState(url: URL): ExplorerState {
 	return {
 		dataSource:
 			url.searchParams.get('data_source')?.trim() || url.searchParams.get('area')?.trim() || '',
+		theme: url.searchParams.get('theme')?.trim() || '',
 		selectedIndicators,
 		indicator: selectedIndicators[0] || null,
 		freq: url.searchParams.get('freq')?.trim().toUpperCase() || null,
@@ -274,6 +278,7 @@ function parseState(url: URL): ExplorerState {
 function buildCanonicalSearch(state: ExplorerState): string {
 	const params = new URLSearchParams();
 	if (state.dataSource) params.set('data_source', state.dataSource);
+	if (state.theme) params.set('theme', state.theme);
 	for (const indicator of state.selectedIndicators) params.append('indicator', indicator);
 	if (state.freq) params.set('freq', state.freq);
 	if (state.by) params.set('by', state.by);
@@ -289,6 +294,7 @@ function buildCanonicalSearch(state: ExplorerState): string {
 
 async function loadCatalog(): Promise<{
 	dataSources: Array<{ code: string; name: string }>;
+	themes: string[];
 	indicators: ExplorerCatalogIndicator[];
 }> {
 	const db = getDb();
@@ -299,6 +305,7 @@ async function loadCatalog(): Promise<{
 			shortName: indicators.shortName,
 			dataSource: dataSources.name,
 			dataSourceCode: dataSources.code,
+			theme: indicators.theme,
 			group: indicatorGroups.name
 		})
 		.from(indicators)
@@ -313,6 +320,7 @@ async function loadCatalog(): Promise<{
 			shortName: row.shortName,
 			dataSource: row.dataSource || 'Sin fuente de datos',
 			dataSourceCode: row.dataSourceCode,
+			theme: row.theme?.trim() || 'Sin tema',
 			group: row.group || 'Sin grupo',
 			availableFrequencies: frequencyMap.get(row.code) || []
 		}))
@@ -329,8 +337,11 @@ async function loadCatalog(): Promise<{
 	]
 		.map(([code, name]) => ({ code, name }))
 		.sort((a, b) => a.name.localeCompare(b.name));
+	const themeOptions = [...new Set(catalog.map((indicator) => indicator.theme))].sort((a, b) =>
+		a.localeCompare(b)
+	);
 
-	return { dataSources: dataSourceOptions, indicators: catalog };
+	return { dataSources: dataSourceOptions, themes: themeOptions, indicators: catalog };
 }
 
 function emptyMeasurementCompatibility(): ExplorerMeasurementCompatibility {
@@ -814,16 +825,49 @@ async function queryChart(params: {
 export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel> {
 	const state = parseState(url);
 	const warnings: string[] = [];
-	const { dataSources: dataSourceOptions, indicators: catalog } = await loadCatalog();
-	let selectedIndicators = state.selectedIndicators
+	const {
+		dataSources: dataSourceOptions,
+		themes: themeOptions,
+		indicators: catalog
+	} = await loadCatalog();
+
+	if (state.dataSource && !dataSourceOptions.some((option) => option.code === state.dataSource)) {
+		warnings.push('Se ignoró la fuente de datos porque no existe en el catálogo.');
+		state.dataSource = '';
+	}
+
+	const availableThemes = state.dataSource
+		? new Set(
+				catalog
+					.filter((indicator) => indicator.dataSourceCode === state.dataSource)
+					.map((indicator) => indicator.theme)
+			)
+		: new Set(themeOptions);
+	if (state.theme && !availableThemes.has(state.theme)) {
+		warnings.push(
+			'Se ignoró el tema porque no está disponible para la fuente de datos seleccionada.'
+		);
+		state.theme = '';
+	}
+
+	const existingIndicators = state.selectedIndicators
 		.map((code) => catalog.find((indicator) => indicator.code === code) || null)
 		.filter((indicator): indicator is ExplorerCatalogIndicator => Boolean(indicator));
 
-	if (selectedIndicators.length !== state.selectedIndicators.length) {
+	if (existingIndicators.length !== state.selectedIndicators.length) {
 		warnings.push('Se ignoraron indicadores de la URL que no existen en el catálogo.');
-		state.selectedIndicators = selectedIndicators.map((indicator) => indicator.code);
-		state.indicator = state.selectedIndicators[0] || null;
 	}
+
+	const selectedIndicators = existingIndicators.filter(
+		(indicator) =>
+			(!state.dataSource || indicator.dataSourceCode === state.dataSource) &&
+			(!state.theme || indicator.theme === state.theme)
+	);
+	if (selectedIndicators.length !== existingIndicators.length) {
+		warnings.push('Se ignoraron indicadores que no coinciden con la fuente de datos y el tema.');
+	}
+	state.selectedIndicators = selectedIndicators.map((indicator) => indicator.code);
+	state.indicator = state.selectedIndicators[0] || null;
 
 	const selectedIndicator = selectedIndicators[0] || null;
 	const metadatas = (
@@ -839,6 +883,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		return {
 			state,
 			dataSources: dataSourceOptions,
+			themes: themeOptions,
 			indicators: catalog,
 			selectedIndicator: null,
 			selectedIndicators: [],
@@ -873,6 +918,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		return {
 			state,
 			dataSources: dataSourceOptions,
+			themes: themeOptions,
 			indicators: catalog,
 			selectedIndicator,
 			selectedIndicators,
@@ -921,6 +967,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		return {
 			state,
 			dataSources: dataSourceOptions,
+			themes: themeOptions,
 			indicators: catalog,
 			selectedIndicator,
 			selectedIndicators,
@@ -1115,6 +1162,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 	return {
 		state,
 		dataSources: dataSourceOptions,
+		themes: themeOptions,
 		indicators: catalog,
 		selectedIndicator,
 		selectedIndicators,
