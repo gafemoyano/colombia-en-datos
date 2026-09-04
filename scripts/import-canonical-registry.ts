@@ -275,7 +275,15 @@ async function main() {
 	// -- clear the tables this script owns --------------------------------------
 	// Ordered children-first so foreign keys stay satisfied.
 	console.log('Clearing registry tables...');
+	// Strictly children before parents. ingest_batch_slices holds foreign keys
+	// into indicators, data_releases and ingest_batches, so it has to go first
+	// or every one of those deletes fails.
+	//
+	// A failure here is fatal on purpose: a half-cleared registry still answers
+	// queries, it just answers them with an empty catalogue, so swallowing the
+	// error would leave a site that looks up rather than down.
 	for (const table of [
+		'ingest_batch_slices',
 		'indicator_categories',
 		'indicator_dimensions',
 		'indicator_frequencies',
@@ -285,6 +293,7 @@ async function main() {
 		'dimension_values',
 		'dimension_definitions',
 		'indicators',
+		'ingest_batches',
 		'indicator_groups',
 		'data_sources'
 	]) {
@@ -292,7 +301,12 @@ async function main() {
 			const r = await db.execute(`DELETE FROM ${table}`);
 			console.log(`  ${table.padEnd(24)} ${r.rowsAffected} rows removed`);
 		} catch (e) {
-			console.log(`  ${table.padEnd(24)} skipped (${String(e).split('\n')[0].slice(0, 60)})`);
+			const message = String(e).split('\n')[0];
+			if (/no such table/i.test(message)) {
+				console.log(`  ${table.padEnd(24)} absent, skipped`);
+				continue;
+			}
+			throw new Error(`Could not clear ${table}: ${message}`);
 		}
 	}
 

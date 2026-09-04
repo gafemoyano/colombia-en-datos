@@ -34,7 +34,6 @@
 		"@internationalized/date": "^3.12.1",
 		"@lucide/svelte": "^1.16.0",
 		"@sveltejs/adapter-node": "^5.2.9",
-		"@sveltejs/kit": "^2.43.2",
 		"@sveltejs/vite-plugin-svelte": "^6.2.0",
 		"@tailwindcss/postcss": "^4.1.14",
 		"@tailwindcss/vite": "^4.1.14",
@@ -44,12 +43,15 @@
 		"@typescript-eslint/parser": "^8.46.1",
 		"@vitest/ui": "^3.2.4",
 		"autoprefixer": "^10.4.21",
+		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
 		"drizzle-kit": "^0.31.5",
 		"eslint": "^9.38.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.12.4",
 		"jsdom": "^27.0.0",
+		"lucide-svelte": "^1.0.1",
+		"plotly.js-dist-min": "^3.1.2",
 		"postcss": "^8.5.6",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
@@ -67,12 +69,10 @@
 	},
 	"dependencies": {
 		"@libsql/client": "^0.15.15",
-		"bits-ui": "^2.18.1",
+		"@sveltejs/kit": "^2.43.2",
 		"class-variance-authority": "^0.7.1",
 		"dotenv": "^17.2.3",
 		"drizzle-orm": "^0.44.6",
-		"duckdb": "^1.4.1",
-		"lucide-svelte": "^1.0.1",
-		"plotly.js-dist-min": "^3.1.2"
+		"duckdb": "^1.4.1"
 	}
 }

@@ -7,3 +7,11 @@ drizzle/db.sqlite
 .env
 .env.*
 .git
+backups
+
+# The canonical store lives on the Fly volume, not in the image: it is 291 MB,
+# it changes on a different cadence than the code, and baking it in re-couples
+# a data refresh to a redeploy. Uploaded with `flyctl sftp` instead.
+# data/metadata is kept because the runner still copies it.
+data/*
+!data/metadata
