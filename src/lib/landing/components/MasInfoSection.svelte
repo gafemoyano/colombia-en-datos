@@ -2,7 +2,7 @@
 	type Status = 'idle' | 'loading' | 'success' | 'error';
 
 	const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-	const FORMSPREE = import.meta.env.VITE_FORMSPREE_ENDPOINT?.trim();
+	const FORMSPREE_ENDPOINT = 'https://formspree.io/f/mpwjgvgo';
 
 	let status = $state<Status>('idle');
 	let errors = $state<Record<string, string>>({});
@@ -56,13 +56,6 @@
 
 		status = 'loading';
 		try {
-			if (!FORMSPREE) {
-				await new Promise((resolve) => setTimeout(resolve, 1200));
-				status = 'success';
-				resetForm();
-				return;
-			}
-
 			const payload = {
 				email: form.email,
 				motivo: form.motivo,
@@ -75,7 +68,7 @@
 				_page: typeof window !== 'undefined' ? window.location.href : ''
 			};
 
-			const response = await fetch(FORMSPREE, {
+			const response = await fetch(FORMSPREE_ENDPOINT, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -125,11 +118,6 @@
 						<p class="text-green-700">Listo. Recibimos tu solicitud. Te contactaremos pronto.</p>
 					{:else if status === 'error'}
 						<p class="text-red-700">Tuvimos un problema al enviar. Intenta de nuevo.</p>
-					{/if}
-					{#if !FORMSPREE}
-						<p class="mt-1 text-xs text-amber-700">
-							Modo demo activo (configura VITE_FORMSPREE_ENDPOINT para activar el envío real).
-						</p>
 					{/if}
 				</div>
 
