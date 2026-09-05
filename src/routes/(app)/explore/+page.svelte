@@ -703,7 +703,7 @@
 								</div>
 								<Select.Root
 									type="single"
-									value={dimension.selectedValue || EMPTY_FILTER}
+									value={data.state.filters[dimension.code] || EMPTY_FILTER}
 									disabled={!dimension.isFilterable || dimension.state === 'empty'}
 									onValueChange={(value) => handleFilterSelect(dimension.code, value)}
 								>

@@ -24,6 +24,91 @@ const ready = Boolean(process.env.DATABASE_URL) && existsSync(canonicalDbPath())
 
 const SURVEYS = ['GEIH', 'ECV', 'EMICRON', 'Exportaciones'] as const;
 
+describe.skipIf(!ready)('registry importer', () => {
+	it('registers declared unobserved categories with singleton observations', async () => {
+		const { mkdtempSync, mkdirSync, writeFileSync, rmSync } = await import('node:fs');
+		const { tmpdir } = await import('node:os');
+		const { execFileSync } = await import('node:child_process');
+		const { createClient } = await import('@libsql/client');
+		const { getDb } = await import('$lib/db/client');
+		const { sql } = await import('drizzle-orm');
+		const { default: duckdb } = await import('duckdb');
+		const { OBSERVATIONS_DDL, INDICATORS_DDL, INDICATOR_CATEGORIES_DDL } =
+			await import('./canonical-schema');
+		const dir = mkdtempSync(join(tmpdir(), 'registry-fixture-'));
+		const registry = createClient({ url: `file:${join(dir, 'registry.db')}` });
+		try {
+			const tables = await getDb().all<{ sql: string }>(sql`
+				SELECT sql FROM sqlite_master WHERE type IN ('table', 'index') AND sql IS NOT NULL
+				AND name NOT LIKE 'sqlite_%' ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END
+			`);
+			for (const table of tables) await registry.execute(table.sql);
+			mkdirSync(join(dir, 'Fixture'));
+			writeFileSync(
+				join(dir, 'Fixture', 'metadata_fixture.json'),
+				JSON.stringify({
+					indicators: {
+						FIXTURE: {
+							codelists: {
+								CATEGORY: [
+									{ code: 'OBSERVED', labels: ['Observada'] },
+									{ code: 'ABSENT', labels: ['No observada'] }
+								]
+							}
+						}
+					}
+				})
+			);
+			const storePath = join(dir, 'observations.duckdb');
+			const store = new duckdb.Database(storePath);
+			await new Promise<void>((resolve, reject) =>
+				store.exec(
+					`
+				${OBSERVATIONS_DDL}; ${INDICATORS_DDL}; ${INDICATOR_CATEGORIES_DDL};
+				INSERT INTO indicator_meta (indicator_code, dataflow, survey, indicator_name, freqs,
+					obs_count, time_min, time_max) VALUES ('FIXTURE', 'TEST', 'Fixture', 'Fixture', 'A', 1, '2024', '2024');
+				INSERT INTO indicator_categories VALUES ('FIXTURE', 'OBSERVED', 'Observada', 1);
+				INSERT INTO observations (dataflow, indicator_code, freq, time_period, ref_area,
+					dept_code, muni_code, geo_level, area, domain, clase, urban_rural, sex,
+					head_sex, age, category, adjustment, obs_value, year)
+				VALUES ('TEST', 'FIXTURE', 'A', '2024', 'CO', '00', '0000', 'NAT', '_T', '_T',
+					'_T', '_T', '_T', '_T', '_T', 'OBSERVED', '_T', 42, 2024);
+			`,
+					(error) => (error ? reject(error) : resolve())
+				)
+			);
+			await new Promise<void>((resolve, reject) =>
+				store.close((error) => (error ? reject(error) : resolve()))
+			);
+			execFileSync(process.execPath, ['--import', 'tsx', 'scripts/import-canonical-registry.ts'], {
+				env: {
+					...process.env,
+					DATABASE_URL: `file:${join(dir, 'registry.db')}`,
+					CANONICAL_SOURCE_DIR: dir,
+					CANONICAL_DUCKDB_PATH: storePath
+				},
+				timeout: 30000
+			});
+			const dimensions = await registry.execute(
+				'SELECT dimension_code, default_value FROM indicator_dimensions'
+			);
+			expect(dimensions.rows.map((r) => ({ ...r }))).toEqual([
+				{ dimension_code: 'CATEGORY', default_value: null }
+			]);
+			const categories = await registry.execute(
+				'SELECT code, label_es, obs_count FROM indicator_categories ORDER BY code'
+			);
+			expect(categories.rows.map((r) => ({ ...r }))).toEqual([
+				{ code: 'ABSENT', label_es: 'No observada', obs_count: 0 },
+				{ code: 'OBSERVED', label_es: 'Observada', obs_count: 1 }
+			]);
+		} finally {
+			registry.close();
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}, 30000);
+});
+
 describe.skipIf(!ready)('canonical store', () => {
 	it('carries every survey through one schema', async () => {
 		const { runCanonicalQuery } = await import('$lib/server/duckdb');
@@ -291,5 +376,69 @@ describe.skipIf(!ready)('the Explorer, for every survey', () => {
 		expect(first.chart.status).toBe('needs_resolution');
 		expect(second.chart.status).toBe(first.chart.status);
 		expect(first.unresolvedDimensions.map((d) => d.code)).toContain('REF_AREA');
+	});
+
+	it('requires an explicit singleton category intersection, including TOTAL', async () => {
+		const search = 'indicator=ECV_PI_012&indicator=ECV_PI_024&freq=A';
+		const pending = await model(search);
+		const category = pending.dimensions.find((d) => d.code === 'CATEGORY')!;
+		expect(category.values.map((v) => v.code)).toEqual(['TOTAL']);
+		expect(category.state).toBe('unresolved');
+		expect(pending.chart.status).toBe('needs_resolution');
+		expect(pending.chart.debugQuery).toBeUndefined();
+		const selected = await model(`${search}&filter.CATEGORY=TOTAL`);
+		expect(selected.chart.status).toBe('chartable');
+		expect(selected.chart.series).toHaveLength(2);
+		expect(selected.chart.debugQuery?.sql).toContain('category = ?');
+		expect(selected.chart.debugQuery?.parameters).toContain('TOTAL');
+	});
+
+	it.each(['', '&by=CATEGORY'])('blocks disjoint category dictionaries: %s', async (split) => {
+		const result = await model(`indicator=ECV_PI_007&indicator=ECV_PI_011&freq=A${split}`);
+		expect(result.chart.status).toBe('needs_resolution');
+		expect(result.chart.messages.join(' ')).toContain('No hay valores registrados comunes');
+		expect(result.chart.debugQuery).toBeUndefined();
+		expect(result.dimensions.find((d) => d.code === 'CATEGORY')?.state).toBe('empty');
+	});
+
+	it.each(['ECV_PI_006&indicator=EMICRON_PI_111', 'EMICRON_PI_111&indicator=ECV_PI_006'])(
+		'applies private defaults only to their registered indicator: %s',
+		async (codes) => {
+			const result = await model(`indicator=${codes}&freq=A&by=CATEGORY`);
+			expect(result.chart.status).toBe('chartable');
+			expect(result.unresolvedDimensions).toEqual([]);
+			const query = result.chart.debugQuery!;
+			expect(query.sql).toContain('(indicator_code <> ? OR area = ?)');
+			expect(query.sql).toContain('(indicator_code <> ? OR sex = ?)');
+			expect(query.parameters.filter((v) => v === 'EMICRON_PI_111')).toHaveLength(3);
+			for (const code of ['ECV_PI_006', 'EMICRON_PI_111']) {
+				const alone = await model(`indicator=${code}&freq=A&by=CATEGORY`);
+				expect(
+					result.chart.series
+						.filter((s) => s.indicatorCode === code)
+						.map((s) => ({
+							splitValue: s.splitValue,
+							points: s.points
+						}))
+				).toEqual(alone.chart.series.map((s) => ({ splitValue: s.splitValue, points: s.points })));
+			}
+			const { runCanonicalQuery } = await import('$lib/server/duckdb');
+			const rows = await runCanonicalQuery(query.sql, ...query.parameters);
+			expect(rows.length).toBe(result.chart.series.reduce((n, s) => n + s.points.length, 0));
+		}
+	);
+
+	it('keeps private categories without registry defaults unresolved', async () => {
+		const result = await model('indicator=ECV_PI_001&indicator=EMICRON_PI_111&freq=A');
+		expect(result.chart.status).toBe('needs_resolution');
+		expect(result.unresolvedDimensions.map((d) => d.code)).toContain('EMICRON_PI_111:CATEGORY');
+		expect(result.chart.debugQuery).toBeUndefined();
+	});
+
+	it('resolves private AREA and SEX defaults even when categories are incompatible', async () => {
+		const result = await model('indicator=ECV_PI_025&indicator=EMICRON_PI_006&freq=A&by=CATEGORY');
+		expect(result.unresolvedDimensions).toEqual([]);
+		expect(result.chart.messages.join(' ')).toContain('No hay valores registrados comunes');
+		expect(result.chart.debugQuery).toBeUndefined();
 	});
 });

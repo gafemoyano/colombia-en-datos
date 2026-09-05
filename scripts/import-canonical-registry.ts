@@ -517,7 +517,14 @@ async function main() {
 		for (const freq of String(obs.freqs).split(',').filter(Boolean)) {
 			for (const d of DIMENSIONS) {
 				const values = observedValues.get(key(obs.indicator_code, freq, d.code));
-				if (!values || values.size <= 1) continue;
+				// Declared categories must remain accessible even when only one
+				// category is currently observed at this frequency.
+				const hasUnobservedCategories =
+					d.code === 'CATEGORY' &&
+					metaByCode
+						.get(obs.indicator_code)
+						?.meta.codelists?.CATEGORY?.some((category) => !values?.has(category.code));
+				if (!values || (values.size <= 1 && !hasUnobservedCategories)) continue;
 
 				const defaultValue = resolveDefault(d, values);
 				if (defaultValue === null && d.code !== 'CATEGORY' && d.code !== 'REF_AREA') {

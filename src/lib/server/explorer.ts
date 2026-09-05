@@ -695,9 +695,11 @@ function resolveDimensions(params: {
 		const selectedValue = params.effectiveFilters[dimension.code] || null;
 		let state: ExplorerDimensionState = 'unresolved';
 
-		if (params.explicitFilters[dimension.code]) state = 'filtered';
+		// Dictionary cardinality says nothing about observation cardinality.
+		// Even a singleton intersection requires an actual SQL predicate.
+		if (values.length === 0) state = 'empty';
+		else if (params.explicitFilters[dimension.code]) state = 'filtered';
 		else if (params.by === dimension.code) state = 'split';
-		else if (values.length <= 1) state = values.length === 0 ? 'empty' : 'fixed';
 		else if (selectedValue) state = 'defaulted';
 
 		return {
@@ -714,6 +716,7 @@ async function queryChart(params: {
 	freq: string;
 	by: string | null;
 	filters: Record<string, string>;
+	privateFilters: Map<string, Record<string, string>>;
 	start: string;
 	end: string;
 	dimensions: ExplorerDimension[];
@@ -727,6 +730,13 @@ async function queryChart(params: {
 	for (const [code, value] of Object.entries(params.filters)) {
 		conditions.push(`${dimensionColumn(code)} = ?`);
 		values.push(value);
+	}
+
+	for (const [indicator, filters] of params.privateFilters) {
+		for (const [code, value] of Object.entries(filters)) {
+			conditions.push(`(indicator_code <> ? OR ${dimensionColumn(code)} = ?)`);
+			values.push(indicator, value);
+		}
 	}
 
 	if (params.start) {
@@ -1079,6 +1089,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 	});
 
 	const privateDimensions: ExplorerDimension[] = [];
+	const privateFilters = new Map<string, Record<string, string>>();
 	for (const indicator of selectedIndicators) {
 		const registeredDimensions = registeredByIndicator.get(indicator.code) || [];
 		const privateRegisteredDimensions = registeredDimensions.filter(
@@ -1090,18 +1101,27 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			indicatorCode: indicator.code,
 			dimensions: privateRegisteredDimensions
 		});
+		const defaults = loadEffectiveFilters({
+			dimensions: privateRegisteredDimensions,
+			filters: {},
+			by: null
+		});
+		privateFilters.set(indicator.code, defaults);
 		privateDimensions.push(
 			...resolveDimensions({
 				registeredDimensions: privateRegisteredDimensions,
 				availableValues,
 				valueLabels,
 				explicitFilters: {},
-				effectiveFilters: {},
+				effectiveFilters: defaults,
 				by: null
 			}).map((dimension) => prefixDimensionForIndicator(dimension, indicator))
 		);
 	}
 
+	const emptyDimensions = [...dimensions, ...privateDimensions].filter(
+		(dimension) => dimension.state === 'empty'
+	);
 	const unresolvedDimensions = [
 		...dimensions.filter((dimension) => dimension.state === 'unresolved'),
 		...privateDimensions.filter((dimension) => dimension.state === 'unresolved')
@@ -1125,25 +1145,34 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 						series: [],
 						messages: [measurementCompatibility.message || 'Los indicadores no son comparables.']
 					}
-				: unresolvedDimensions.length > 0
+				: emptyDimensions.length > 0
 					? {
 							status: 'needs_resolution' as const,
 							series: [],
 							messages: [
-								selectedIndicators.length > 1
-									? 'Para comparar sin suposiciones, filtra o desagrega las dimensiones comunes pendientes. Los indicadores con dimensiones propias multi-valor todavía no son comparables.'
-									: 'Selecciona un valor en los filtros pendientes para ver una serie. Desagregar es opcional y sirve para comparar varios valores.'
+								`No hay valores registrados comunes para ${emptyDimensions.map((d) => d.name).join(', ')}. Selecciona otros indicadores o compáralos por separado.`
 							]
 						}
-					: await queryChart({
-							indicators: selectedIndicators,
-							freq: state.freq,
-							by: state.by,
-							filters: effectiveFilters,
-							start: state.start,
-							end: state.end,
-							dimensions
-						});
+					: unresolvedDimensions.length > 0
+						? {
+								status: 'needs_resolution' as const,
+								series: [],
+								messages: [
+									selectedIndicators.length > 1
+										? 'Para comparar sin suposiciones, filtra o desagrega las dimensiones comunes pendientes. Los indicadores con dimensiones propias sin un total predeterminado deben consultarse por separado.'
+										: 'Selecciona un valor en los filtros pendientes para ver una serie. Desagregar es opcional y sirve para comparar varios valores.'
+								]
+							}
+						: await queryChart({
+								indicators: selectedIndicators,
+								freq: state.freq,
+								by: state.by,
+								filters: effectiveFilters,
+								privateFilters,
+								start: state.start,
+								end: state.end,
+								dimensions
+							});
 
 	return {
 		state,
