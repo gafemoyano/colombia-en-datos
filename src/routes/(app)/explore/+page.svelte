@@ -9,6 +9,7 @@
 	import X from '@lucide/svelte/icons/x';
 	import PlotlyChart from '$lib/components/PlotlyChart.svelte';
 	import ExplorerExport from '$lib/components/ExplorerExport.svelte';
+	import { explorerUnitLabel } from '$lib/explorer-format';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -42,6 +43,29 @@
 
 	let indicatorPopoverOpen = $state(false);
 	let indicatorSearch = $state('');
+	let filtersOpen = $state(false);
+	let viewportWidth = $state(0);
+	const unitLabel = $derived(
+		explorerUnitLabel(data.measurementCompatibility.unit, data.measurementCompatibility.unitMult)
+	);
+	function seriesLabel(name: string): string {
+		const indicator = data.selectedIndicators[0];
+		const dimension = data.dimensions.find((item) => item.code === data.state.by);
+		const prefix =
+			indicator && dimension
+				? `${indicator.shortName || indicator.name} · ${dimension.name}: `
+				: '';
+		const label =
+			data.selectedIndicators.length === 1 && prefix && name.startsWith(prefix)
+				? name.slice(prefix.length)
+				: name;
+		return label
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/(.{1,40})(\s+|$)/g, '$1<br>')
+			.replace(/<br>$/, '');
+	}
 
 	const indicatorsForDiscovery = $derived(
 		data.indicators.filter(
@@ -108,21 +132,29 @@
 			y: series.points.map((point) => point.value),
 			type: 'scatter',
 			mode: 'lines',
-			name: series.name
+			name: seriesLabel(series.name)
 		}))
 	);
 
-	const chartLayout = $derived<Partial<PlotlyTypes.Layout>>({
-		title: {
-			text:
-				data.selectedIndicators.length > 1
-					? 'Comparación de indicadores'
-					: data.selectedIndicator?.name || data.selectedIndicator?.shortName || 'Explorador'
-		},
-		xaxis: { title: { text: 'Periodo' } },
-		yaxis: { title: { text: data.measurementCompatibility.unit || 'Valor' } },
-		legend: { orientation: 'h' },
-		margin: { l: 60, r: 30, t: 60, b: 60 }
+	const chartLayout = $derived.by<Partial<PlotlyTypes.Layout>>(() => {
+		// Plotly mutates axis objects: reset them for a new URL selection.
+		data.canonicalSearch;
+		return {
+			font: { family: 'Inter Variable, sans-serif', size: 12 },
+			title: {
+				text:
+					data.selectedIndicators.length > 1
+						? 'Comparación de indicadores'
+						: data.selectedIndicator?.name || data.selectedIndicator?.shortName || 'Explorador'
+			},
+			xaxis: { title: { text: 'Periodo' } },
+			yaxis: { title: { text: unitLabel }, automargin: true },
+			legend:
+				viewportWidth >= 1280
+					? { orientation: 'v', x: 1.02, y: 1, font: { size: 11 } }
+					: { orientation: 'h', font: { size: 11 } },
+			margin: { l: 64, r: 24, t: 60, b: 60 }
+		};
 	});
 
 	function frequencyLabel(freq: string): string {
@@ -399,6 +431,7 @@
 <svelte:head>
 	<title>Explorar datos · Colombia en Datos</title>
 </svelte:head>
+<svelte:window bind:innerWidth={viewportWidth} />
 
 {#snippet contextDetails(metadata: IndicatorMetadata, showUnit: boolean)}
 	{@const formattedFormula = metadata.formula ? technicalFormula(metadata.formula) : null}
@@ -407,7 +440,7 @@
 		{#if showUnit}
 			<div>
 				<div class="text-muted-foreground text-xs uppercase">Unidad</div>
-				<div>{metadata.unit || 'Sin unidad registrada'}</div>
+				<div>{explorerUnitLabel(metadata.unit, metadata.unitMult)}</div>
 			</div>
 		{/if}
 		{#if metadata.description}
@@ -472,21 +505,12 @@
 	</div>
 {/snippet}
 
-<div class="space-y-6">
+<div class="space-y-4">
 	<Card.Card>
-		<Card.CardHeader class="px-5">
-			<div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-				<div>
-					<Card.CardTitle class="text-2xl">Explorador</Card.CardTitle>
-					<Card.CardDescription>
-						Elige un indicador y decide explícitamente cómo filtrar o desagregar sus observaciones.
-					</Card.CardDescription>
-				</div>
-				<Badge variant="outline">Prototipo paralelo</Badge>
-			</div>
-		</Card.CardHeader>
-		<Card.CardContent class="px-5 pb-5">
-			<div class="grid gap-5 lg:grid-cols-[200px_200px_minmax(0,1fr)_160px] lg:items-end">
+		<Card.CardContent>
+			<div
+				class="grid gap-3 sm:grid-cols-2 lg:grid-cols-[200px_220px_minmax(0,1fr)_140px] lg:items-start"
+			>
 				<div class="space-y-2">
 					<Label id="data-source-label">Fuente de datos</Label>
 					<Select.Root
@@ -549,7 +573,7 @@
 							<Command.Root>
 								<Command.Input
 									bind:value={indicatorSearch}
-									placeholder="Busca por código, nombre, grupo, tema o fuente de datos..."
+									placeholder="Nombre, código, tema o fuente…"
 								/>
 								<Command.List class="max-h-[368px]">
 									<Command.Empty>No hay indicadores para esa búsqueda.</Command.Empty>
@@ -571,7 +595,9 @@
 												onSelect={() => selectIndicator(indicator)}
 											>
 												<div class="min-w-0 flex-1 py-1">
-													<div class="truncate font-medium">{indicator.name}</div>
+													<div class="whitespace-normal font-medium leading-snug">
+														{indicator.name}
+													</div>
 													<div class="text-muted-foreground truncate text-xs">
 														{indicator.code} · {indicator.dataSource} · {indicator.theme}{indicator.group ===
 														indicator.theme
@@ -638,9 +664,20 @@
 		</Alert>
 	{/if}
 
-	<div class="grid gap-6 lg:grid-cols-[340px_1fr]">
-		<Card.Card class="h-fit">
-			<Card.CardHeader class="px-5">
+	<div class="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+		<Button
+			class="justify-between lg:hidden"
+			variant="outline"
+			aria-expanded={filtersOpen}
+			aria-controls="explore-filters"
+			onclick={() => (filtersOpen = !filtersOpen)}
+			>Filtros y desagregación<SlidersHorizontal class="size-4" /></Button
+		>
+		<Card.Card
+			id="explore-filters"
+			class={`${filtersOpen ? 'flex' : 'hidden'} h-fit lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)] lg:overflow-y-auto`}
+		>
+			<Card.CardHeader>
 				<Card.CardTitle class="flex items-center gap-2 text-base">
 					<SlidersHorizontal class="size-4" />
 					Controles de visualización
@@ -650,7 +687,7 @@
 					todas las combinaciones.</Card.CardDescription
 				>
 			</Card.CardHeader>
-			<Card.CardContent class="space-y-6 px-5 pb-5">
+			<Card.CardContent class="space-y-3">
 				{#if data.selectedIndicators.length === 0 || !data.state.freq}
 					<p class="text-muted-foreground text-sm">
 						Selecciona uno o más indicadores y una frecuencia común para ver sus dimensiones.
@@ -692,9 +729,9 @@
 						</Select.Root>
 					</div>
 
-					<div class="space-y-5">
+					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
 						{#each data.dimensions as dimension}
-							<div class="space-y-2">
+							<div class="min-w-0 space-y-1">
 								<div class="flex items-center justify-between gap-2">
 									<Label id={`filter-${dimension.code}-label`}>{dimension.name}</Label>
 									<Badge variant={badgeVariant(dimension.state)}
@@ -746,7 +783,7 @@
 			</Card.CardContent>
 		</Card.Card>
 
-		<div class="space-y-6">
+		<div class="min-w-0 space-y-3">
 			<Card.Card>
 				<Card.CardHeader>
 					<div class="flex justify-end">
@@ -754,7 +791,7 @@
 					</div>
 					<div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
 						<div>
-							<Card.CardTitle>
+							<Card.CardTitle class="text-lg leading-snug tracking-tight">
 								{#if data.selectedIndicators.length > 1}
 									Comparación de {data.selectedIndicators.length} indicadores
 								{:else}
@@ -772,7 +809,7 @@
 								{/if}
 							</Card.CardDescription>
 						</div>
-						<div class="grid gap-3 sm:grid-cols-[170px_170px] sm:items-end">
+						<div class="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-[140px_140px] sm:items-end">
 							<div class="space-y-2">
 								<Label id="start-label">Inicio</Label>
 								<Select.Root
@@ -844,14 +881,14 @@
 				</Card.CardHeader>
 				<Card.CardContent>
 					{#if data.chart.status === 'chartable'}
-						<div class="h-[520px]">
+						<div class="h-[540px] min-w-0 2xl:h-[600px]">
 							{#key data.canonicalSearch}
 								<PlotlyChart data={plotlyData} layout={chartLayout} />
 							{/key}
 						</div>
 					{:else}
 						<div
-							class="flex min-h-[420px] items-center justify-center rounded-xl border border-dashed p-8 text-center"
+							class="flex min-h-[240px] items-center justify-center rounded-lg bg-muted/30 p-6 text-center"
 						>
 							<div class="max-w-xl space-y-4">
 								<AlertCircle class="text-muted-foreground mx-auto size-10" />
@@ -874,7 +911,7 @@
 				</Card.CardContent>
 			</Card.Card>
 
-			<details class="min-w-0 rounded-xl border p-5" open>
+			<details class="min-w-0 rounded-lg border bg-white p-4" open>
 				<summary class="cursor-pointer font-semibold">SQL de depuración</summary>
 				{#if data.chart.debugQuery}
 					<p class="text-muted-foreground mt-3 text-sm">
@@ -895,7 +932,7 @@
 				{/if}
 			</details>
 
-			<div class="grid gap-6 xl:grid-cols-2">
+			<div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
 				<Card.Card>
 					<Card.CardHeader>
 						<Card.CardTitle class="text-base">Dimensiones fijas</Card.CardTitle>
@@ -934,7 +971,7 @@
 								<div class="text-muted-foreground text-xs uppercase">Unidad compartida</div>
 								<div>
 									{#if data.measurementCompatibility.compatible}
-										{data.measurementCompatibility.unit || 'Sin unidad registrada'}
+										{unitLabel}
 									{:else}
 										<span class="text-destructive">Unidades incompatibles</span>
 									{/if}
@@ -945,7 +982,7 @@
 									<div class="space-y-3 rounded-lg border px-3 py-3">
 										<div class="font-medium">{metadata.name || metadata.shortName}</div>
 										<div class="text-muted-foreground text-xs">
-											{metadata.code} · {metadata.unit || 'Sin unidad'}
+											{metadata.code} · {explorerUnitLabel(metadata.unit, metadata.unitMult)}
 										</div>
 										{@render contextDetails(metadata, false)}
 									</div>
