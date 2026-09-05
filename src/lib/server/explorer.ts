@@ -69,6 +69,9 @@ export interface ExplorerSeriesPoint {
 
 export interface ExplorerSeries {
 	name: string;
+	indicatorCode: string;
+	splitValue: string | null;
+	splitLabel: string | null;
 	points: ExplorerSeriesPoint[];
 }
 
@@ -796,7 +799,7 @@ async function queryChart(params: {
 	const splitLabels = new Map(
 		splitDimension?.values.map((value) => [value.code, value.label] as const) || []
 	);
-	const seriesByName = new Map<string, ExplorerSeriesPoint[]>();
+	const seriesByKey = new Map<string, ExplorerSeries>();
 
 	const indicatorLabels = new Map(
 		params.indicators.map(
@@ -811,17 +814,24 @@ async function queryChart(params: {
 		const name = params.by
 			? `${indicatorName} · ${splitDimension?.name || params.by}: ${splitLabels.get(splitValue) || splitValue}`
 			: indicatorName;
-		const points = seriesByName.get(name) || [];
-		points.push({
+		const key = JSON.stringify([indicatorCode, row.split_value ?? null]);
+		const series = seriesByKey.get(key) || {
+			name,
+			indicatorCode,
+			splitValue: params.by && row.split_value != null ? String(row.split_value) : null,
+			splitLabel: params.by ? splitLabels.get(splitValue) || splitValue : null,
+			points: []
+		};
+		series.points.push({
 			time: String(row.time),
 			value: row.value === null || row.value === undefined ? null : asNumber(row.value)
 		});
-		seriesByName.set(name, points);
+		seriesByKey.set(key, series);
 	}
 
 	return {
 		status: 'chartable',
-		series: Array.from(seriesByName.entries()).map(([name, points]) => ({ name, points })),
+		series: Array.from(seriesByKey.values()),
 		messages: []
 	};
 }

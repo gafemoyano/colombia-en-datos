@@ -8,6 +8,7 @@
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import X from '@lucide/svelte/icons/x';
 	import PlotlyChart from '$lib/components/PlotlyChart.svelte';
+	import ExplorerExport from '$lib/components/ExplorerExport.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -723,6 +724,9 @@
 		<div class="space-y-6">
 			<Card.Card>
 				<Card.CardHeader>
+					<div class="flex justify-end">
+						<ExplorerExport model={data} />
+					</div>
 					<div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
 						<div>
 							<Card.CardTitle>
