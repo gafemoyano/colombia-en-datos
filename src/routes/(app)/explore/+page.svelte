@@ -66,7 +66,7 @@
 	const selectedDataSourceLabel = $derived(
 		data.state.dataSource
 			? data.dataSources.find((dataSource) => dataSource.code === data.state.dataSource)?.name ||
-				data.state.dataSource
+					data.state.dataSource
 			: 'Todas las fuentes de datos'
 	);
 
@@ -91,14 +91,14 @@
 	const selectedStartLabel = $derived(
 		data.timeAxis.start
 			? data.timeAxis.periods.find((period) => period.value === data.timeAxis.start)?.label ||
-				data.timeAxis.start
+					data.timeAxis.start
 			: 'Desde el inicio'
 	);
 
 	const selectedEndLabel = $derived(
 		data.timeAxis.end
 			? data.timeAxis.periods.find((period) => period.value === data.timeAxis.end)?.label ||
-				data.timeAxis.end
+					data.timeAxis.end
 			: 'Hasta el final'
 	);
 
@@ -328,7 +328,7 @@
 
 	function badgeVariant(state: string): 'default' | 'secondary' | 'outline' | 'destructive' {
 		if (state === 'filtered' || state === 'split') return 'default';
-		if (state === 'fixed') return 'secondary';
+		if (state === 'defaulted' || state === 'fixed') return 'secondary';
 		if (state === 'unresolved') return 'destructive';
 		return 'outline';
 	}
@@ -336,6 +336,7 @@
 	function stateLabel(state: string): string {
 		if (state === 'filtered') return 'Filtrada';
 		if (state === 'split') return 'Desagregación';
+		if (state === 'defaulted') return 'Predeterminada';
 		if (state === 'fixed') return 'Fija';
 		if (state === 'empty') return 'Sin valores';
 		return 'Pendiente';
@@ -497,9 +498,13 @@
 							<span class="truncate">{selectedDataSourceLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas las fuentes de datos">Todas las fuentes de datos</Select.Item>
+							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas las fuentes de datos"
+								>Todas las fuentes de datos</Select.Item
+							>
 							{#each data.dataSources as dataSource}
-								<Select.Item value={dataSource.code} label={dataSource.name}>{dataSource.name}</Select.Item>
+								<Select.Item value={dataSource.code} label={dataSource.name}
+									>{dataSource.name}</Select.Item
+								>
 							{/each}
 						</Select.Content>
 					</Select.Root>
@@ -614,7 +619,9 @@
 						<Select.Content>
 							<Select.Item value={EMPTY_FREQ} label="Selecciona">Selecciona</Select.Item>
 							{#each data.commonFrequencies as freq}
-								<Select.Item value={freq} label={frequencyLabel(freq)}>{frequencyLabel(freq)}</Select.Item>
+								<Select.Item value={freq} label={frequencyLabel(freq)}
+									>{frequencyLabel(freq)}</Select.Item
+								>
 							{/each}
 						</Select.Content>
 					</Select.Root>
@@ -638,7 +645,10 @@
 					<SlidersHorizontal class="size-4" />
 					Controles de visualización
 				</Card.CardTitle>
-				<Card.CardDescription>Filtra o desagrega cada dimensión multi-valor.</Card.CardDescription>
+				<Card.CardDescription
+					>Los filtros son independientes. Las opciones del catálogo pueden no tener datos para
+					todas las combinaciones.</Card.CardDescription
+				>
 			</Card.CardHeader>
 			<Card.CardContent class="space-y-6 px-5 pb-5">
 				{#if data.selectedIndicators.length === 0 || !data.state.freq}
@@ -663,7 +673,9 @@
 								<span class="truncate">{selectedSplitLabel}</span>
 							</Select.Trigger>
 							<Select.Content>
-								<Select.Item value={EMPTY_BY} label="Sin desagregación">Sin desagregación</Select.Item>
+								<Select.Item value={EMPTY_BY} label="Sin desagregación"
+									>Sin desagregación</Select.Item
+								>
 								{#each data.dimensions as dimension}
 									<Select.Item
 										value={dimension.code}
@@ -685,31 +697,44 @@
 							<div class="space-y-2">
 								<div class="flex items-center justify-between gap-2">
 									<Label id={`filter-${dimension.code}-label`}>{dimension.name}</Label>
-									<Badge variant={badgeVariant(dimension.state)}>{stateLabel(dimension.state)}</Badge>
+									<Badge variant={badgeVariant(dimension.state)}
+										>{stateLabel(dimension.state)}</Badge
+									>
 								</div>
 								<Select.Root
 									type="single"
 									value={dimension.selectedValue || EMPTY_FILTER}
-									disabled={!dimension.isFilterable ||
-										dimension.state === 'split' ||
-										dimension.state === 'empty'}
+									disabled={!dimension.isFilterable || dimension.state === 'empty'}
 									onValueChange={(value) => handleFilterSelect(dimension.code, value)}
 								>
-									<Select.Trigger aria-labelledby={`filter-${dimension.code}-label`} class="h-9 w-full">
+									<Select.Trigger
+										aria-labelledby={`filter-${dimension.code}-label`}
+										class="h-9 w-full"
+									>
 										<span class="truncate">
 											{dimension.values.find((value) => value.code === dimension.selectedValue)
-												?.label || 'Todos los valores'}
+												?.label ||
+												dimension.selectedValue ||
+												(dimension.state === 'split'
+													? 'Varios valores (desagregados)'
+													: 'Selecciona un valor')}
 										</span>
 									</Select.Trigger>
 									<Select.Content>
-										<Select.Item value={EMPTY_FILTER} label="Todos los valores">
-											Todos los valores
+										<Select.Item value={EMPTY_FILTER} label="Predeterminado">
+											Predeterminado
 										</Select.Item>
 										{#each dimension.values as value}
-											<Select.Item value={value.code} label={value.label}>{value.label}</Select.Item>
+											<Select.Item value={value.code} label={value.label}>{value.label}</Select.Item
+											>
 										{/each}
 									</Select.Content>
 								</Select.Root>
+								{#if dimension.state === 'unresolved'}
+									<p class="text-muted-foreground text-xs">
+										Este filtro no tiene un total predeterminado. Elige un valor.
+									</p>
+								{/if}
 							</div>
 						{/each}
 					</div>
@@ -803,7 +828,9 @@
 											<Select.Item
 												value={period.value}
 												label={period.label}
-												disabled={Boolean(data.timeAxis.start && period.value < data.timeAxis.start)}
+												disabled={Boolean(
+													data.timeAxis.start && period.value < data.timeAxis.start
+												)}
 												onclick={() => handleEndSelect(period.value)}
 											>
 												{period.label}
@@ -847,6 +874,27 @@
 				</Card.CardContent>
 			</Card.Card>
 
+			<details class="min-w-0 rounded-xl border p-5" open>
+				<summary class="cursor-pointer font-semibold">SQL de depuración</summary>
+				{#if data.chart.debugQuery}
+					<p class="text-muted-foreground mt-3 text-sm">
+						Consulta ejecutada. Cada ? corresponde al parámetro en la misma posición. Incluye los
+						filtros predeterminados.
+					</p>
+					<pre class="bg-muted mt-3 overflow-x-auto rounded-md p-3 text-xs"><code
+							>{data.chart.debugQuery.sql}</code
+						></pre>
+					<p class="mt-3 text-sm font-medium">Parámetros (en orden)</p>
+					<pre class="bg-muted mt-2 overflow-x-auto rounded-md p-3 text-xs"><code
+							>{JSON.stringify(data.chart.debugQuery.parameters, null, 2)}</code
+						></pre>
+				{:else}
+					<p class="text-muted-foreground mt-3 text-sm">
+						No se ejecutó una consulta de observaciones. {data.chart.messages.join(' ')}
+					</p>
+				{/if}
+			</details>
+
 			<div class="grid gap-6 xl:grid-cols-2">
 				<Card.Card>
 					<Card.CardHeader>
@@ -861,7 +909,9 @@
 						{:else}
 							<div class="space-y-2">
 								{#each data.fixedDimensions as dimension}
-									<div class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+									<div
+										class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+									>
 										<span>{dimension.name}</span>
 										<Badge variant="secondary">{dimension.values[0]?.label}</Badge>
 									</div>

@@ -51,7 +51,12 @@ const STORE_PATH = process.env.CANONICAL_DUCKDB_PATH
  * to -- the Explorer splits by it instead.
  */
 const DIMENSIONS: { code: string; name: string; preference: string[]; sort: number }[] = [
-	{ code: 'GEO_LEVEL', name: 'Nivel geográfico', preference: ['NAT', 'DEP', 'CLASS', 'DEP_CLASS', 'AREA', 'MUN'], sort: 10 },
+	{
+		code: 'GEO_LEVEL',
+		name: 'Nivel geográfico',
+		preference: ['NAT', 'DEP', 'CLASS', 'DEP_CLASS', 'AREA', 'MUN'],
+		sort: 10
+	},
 	{ code: 'REF_AREA', name: 'Departamento', preference: ['CO'], sort: 20 },
 	{ code: 'MUNI_CODE', name: 'Municipio', preference: ['0000'], sort: 40 },
 	{ code: 'AREA', name: 'Área metropolitana', preference: ['_T'], sort: 50 },
@@ -119,6 +124,7 @@ function loadMetadata(): {
 	survey: string;
 	indicators: Record<string, MetaIndicator>;
 	collections: Record<string, MetaCollection>;
+	codelists: Record<string, Record<string, unknown>>;
 }[] {
 	const out = [];
 	for (const entry of readdirSync(SOURCE_DIR, { withFileTypes: true })) {
@@ -133,7 +139,8 @@ function loadMetadata(): {
 		out.push({
 			survey: entry.name,
 			indicators: json.indicators || {},
-			collections: json.collections || {}
+			collections: json.collections || {},
+			codelists: json._schema?.codelists || {}
 		});
 	}
 	return out.sort((a, b) => a.survey.localeCompare(b.survey));
@@ -209,7 +216,8 @@ async function main() {
 	// should collapse to, which depends on what that indicator actually
 	// publishes at that frequency.
 	const observedValues = new Map<string, Set<string>>();
-	const key = (indicator: string, freq: string, dim: string) => `${indicator}\u0000${freq}\u0000${dim}`;
+	const key = (indicator: string, freq: string, dim: string) =>
+		`${indicator}\u0000${freq}\u0000${dim}`;
 
 	for (const dimension of DIMENSIONS) {
 		const column = dimension.code.toLowerCase();
@@ -266,11 +274,55 @@ async function main() {
 		}
 	}
 
-	console.log(`Observed : ${observedIndicators.length} indicators, ${observedCategories.length} category rows`);
+	// Code lists define valid requests, even when a code has no observations.
+	// Use declared global dictionaries first; introspection supplements domains
+	// (such as AREA) for which the metadata does not ship a complete dictionary.
+	for (const m of metas) {
+		for (const dimension of DIMENSIONS) {
+			if (dimension.code === 'CATEGORY') continue;
+			for (const [code, label] of Object.entries(m.codelists[dimension.code] || {})) {
+				if (typeof label !== 'string') continue;
+				const labels = (GLOBAL_VALUE_LABELS[dimension.code] ||= {});
+				if (labels[code] && labels[code] !== label) {
+					throw new Error(`Conflicting global label: ${dimension.code}/${code}`);
+				}
+				labels[code] = label;
+			}
+		}
+	}
+	for (const [dim, labels] of Object.entries(GLOBAL_VALUE_LABELS)) {
+		for (const code of Object.keys(labels)) {
+			if (!globalValues.some((value) => value.dim === dim && value.code === code)) {
+				globalValues.push({ dim, code });
+			}
+		}
+	}
+	for (const [indicator_code, { meta }] of metaByCode) {
+		for (const category of meta.codelists?.CATEGORY || []) {
+			if (
+				!observedCategories.some(
+					(row) => row.indicator_code === indicator_code && row.category === category.code
+				)
+			) {
+				observedCategories.push({
+					indicator_code,
+					category: category.code,
+					category_label: category.labels[0] || category.code,
+					obs_count: 0
+				});
+			}
+		}
+	}
+
+	console.log(
+		`Observed : ${observedIndicators.length} indicators, ${observedCategories.length} category rows`
+	);
 	const metaOnly = [...metaByCode.keys()].filter(
 		(c) => !observedIndicators.some((o) => o.indicator_code === c)
 	);
-	console.log(`Metadata : ${metaByCode.size} entries (${metaOnly.length} with no observations — skipped)\n`);
+	console.log(
+		`Metadata : ${metaByCode.size} entries (${metaOnly.length} with no observations — skipped)\n`
+	);
 
 	// -- clear the tables this script owns --------------------------------------
 	// Ordered children-first so foreign keys stay satisfied.
@@ -535,7 +587,7 @@ async function main() {
 	await flush('data_releases');
 
 	const releaseRows = await db.execute(
-		'SELECT id, indicator_id FROM data_releases WHERE status = \'published\''
+		"SELECT id, indicator_id FROM data_releases WHERE status = 'published'"
 	);
 	const releaseIdByIndicator = new Map<number, number>();
 	for (const row of releaseRows.rows) {

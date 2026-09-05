@@ -7,7 +7,8 @@ export default defineConfig({
 	server: {
 		allowedHosts: [
 			'felipe-b550.tail28212a.ts.net',
-			'.tail28212a.ts.net'
+			'.tail28212a.ts.net',
+			't-03gt4l98t76dxh5n70zm5j40f-p26097.onamp.dev'
 		]
 	}
 });

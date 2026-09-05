@@ -79,9 +79,7 @@ describe.skipIf(!ready)('category codelists', () => {
 			.select({ indicator: indicators.code, label: indicatorCategories.labelEs })
 			.from(indicatorCategories)
 			.innerJoin(indicators, eq(indicatorCategories.indicatorId, indicators.id))
-			.where(
-				inArray(indicators.code, ['GEIH_PI_028', 'GEIH_PI_034', 'GEIH_PI_110'])
-			);
+			.where(inArray(indicators.code, ['GEIH_PI_028', 'GEIH_PI_034', 'GEIH_PI_110']));
 
 		// The same code '1' means three different things across these indicators,
 		// which is why the codelist cannot be keyed on the code alone.
@@ -121,8 +119,8 @@ describe.skipIf(!ready)('the Explorer, for every survey', () => {
 	];
 
 	for (const testCase of CASES) {
-		it(`plots ${testCase.survey} (${testCase.code}) without extra input`, async () => {
-			const result = await model(`indicator=${testCase.code}&freq=${testCase.freq}`);
+		it(`plots ${testCase.survey} (${testCase.code}) with an explicit category split`, async () => {
+			const result = await model(`indicator=${testCase.code}&freq=${testCase.freq}&by=CATEGORY`);
 
 			// Nothing should be left for the user to resolve: every dimension
 			// either collapses to its default or becomes the split.
@@ -157,7 +155,7 @@ describe.skipIf(!ready)('the Explorer, for every survey', () => {
 	});
 
 	it('charts that same indicator once a department is chosen', async () => {
-		const result = await model('indicator=GEIH_PI_034&freq=A&filter.REF_AREA=CO-05');
+		const result = await model('indicator=GEIH_PI_034&freq=A&by=CATEGORY&filter.REF_AREA=CO-05');
 		expect(result.unresolvedDimensions.map((d) => d.code)).toEqual([]);
 		expect(result.chart.status).toBe('chartable');
 		expect(result.chart.series.length).toBeGreaterThan(0);
@@ -173,5 +171,125 @@ describe.skipIf(!ready)('the Explorer, for every survey', () => {
 		expect(result.state.theme).toBe('Salud');
 		expect(result.selectedIndicators).toEqual([]);
 		expect(result.canonicalSearch).toBe('theme=Salud');
+	});
+
+	it('shows values hidden by correlated defaults in legacy Explorer URLs', async () => {
+		const result = await model(
+			'data_source=emicron&indicator=EMICRON_PI_109&freq=A&by=CATEGORY&filter.AREA=_T&filter.CLASE=_T&filter.GEO_LEVEL=NAT&filter.HEAD_SEX=_T&filter.REF_AREA=CO&filter.SEX=_T&filter.URBAN_RURAL=_T'
+		);
+		const values = (code: string) =>
+			result.dimensions
+				.find((dimension) => dimension.code === code)
+				?.values.map((value) => value.code) || [];
+
+		expect(values('SEX')).toEqual(['F', 'M', '_T']);
+		expect(values('HEAD_SEX')).toEqual(['F', 'M', '_T']);
+		expect(values('CLASE')).toEqual(['1', '2', '_T']);
+		expect(values('URBAN_RURAL')).toEqual(['R', 'U', '_T']);
+		expect(values('REF_AREA')).toContain('CO-05');
+		expect(values('AREA')).toContain('05');
+		expect(values('GEO_LEVEL')).toContain('NAT');
+		expect(values('REF_AREA')).toContain('CO-97');
+		expect(result.dimensions.find((dimension) => dimension.code === 'SEX')?.state).toBe('filtered');
+		expect(result.state.filters.SEX).toBe('_T');
+		expect(result.canonicalSearch).toContain('filter.SEX=_T');
+		expect(result.chart.status).toBe('chartable');
+	});
+
+	it.each([
+		['SEX', 'F', 'HEAD_SEX', '_T'],
+		['CLASE', '1', 'URBAN_RURAL', '_T'],
+		['REF_AREA', 'CO-05', 'GEO_LEVEL', 'NAT']
+	])(
+		'preserves independent filters instead of guessing a matching population for %s',
+		async (filterCode, filterValue, correlatedCode, correlatedValue) => {
+			const result = await model(
+				`indicator=EMICRON_PI_109&freq=A&by=CATEGORY&filter.${filterCode}=${filterValue}`
+			);
+			const filtered = result.dimensions.find((dimension) => dimension.code === filterCode);
+			const correlated = result.dimensions.find((dimension) => dimension.code === correlatedCode);
+
+			expect(filtered?.values.map((value) => value.code)).toContain(filterValue);
+			expect(filtered?.selectedValue).toBe(filterValue);
+			expect(correlated?.selectedValue).toBe(correlatedValue);
+			expect(result.unresolvedDimensions).toEqual([]);
+			expect(result.chart.status).toBe('no_data');
+			expect(result.chart.series).toEqual([]);
+		}
+	);
+
+	it('honors explicit totals before split selection', async () => {
+		const result = await model(
+			'indicator=EMICRON_PI_109&freq=A&by=SEX&filter.CATEGORY=SERVICIO_01&filter.SEX=_T'
+		);
+
+		expect(result.chart.status).toBe('chartable');
+		expect(result.state.by).toBeNull();
+		expect(result.state.filters.SEX).toBe('_T');
+		expect(result.chart.series).toHaveLength(1);
+	});
+
+	it('keeps options stable for a valid but unavailable demographic cross-tab', async () => {
+		const base = await model('indicator=EMICRON_PI_109&freq=A');
+		const result = await model(
+			'indicator=EMICRON_PI_109&freq=A&by=CATEGORY&filter.SEX=F&filter.HEAD_SEX=M'
+		);
+		expect(result.state.filters).toEqual({ SEX: 'F', HEAD_SEX: 'M' });
+		expect(result.chart.status).toBe('no_data');
+		expect(result.chart.debugQuery?.parameters).toEqual(expect.arrayContaining(['F', 'M']));
+		expect(result.dimensions.map((d) => d.values)).toEqual(base.dimensions.map((d) => d.values));
+		const available = await model(
+			'indicator=EMICRON_PI_109&freq=A&by=CATEGORY&filter.SEX=F&filter.HEAD_SEX=F'
+		);
+		expect(available.chart.status).toBe('chartable');
+	});
+
+	it('distinguishes unobserved departments from invalid codes', async () => {
+		const absent = await model(
+			'indicator=EMICRON_PI_109&freq=A&by=CATEGORY&filter.REF_AREA=CO-97&filter.GEO_LEVEL=DEP'
+		);
+		expect(absent.chart.status).toBe('no_data');
+		const invalid = await model('indicator=EMICRON_PI_109&freq=A&filter.SEX=UNKNOWN');
+		expect(invalid.chart.status).toBe('invalid');
+		expect(invalid.state.filters.SEX).toBe('UNKNOWN');
+	});
+
+	it('keeps no split selected and explains the pending category filter', async () => {
+		const result = await model('indicator=EMICRON_PI_109&freq=A');
+		expect(result.state.by).toBeNull();
+		expect(result.canonicalSearch).not.toContain('by=');
+		expect(result.chart.status).toBe('needs_resolution');
+		expect(result.unresolvedDimensions.map((d) => d.code)).toEqual(['CATEGORY']);
+		expect(result.chart.debugQuery).toBeUndefined();
+	});
+
+	it.each([
+		'',
+		'&filter.SEX=F&filter.HEAD_SEX=F',
+		'&filter.REF_AREA=CO-05&filter.GEO_LEVEL=DEP',
+		'&filter.CLASE=1&filter.URBAN_RURAL=U&filter.GEO_LEVEL=CLASS'
+	])('charts normal filters without any split: %s', async (filters) => {
+		const result = await model(
+			`indicator=EMICRON_PI_109&freq=A&filter.CATEGORY=SERVICIO_01${filters}&start=2022&end=2024`
+		);
+		expect(result.state.by).toBeNull();
+		expect(result.chart.status).toBe('chartable');
+		expect(result.chart.series).toHaveLength(1);
+		const query = result.chart.debugQuery!;
+		expect(query.sql).toContain('category = ?');
+		expect(query.sql).not.toContain('SERVICIO_01');
+		expect(query.parameters).toContain('SERVICIO_01');
+		expect(query.parameters.slice(-2)).toEqual(['2022', '2024']);
+		const { runCanonicalQuery } = await import('$lib/server/duckdb');
+		const rows = await runCanonicalQuery(query.sql, ...query.parameters);
+		expect(rows.length).toBe(result.chart.series[0].points.length);
+	});
+
+	it('resolves comparisons independently of indicator order', async () => {
+		const first = await model('indicator=ECV_PI_001&indicator=GEIH_PI_001&freq=A');
+		const second = await model('indicator=GEIH_PI_001&indicator=ECV_PI_001&freq=A');
+		expect(first.chart.status).toBe('needs_resolution');
+		expect(second.chart.status).toBe(first.chart.status);
+		expect(first.unresolvedDimensions.map((d) => d.code)).toContain('REF_AREA');
 	});
 });

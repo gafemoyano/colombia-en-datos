@@ -1,8 +1,8 @@
 import { and, eq, inArray, or } from 'drizzle-orm';
 import { getDb } from '$lib/db/client';
+import departmentCodes from '../../../static/departamentos.csv?raw';
 import {
 	dataSources,
-	departamentos,
 	dimensionDefinitions,
 	dimensionValues,
 	indicatorCategories,
@@ -50,7 +50,13 @@ export interface ExplorerDimensionValue {
 	label: string;
 }
 
-export type ExplorerDimensionState = 'filtered' | 'split' | 'fixed' | 'unresolved' | 'empty';
+export type ExplorerDimensionState =
+	| 'filtered'
+	| 'split'
+	| 'defaulted'
+	| 'fixed'
+	| 'unresolved'
+	| 'empty';
 
 export interface ExplorerDimension {
 	code: string;
@@ -87,6 +93,7 @@ export interface ExplorerChartModel {
 	status: ExplorerChartStatus;
 	series: ExplorerSeries[];
 	messages: string[];
+	debugQuery?: { sql: string; parameters: string[] };
 }
 
 export type ExplorerTimeGranularity = 'year' | 'month' | 'quarter' | 'day' | 'unknown';
@@ -338,7 +345,9 @@ async function loadCatalog(): Promise<{
 		);
 
 	const dataSourceOptions = [
-		...new Map(catalog.map((indicator) => [indicator.dataSourceCode, indicator.dataSource])).entries()
+		...new Map(
+			catalog.map((indicator) => [indicator.dataSourceCode, indicator.dataSource])
+		).entries()
 	]
 		.map(([code, name]) => ({ code, name }))
 		.sort((a, b) => a.name.localeCompare(b.name));
@@ -446,7 +455,7 @@ async function loadRegisteredDimensions(
 			dimensions: rows
 				.map((row) => ({
 					code: row.code.toUpperCase(),
-					name: row.name,
+					name: row.code.toUpperCase() === 'CATEGORY' ? 'Categoría' : row.name,
 					isFilterable: row.isFilterable ?? true,
 					isSplitable: row.isSplitable ?? true,
 					defaultValue: row.defaultValue ?? null
@@ -500,13 +509,15 @@ async function loadValueLabels(
 			setLabel('GEO_LEVEL', 'MUN', 'Municipal');
 		}
 
-		if (dimensionCodes.includes('DEPT_CODE')) {
+		if (dimensionCodes.includes('DEPT_CODE') || dimensionCodes.includes('REF_AREA')) {
 			setLabel('DEPT_CODE', '00', 'Colombia');
-			const departmentRows = await db
-				.select({ code: departamentos.code, name: departamentos.name })
-				.from(departamentos);
-			for (const row of departmentRows) {
-				setLabel('DEPT_CODE', row.code, row.name);
+			setLabel('REF_AREA', 'CO', 'Colombia');
+			// The maintained geographic dictionary includes departments with no
+			// observations. Bundle it rather than requiring a separately seeded table.
+			for (const line of departmentCodes.trim().split(/\r?\n/).slice(1)) {
+				const [code, name] = line.split(';');
+				setLabel('DEPT_CODE', code, name);
+				setLabel('REF_AREA', `CO-${code}`, name);
 			}
 		}
 
@@ -556,38 +567,6 @@ async function loadValueLabels(
 		console.warn(`[Explorer] Could not load dimension value labels: ${errorSummary(error)}`);
 		return new Map();
 	}
-}
-
-function buildWhereForObservationQueries(params: {
-	indicatorCode: string;
-	freq: string;
-	filters: Record<string, string>;
-	excludeDimension?: string;
-	includeDateRange?: boolean;
-	start?: string;
-	end?: string;
-}): { conditions: string[]; values: unknown[] } {
-	const conditions = ['indicator_code = ?', 'freq = ?'];
-	const values: unknown[] = [params.indicatorCode, params.freq];
-
-	for (const [code, value] of Object.entries(params.filters)) {
-		if (code === params.excludeDimension) continue;
-		conditions.push(`${dimensionColumn(code)} = ?`);
-		values.push(value);
-	}
-
-	if (params.includeDateRange) {
-		if (params.start) {
-			conditions.push('time_period >= ?');
-			values.push(params.start);
-		}
-		if (params.end) {
-			conditions.push('time_period <= ?');
-			values.push(params.end);
-		}
-	}
-
-	return { conditions, values };
 }
 
 async function loadTimeAxis(params: {
@@ -646,45 +625,48 @@ async function loadTimeAxis(params: {
 
 async function loadAvailableValues(params: {
 	indicatorCode: string;
-	freq: string;
 	dimensions: RegisteredDimension[];
-	filters: Record<string, string>;
 }): Promise<Map<string, string[]>> {
-	const valuesByDimension = new Map<string, string[]>();
-
-	for (const dimension of params.dimensions) {
-		const column = dimensionColumn(dimension.code);
-		const where = buildWhereForObservationQueries({
-			indicatorCode: params.indicatorCode,
-			freq: params.freq,
-			filters: params.filters,
-			excludeDimension: dimension.code,
-			includeDateRange: false
-		});
-
-		const rows = await runCanonicalQuery<{ value: string }>(
-			`
-				SELECT DISTINCT ${column} AS value
-				FROM observations
-				WHERE ${where.conditions.join(' AND ')} AND ${column} IS NOT NULL
-				ORDER BY ${column}
-				LIMIT 500
-			`,
-			...where.values
-		);
-		valuesByDimension.set(dimension.code, rows.map((row) => String(row.value)).filter(Boolean));
-	}
-
-	return valuesByDimension;
+	const labels = await loadValueLabels(
+		params.dimensions.map((dimension) => dimension.code),
+		[params.indicatorCode]
+	);
+	return new Map(
+		params.dimensions.map((dimension) => [
+			dimension.code,
+			[...(labels.get(dimension.code)?.keys() || [])].sort()
+		])
+	);
 }
 
-function intersectValueMaps(maps: Map<string, string[]>[], dimensionCodes: string[]): Map<string, string[]> {
+function intersectValueMaps(
+	maps: Map<string, string[]>[],
+	dimensionCodes: string[]
+): Map<string, string[]> {
 	const result = new Map<string, string[]>();
 	for (const code of dimensionCodes) {
 		const values = intersectArrays(maps.map((map) => map.get(code) || []));
 		result.set(code, values);
 	}
 	return result;
+}
+
+function loadEffectiveFilters(params: {
+	dimensions: RegisteredDimension[];
+	filters: Record<string, string>;
+	by: string | null;
+}): Record<string, string> {
+	const effectiveFilters = { ...params.filters };
+	for (const dimension of params.dimensions) {
+		if (
+			dimension.code !== params.by &&
+			!effectiveFilters[dimension.code] &&
+			dimension.defaultValue !== null
+		) {
+			effectiveFilters[dimension.code] = dimension.defaultValue;
+		}
+	}
+	return effectiveFilters;
 }
 
 function prefixDimensionForIndicator(
@@ -702,19 +684,21 @@ function resolveDimensions(params: {
 	registeredDimensions: RegisteredDimension[];
 	availableValues: Map<string, string[]>;
 	valueLabels: Map<string, Map<string, string>>;
-	filters: Record<string, string>;
+	explicitFilters: Record<string, string>;
+	effectiveFilters: Record<string, string>;
 	by: string | null;
 }): ExplorerDimension[] {
 	return params.registeredDimensions.map((dimension) => {
 		const rawValues = params.availableValues.get(dimension.code) || [];
 		const labels = params.valueLabels.get(dimension.code) || new Map<string, string>();
 		const values = rawValues.map((value) => ({ code: value, label: labels.get(value) || value }));
-		const selectedValue = params.filters[dimension.code] || null;
+		const selectedValue = params.effectiveFilters[dimension.code] || null;
 		let state: ExplorerDimensionState = 'unresolved';
 
-		if (selectedValue) state = 'filtered';
+		if (params.explicitFilters[dimension.code]) state = 'filtered';
 		else if (params.by === dimension.code) state = 'split';
 		else if (values.length <= 1) state = values.length === 0 ? 'empty' : 'fixed';
+		else if (selectedValue) state = 'defaulted';
 
 		return {
 			...dimension,
@@ -738,10 +722,7 @@ async function queryChart(params: {
 		`indicator_code IN (${params.indicators.map(() => '?').join(', ')})`,
 		'freq = ?'
 	];
-	const values: unknown[] = [
-		...params.indicators.map((indicator) => indicator.code),
-		params.freq
-	];
+	const values: string[] = [...params.indicators.map((indicator) => indicator.code), params.freq];
 
 	for (const [code, value] of Object.entries(params.filters)) {
 		conditions.push(`${dimensionColumn(code)} = ?`);
@@ -758,18 +739,16 @@ async function queryChart(params: {
 	}
 
 	const byColumn = params.by ? dimensionColumn(params.by) : null;
-	const rows = await runCanonicalQuery<Record<string, unknown>>(
-		`
-			SELECT indicator_code AS indicator_code, time_period AS time, obs_value AS value${byColumn ? `, ${byColumn} AS split_value` : ''}
-			FROM observations
-			WHERE ${conditions.join(' AND ')}
-			ORDER BY indicator_code, time_period${byColumn ? ', split_value' : ''}
-		`,
-		...values
-	);
+	const sql = `SELECT indicator_code AS indicator_code, time_period AS time, obs_value AS value${byColumn ? `, ${byColumn} AS split_value` : ''}
+FROM observations
+WHERE ${conditions.join('\n  AND ')}
+ORDER BY indicator_code, time_period${byColumn ? ', split_value' : ''}`;
+	const debugQuery = { sql, parameters: values };
+	const rows = await runCanonicalQuery<Record<string, unknown>>(sql, ...values);
 
 	if (rows.length === 0) {
 		return {
+			debugQuery,
 			status: 'no_data',
 			series: [],
 			messages: ['No hay observaciones para la selección actual.']
@@ -783,6 +762,7 @@ async function queryChart(params: {
 			: `${row.indicator_code}|${row.time}`;
 		if (seen.has(key)) {
 			return {
+				debugQuery,
 				status: 'invalid',
 				series: [],
 				messages: [
@@ -830,6 +810,7 @@ async function queryChart(params: {
 	}
 
 	return {
+		debugQuery,
 		status: 'chartable',
 		series: Array.from(seriesByKey.values()),
 		messages: []
@@ -925,7 +906,9 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 
 	if (!state.freq || !commonFrequencies.includes(state.freq)) {
 		if (state.freq && !commonFrequencies.includes(state.freq)) {
-			warnings.push('Se ignoró la frecuencia porque no está disponible para todos los indicadores.');
+			warnings.push(
+				'Se ignoró la frecuencia porque no está disponible para todos los indicadores.'
+			);
 			state.freq = null;
 		}
 
@@ -1017,11 +1000,20 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			if (!firstDimension) return null;
 			return {
 				...firstDimension,
-				isFilterable: registeredResults.every((entry) =>
-					entry.result.dimensions.find((dimension) => dimension.code === code)?.isFilterable
+				defaultValue: registeredResults.every(
+					(entry) =>
+						entry.result.dimensions.find((dimension) => dimension.code === code)?.defaultValue ===
+						firstDimension.defaultValue
+				)
+					? firstDimension.defaultValue
+					: null,
+				isFilterable: registeredResults.every(
+					(entry) =>
+						entry.result.dimensions.find((dimension) => dimension.code === code)?.isFilterable
 				),
-				isSplitable: registeredResults.every((entry) =>
-					entry.result.dimensions.find((dimension) => dimension.code === code)?.isSplitable
+				isSplitable: registeredResults.every(
+					(entry) =>
+						entry.result.dimensions.find((dimension) => dimension.code === code)?.isSplitable
 				)
 			};
 		})
@@ -1048,52 +1040,23 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		state.by = null;
 	}
 
-	// Collapse every dimension the user has not chosen down to its registry
-	// default. The canonical store holds one row per combination of all 13
-	// dimensions, so an unpinned dimension does not mean "all" -- it means the
-	// query returns that dimension's total row *and* each of its parts, and the
-	// chart draws them on top of each other.
-	//
-	// CATEGORY is the exception: it has no default because 216 of the 230
-	// indicators with a breakdown ship no '_T' category row, so filtering to a
-	// total would empty the chart. Splitting by it is the useful default -- an
-	// indicator like "Régimen de salud del jefe/a" *is* its breakdown.
-	if (!state.by) {
-		// Specifically CATEGORY, not merely the first dimension without a default.
-		// REF_AREA also lacks one for department-only indicators, and splitting by
-		// it would draw 24 department series for an indicator whose actual subject
-		// is its breakdown. Geography is a filter the user picks; the breakdown is
-		// what the indicator is about.
-		//
-		// A dimension is only registered when it actually varies for the
-		// indicator, so presence here already means it has more than one value.
-		const breakdown = commonRegisteredDimensions.find(
-			(dimension) =>
-				dimension.code === 'CATEGORY' &&
-				dimension.defaultValue === null &&
-				dimension.isSplitable &&
-				!state.filters[dimension.code]
-		);
-		if (breakdown) state.by = breakdown.code;
-	}
-
-	for (const dimension of commonRegisteredDimensions) {
-		if (state.filters[dimension.code]) continue;
-		if (state.by === dimension.code) continue;
-		if (dimension.defaultValue) state.filters[dimension.code] = dimension.defaultValue;
-	}
-
 	const commonAvailableValueMaps = await Promise.all(
 		selectedIndicators.map((indicator) =>
 			loadAvailableValues({
 				indicatorCode: indicator.code,
-				freq: state.freq as string,
-				dimensions: commonRegisteredDimensions,
-				filters: state.filters
+				dimensions: commonRegisteredDimensions
 			})
 		)
 	);
 	const commonAvailableValues = intersectValueMaps(commonAvailableValueMaps, commonDimensionCodes);
+	const invalidFilters = Object.entries(state.filters).filter(
+		([code, value]) => !commonAvailableValues.get(code)?.includes(value)
+	);
+	const effectiveFilters = loadEffectiveFilters({
+		dimensions: commonRegisteredDimensions,
+		filters: state.filters,
+		by: state.by
+	});
 	const allRegisteredCodes = Array.from(
 		new Set(
 			registeredResults.flatMap((entry) =>
@@ -1110,7 +1073,8 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		registeredDimensions: commonRegisteredDimensions,
 		availableValues: commonAvailableValues,
 		valueLabels,
-		filters: state.filters,
+		explicitFilters: state.filters,
+		effectiveFilters,
 		by: state.by
 	});
 
@@ -1124,16 +1088,15 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 
 		const availableValues = await loadAvailableValues({
 			indicatorCode: indicator.code,
-			freq: state.freq,
-			dimensions: privateRegisteredDimensions,
-			filters: state.filters
+			dimensions: privateRegisteredDimensions
 		});
 		privateDimensions.push(
 			...resolveDimensions({
 				registeredDimensions: privateRegisteredDimensions,
 				availableValues,
 				valueLabels,
-				filters: {},
+				explicitFilters: {},
+				effectiveFilters: {},
 				by: null
 			}).map((dimension) => prefixDimensionForIndicator(dimension, indicator))
 		);
@@ -1147,31 +1110,40 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		...dimensions.filter((dimension) => dimension.state === 'fixed'),
 		...privateDimensions.filter((dimension) => dimension.state === 'fixed')
 	];
-	const chart = !measurementCompatibility.compatible
-		? {
-				status: 'invalid' as const,
-				series: [],
-				messages: [measurementCompatibility.message || 'Los indicadores no son comparables.']
-			}
-		: unresolvedDimensions.length > 0
+	const chart =
+		invalidFilters.length > 0
 			? {
-					status: 'needs_resolution' as const,
+					status: 'invalid' as const,
 					series: [],
 					messages: [
-						selectedIndicators.length > 1
-							? 'Para comparar sin suposiciones, filtra o desagrega las dimensiones comunes pendientes. Los indicadores con dimensiones propias multi-valor todavía no son comparables.'
-							: 'Para graficar sin suposiciones, filtra o desagrega las dimensiones pendientes.'
+						`Códigos de filtro no registrados: ${invalidFilters.map(([code, value]) => `${code}=${value}`).join(', ')}.`
 					]
 				}
-			: await queryChart({
-					indicators: selectedIndicators,
-					freq: state.freq,
-					by: state.by,
-					filters: state.filters,
-					start: state.start,
-					end: state.end,
-					dimensions
-				});
+			: !measurementCompatibility.compatible
+				? {
+						status: 'invalid' as const,
+						series: [],
+						messages: [measurementCompatibility.message || 'Los indicadores no son comparables.']
+					}
+				: unresolvedDimensions.length > 0
+					? {
+							status: 'needs_resolution' as const,
+							series: [],
+							messages: [
+								selectedIndicators.length > 1
+									? 'Para comparar sin suposiciones, filtra o desagrega las dimensiones comunes pendientes. Los indicadores con dimensiones propias multi-valor todavía no son comparables.'
+									: 'Selecciona un valor en los filtros pendientes para ver una serie. Desagregar es opcional y sirve para comparar varios valores.'
+							]
+						}
+					: await queryChart({
+							indicators: selectedIndicators,
+							freq: state.freq,
+							by: state.by,
+							filters: effectiveFilters,
+							start: state.start,
+							end: state.end,
+							dimensions
+						});
 
 	return {
 		state,
