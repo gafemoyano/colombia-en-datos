@@ -4,6 +4,7 @@ import { exportRows, toCsv, downloadExport, type ExportModel } from './explorer-
 const model: ExportModel = {
 	state: {
 		dataSource: '',
+		theme: '',
 		selectedIndicators: ['A', 'B'],
 		indicator: 'A',
 		freq: 'M',
