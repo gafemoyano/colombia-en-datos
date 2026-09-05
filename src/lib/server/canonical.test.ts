@@ -129,6 +129,9 @@ describe.skipIf(!ready)('the Explorer, for every survey', () => {
 			expect(result.unresolvedDimensions.map((d) => d.code)).toEqual([]);
 			expect(result.chart.status).toBe('chartable');
 			expect(result.chart.series.length).toBeGreaterThan(0);
+			expect(result.metadata?.formula).toBeTruthy();
+			expect(result.metadata?.sourceVariables).toBeTruthy();
+			expect(result.metadata?.sourceCitation).toBeTruthy();
 		});
 
 		it(`labels ${testCase.survey} breakdown values in Spanish`, async () => {

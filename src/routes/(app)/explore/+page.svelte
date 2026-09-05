@@ -27,6 +27,17 @@
 	const EMPTY_FILTER = '__filter_all__';
 	const EMPTY_START = '__start_open__';
 	const EMPTY_END = '__end_open__';
+	const GEO_LEVEL_LABELS: Record<string, string> = {
+		NAT: 'Nacional',
+		DEP: 'Departamental',
+		CLASS: 'Cabecera / resto',
+		DEP_CLASS: 'Departamental por clase',
+		AREA: 'Área metropolitana',
+		MUN: 'Municipal'
+	};
+
+	type IndicatorMetadata = NonNullable<PageData['metadata']>;
+	type MethodologyNoteGroup = { geoLevel: string | null; notes: string[] };
 
 	let indicatorPopoverOpen = $state(false);
 	let indicatorSearch = $state('');
@@ -328,11 +339,136 @@
 		if (state === 'empty') return 'Sin valores';
 		return 'Pendiente';
 	}
+
+	function technicalFormula(formula: string): string | null {
+		const prefix = 'RULE_JSON:';
+		if (!formula.startsWith(prefix)) return null;
+
+		try {
+			return JSON.stringify(JSON.parse(formula.slice(prefix.length)), null, 2);
+		} catch {
+			return formula;
+		}
+	}
+
+	function notesFrom(value: unknown): string[] {
+		if (typeof value === 'string') return value.trim() ? [value.trim()] : [];
+		if (!Array.isArray(value)) return [];
+		return value
+			.filter((note): note is string => typeof note === 'string')
+			.map((note) => note.trim())
+			.filter(Boolean);
+	}
+
+	function methodologyNoteGroups(metadata: IndicatorMetadata): MethodologyNoteGroup[] {
+		const methodology = metadata.methodology?.trim();
+		if (!methodology) return [];
+
+		try {
+			const parsed: unknown = JSON.parse(methodology);
+			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+				return [{ geoLevel: null, notes: notesFrom(parsed) }].filter(
+					(group) => group.notes.length > 0
+				);
+			}
+
+			let entries = Object.entries(parsed as Record<string, unknown>);
+			const selectedGeoLevel = data.state.filters.GEO_LEVEL;
+			if (selectedGeoLevel) {
+				entries = entries.filter(([geoLevel]) => geoLevel === selectedGeoLevel);
+			} else if (data.state.by === 'GEO_LEVEL') {
+				const visibleGeoLevels = new Set(
+					data.dimensions
+						.find((dimension) => dimension.code === 'GEO_LEVEL')
+						?.values.map((value) => value.code) || []
+				);
+				entries = entries.filter(([geoLevel]) => visibleGeoLevels.has(geoLevel));
+			}
+
+			return entries
+				.map(([geoLevel, value]) => ({ geoLevel, notes: notesFrom(value) }))
+				.filter((group) => group.notes.length > 0);
+		} catch {
+			return [{ geoLevel: null, notes: [methodology] }];
+		}
+	}
 </script>
 
 <svelte:head>
 	<title>Explorar datos · Colombia en Datos</title>
 </svelte:head>
+
+{#snippet contextDetails(metadata: IndicatorMetadata, showUnit: boolean)}
+	{@const formattedFormula = metadata.formula ? technicalFormula(metadata.formula) : null}
+	{@const noteGroups = methodologyNoteGroups(metadata)}
+	<div class="space-y-3">
+		{#if showUnit}
+			<div>
+				<div class="text-muted-foreground text-xs uppercase">Unidad</div>
+				<div>{metadata.unit || 'Sin unidad registrada'}</div>
+			</div>
+		{/if}
+		{#if metadata.description}
+			<div>
+				<div class="text-muted-foreground text-xs uppercase">Descripción</div>
+				<p class="text-muted-foreground whitespace-pre-line">{metadata.description}</p>
+			</div>
+		{/if}
+		{#if metadata.formula}
+			<div>
+				<div class="text-muted-foreground text-xs uppercase">Fórmula</div>
+				{#if formattedFormula}
+					<details class="mt-1 rounded-md border px-3 py-2">
+						<summary class="cursor-pointer font-medium">Ver regla técnica de cálculo</summary>
+						<pre
+							class="bg-muted mt-2 max-h-48 overflow-auto rounded p-3 text-xs whitespace-pre-wrap break-words">{formattedFormula}</pre>
+					</details>
+				{:else}
+					<div class="whitespace-pre-wrap break-words">{metadata.formula}</div>
+				{/if}
+			</div>
+		{/if}
+		{#if metadata.sourceVariables}
+			<div>
+				<div class="text-muted-foreground text-xs uppercase">Variables fuente</div>
+				<div class="font-mono text-xs whitespace-pre-wrap break-words">
+					{metadata.sourceVariables}
+				</div>
+			</div>
+		{/if}
+		<div>
+			<div class="text-muted-foreground text-xs uppercase">Citación de fuente</div>
+			<div class="whitespace-pre-wrap break-words">
+				{metadata.sourceCitation || 'Sin citación registrada'}
+			</div>
+		</div>
+		{#if noteGroups.length > 0}
+			<div>
+				<div class="text-muted-foreground text-xs uppercase">
+					{noteGroups.reduce((total, group) => total + group.notes.length, 0) === 1
+						? 'Nota metodológica'
+						: 'Notas metodológicas'}
+				</div>
+				<div class="mt-1 space-y-2">
+					{#each noteGroups as group}
+						<div>
+							{#if group.geoLevel}
+								<div class="font-medium">
+									{GEO_LEVEL_LABELS[group.geoLevel] || group.geoLevel}
+								</div>
+							{/if}
+							<ul class="text-muted-foreground list-disc space-y-1 pl-5">
+								{#each group.notes as note}
+									<li>{note}</li>
+								{/each}
+							</ul>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+	</div>
+{/snippet}
 
 <div class="space-y-6">
 	<Card.Card>
@@ -750,28 +886,19 @@
 									{/if}
 								</div>
 							</div>
-							<div class="space-y-2">
+							<div class="space-y-3">
 								{#each data.metadatas as metadata}
-									<div class="rounded-lg border px-3 py-2">
+									<div class="space-y-3 rounded-lg border px-3 py-3">
 										<div class="font-medium">{metadata.name || metadata.shortName}</div>
-										<div class="text-muted-foreground mt-1 text-xs">
+										<div class="text-muted-foreground text-xs">
 											{metadata.code} · {metadata.unit || 'Sin unidad'}
 										</div>
+										{@render contextDetails(metadata, false)}
 									</div>
 								{/each}
 							</div>
 						{:else if data.metadata}
-							<div>
-								<div class="text-muted-foreground text-xs uppercase">Unidad</div>
-								<div>{data.metadata.unit || 'Sin unidad registrada'}</div>
-							</div>
-							<div>
-								<div class="text-muted-foreground text-xs uppercase">Citación de fuente</div>
-								<div>{data.metadata.sourceCitation || 'Sin citación registrada'}</div>
-							</div>
-							{#if data.metadata.description}
-								<p class="text-muted-foreground">{data.metadata.description}</p>
-							{/if}
+							{@render contextDetails(data.metadata, true)}
 						{:else}
 							<p class="text-muted-foreground">Selecciona un indicador para ver su contexto.</p>
 						{/if}

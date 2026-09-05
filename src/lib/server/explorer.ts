@@ -119,6 +119,8 @@ export interface ExplorerMetadata {
 	shortName: string | null;
 	description: string | null;
 	methodology: string | null;
+	formula: string | null;
+	sourceVariables: string | null;
 	sourceCitation: string | null;
 	unit: string | null;
 	unitMult: number | null;
@@ -387,6 +389,8 @@ async function loadMetadata(indicatorCode: string): Promise<ExplorerMetadata | n
 			shortName: indicators.shortName,
 			description: indicators.description,
 			methodology: indicators.methodology,
+			formula: indicators.formula,
+			sourceVariables: indicators.sourceVariables,
 			sourceCitation: indicators.sourceCitation,
 			unit: indicators.unit,
 			unitMult: indicators.unitMult,
