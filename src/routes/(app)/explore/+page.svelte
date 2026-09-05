@@ -7,6 +7,7 @@
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import X from '@lucide/svelte/icons/x';
+	import Info from '@lucide/svelte/icons/info';
 	import PlotlyChart from '$lib/components/PlotlyChart.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
@@ -27,6 +28,31 @@
 	const EMPTY_FILTER = '__filter_all__';
 	const EMPTY_START = '__start_open__';
 	const EMPTY_END = '__end_open__';
+	// Brand-derived categorical palette (see --c-* tokens in app.css). Distinct hues so
+	// split series stay tellable apart; the shadcn --chart-* ramp is monochrome blue.
+	const CHART_COLORS = [
+		'#1f4e79',
+		'#d89a2b',
+		'#2a9d8f',
+		'#c0504d',
+		'#6b4c9a',
+		'#4f81bd',
+		'#7f8c5a',
+		'#8c6d4f'
+	];
+	const UNIT_LABELS: Record<string, string> = {
+		PERCENT: 'Porcentaje (%)',
+		NUMBER: 'Número',
+		COP: 'Pesos (COP)',
+		USD: 'Dólares (USD)',
+		HOUR: 'Horas',
+		WEEK: 'Semanas',
+		YEAR: 'Años',
+		TONNE: 'Toneladas',
+		RATIO: 'Razón',
+		INDEX: 'Índice',
+		COP_PER_HOUR: 'Pesos por hora (COP)'
+	};
 	const GEO_LEVEL_LABELS: Record<string, string> = {
 		NAT: 'Nacional',
 		DEP: 'Departamental',
@@ -65,7 +91,7 @@
 	const selectedDataSourceLabel = $derived(
 		data.state.dataSource
 			? data.dataSources.find((dataSource) => dataSource.code === data.state.dataSource)?.name ||
-				data.state.dataSource
+					data.state.dataSource
 			: 'Todas las fuentes de datos'
 	);
 
@@ -90,14 +116,14 @@
 	const selectedStartLabel = $derived(
 		data.timeAxis.start
 			? data.timeAxis.periods.find((period) => period.value === data.timeAxis.start)?.label ||
-				data.timeAxis.start
+					data.timeAxis.start
 			: 'Desde el inicio'
 	);
 
 	const selectedEndLabel = $derived(
 		data.timeAxis.end
 			? data.timeAxis.periods.find((period) => period.value === data.timeAxis.end)?.label ||
-				data.timeAxis.end
+					data.timeAxis.end
 			: 'Hasta el final'
 	);
 
@@ -107,22 +133,97 @@
 			y: series.points.map((point) => point.value),
 			type: 'scatter',
 			mode: 'lines',
-			name: series.name
+			line: { width: 1.75 },
+			name: seriesLabel(series.name)
 		}))
 	);
 
+	// With a single indicator the card header already says which one it is, so the
+	// legend only needs the split value ("Clase: Cabecera"), not the full series name.
+	function seriesLabel(name: string): string {
+		if (data.selectedIndicators.length !== 1) return name;
+		const indicator = data.selectedIndicators[0];
+		for (const prefix of [indicator.name, indicator.shortName]) {
+			if (prefix && name.startsWith(`${prefix} · `)) return name.slice(prefix.length + 3);
+		}
+		return name;
+	}
+
 	const chartLayout = $derived<Partial<PlotlyTypes.Layout>>({
-		title: {
-			text:
-				data.selectedIndicators.length > 1
-					? 'Comparación de indicadores'
-					: data.selectedIndicator?.name || data.selectedIndicator?.shortName || 'Explorador'
+		// The card header already names the indicator; a second title inside the plot
+		// wastes ~50px of vertical space and duplicates information.
+		font: { family: "'Inter Variable', Inter, system-ui, sans-serif", size: 12, color: '#52616b' },
+		colorway: CHART_COLORS,
+		paper_bgcolor: 'rgba(0,0,0,0)',
+		plot_bgcolor: 'rgba(0,0,0,0)',
+		xaxis: {
+			gridcolor: '#eef1f4',
+			linecolor: '#d7e3ec',
+			zeroline: false,
+			ticks: 'outside',
+			tickcolor: '#d7e3ec',
+			automargin: true
 		},
-		xaxis: { title: { text: 'Periodo' } },
-		yaxis: { title: { text: data.measurementCompatibility.unit || 'Valor' } },
-		legend: { orientation: 'h' },
-		margin: { l: 60, r: 30, t: 60, b: 60 }
+		yaxis: {
+			title: {
+				text: unitLabel(data.measurementCompatibility.unit),
+				font: { size: 11 },
+				standoff: 12
+			},
+			gridcolor: '#eef1f4',
+			zeroline: false,
+			showline: false,
+			tickformat: ',~r',
+			automargin: true
+		},
+		// Colombian convention: comma for decimals, period for thousands.
+		separators: ',.',
+		hovermode: 'x unified',
+		hoverlabel: {
+			font: { family: "'Inter Variable', Inter, system-ui, sans-serif", size: 12 },
+			bgcolor: '#ffffff',
+			bordercolor: '#d7e3ec'
+		},
+		legend: {
+			orientation: 'h',
+			x: 0,
+			xanchor: 'left',
+			y: 1,
+			yanchor: 'bottom',
+			font: { size: 11 },
+			itemwidth: 30
+		},
+		showlegend: data.chart.series.length > 1,
+		margin: { l: 48, r: 12, t: data.chart.series.length > 1 ? 40 : 20, b: 36 }
 	});
+
+	const chartConfig: Partial<PlotlyTypes.Config> = {
+		responsive: true,
+		displayModeBar: 'hover',
+		displaylogo: false,
+		modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toggleSpikelines'],
+		toImageButtonOptions: { format: 'png', scale: 2 }
+	};
+
+	const seriesPointCount = $derived(
+		data.chart.series.reduce((total, series) => total + series.points.length, 0)
+	);
+
+	// The server writes default filter values back into the URL, so comparing hrefs
+	// would always report something to clear. Only an explicit split or a non-default
+	// filter is worth a reset.
+	const canClearVisualization = $derived(
+		Boolean(data.state.by) ||
+			data.dimensions.some(
+				(dimension) =>
+					dimension.selectedValue !== null && dimension.selectedValue !== dimension.defaultValue
+			)
+	);
+
+	function unitLabel(unit: string | null | undefined): string {
+		if (!unit) return 'Valor';
+		return UNIT_LABELS[unit] || unit;
+	}
 
 	function frequencyLabel(freq: string): string {
 		if (freq === 'M') return 'Mensual';
@@ -325,10 +426,13 @@
 		return exploreHref(params);
 	}
 
+	// Emphasis follows what needs the user's attention: an unresolved dimension blocks
+	// the chart (destructive), a split is the active choice (primary), a filter is the
+	// normal resting state (quiet), and fixed/empty are informational.
 	function badgeVariant(state: string): 'default' | 'secondary' | 'outline' | 'destructive' {
-		if (state === 'filtered' || state === 'split') return 'default';
-		if (state === 'fixed') return 'secondary';
+		if (state === 'split') return 'default';
 		if (state === 'unresolved') return 'destructive';
+		if (state === 'filtered') return 'secondary';
 		return 'outline';
 	}
 
@@ -398,120 +502,143 @@
 	<title>Explorar datos · Colombia en Datos</title>
 </svelte:head>
 
+{#snippet eyebrow(text: string)}
+	<div class="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">{text}</div>
+{/snippet}
+
 {#snippet contextDetails(metadata: IndicatorMetadata, showUnit: boolean)}
 	{@const formattedFormula = metadata.formula ? technicalFormula(metadata.formula) : null}
 	{@const noteGroups = methodologyNoteGroups(metadata)}
-	<div class="space-y-3">
+	<dl class="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
 		{#if showUnit}
-			<div>
-				<div class="text-muted-foreground text-xs uppercase">Unidad</div>
-				<div>{metadata.unit || 'Sin unidad registrada'}</div>
-			</div>
-		{/if}
-		{#if metadata.description}
-			<div>
-				<div class="text-muted-foreground text-xs uppercase">Descripción</div>
-				<p class="text-muted-foreground whitespace-pre-line">{metadata.description}</p>
-			</div>
-		{/if}
-		{#if metadata.formula}
-			<div>
-				<div class="text-muted-foreground text-xs uppercase">Fórmula</div>
-				{#if formattedFormula}
-					<details class="mt-1 rounded-md border px-3 py-2">
-						<summary class="cursor-pointer font-medium">Ver regla técnica de cálculo</summary>
-						<pre
-							class="bg-muted mt-2 max-h-48 overflow-auto rounded p-3 text-xs whitespace-pre-wrap break-words">{formattedFormula}</pre>
-					</details>
-				{:else}
-					<div class="whitespace-pre-wrap break-words">{metadata.formula}</div>
-				{/if}
+			<div class="space-y-0.5">
+				<dt>{@render eyebrow('Unidad')}</dt>
+				<dd>{unitLabel(metadata.unit)}{metadata.unit ? ` · ${metadata.unit}` : ''}</dd>
 			</div>
 		{/if}
 		{#if metadata.sourceVariables}
-			<div>
-				<div class="text-muted-foreground text-xs uppercase">Variables fuente</div>
-				<div class="font-mono text-xs whitespace-pre-wrap break-words">
+			<div class="min-w-0 space-y-0.5">
+				<dt>{@render eyebrow('Variables fuente')}</dt>
+				<dd class="font-mono text-xs leading-5 break-words whitespace-pre-wrap">
 					{metadata.sourceVariables}
-				</div>
+				</dd>
 			</div>
 		{/if}
-		<div>
-			<div class="text-muted-foreground text-xs uppercase">Citación de fuente</div>
-			<div class="whitespace-pre-wrap break-words">
+		<div class="min-w-0 space-y-0.5">
+			<dt>{@render eyebrow('Citación de fuente')}</dt>
+			<dd class="break-words whitespace-pre-wrap">
 				{metadata.sourceCitation || 'Sin citación registrada'}
-			</div>
+			</dd>
 		</div>
+		{#if metadata.description}
+			<div class="space-y-0.5 sm:col-span-full">
+				<dt>{@render eyebrow('Descripción')}</dt>
+				<dd class="text-muted-foreground max-w-prose whitespace-pre-line">
+					{metadata.description}
+				</dd>
+			</div>
+		{/if}
+		{#if metadata.formula}
+			<div class="min-w-0 space-y-0.5 sm:col-span-full">
+				<dt>{@render eyebrow('Fórmula')}</dt>
+				<dd>
+					{#if formattedFormula}
+						<details class="rounded-md border">
+							<summary class="cursor-pointer px-3 py-1.5 text-xs font-medium select-none">
+								Ver regla técnica de cálculo
+							</summary>
+							<pre
+								class="bg-muted/60 max-h-56 overflow-auto border-t px-3 py-2 font-mono text-xs leading-5 break-words whitespace-pre-wrap">{formattedFormula}</pre>
+						</details>
+					{:else}
+						<code
+							class="bg-muted/60 block rounded-md px-2.5 py-1.5 font-mono text-xs leading-5 break-words whitespace-pre-wrap"
+							>{metadata.formula}</code
+						>
+					{/if}
+				</dd>
+			</div>
+		{/if}
 		{#if noteGroups.length > 0}
-			<div>
-				<div class="text-muted-foreground text-xs uppercase">
-					{noteGroups.reduce((total, group) => total + group.notes.length, 0) === 1
-						? 'Nota metodológica'
-						: 'Notas metodológicas'}
-				</div>
-				<div class="mt-1 space-y-2">
+			<div class="space-y-1 sm:col-span-full">
+				<dt>
+					{@render eyebrow(
+						noteGroups.reduce((total, group) => total + group.notes.length, 0) === 1
+							? 'Nota metodológica'
+							: 'Notas metodológicas'
+					)}
+				</dt>
+				<dd class="grid gap-x-8 gap-y-2 sm:grid-cols-2">
 					{#each noteGroups as group}
-						<div>
+						<div class="space-y-0.5">
 							{#if group.geoLevel}
-								<div class="font-medium">
+								<div class="text-xs font-medium">
 									{GEO_LEVEL_LABELS[group.geoLevel] || group.geoLevel}
 								</div>
 							{/if}
-							<ul class="text-muted-foreground list-disc space-y-1 pl-5">
+							<ul
+								class="text-muted-foreground max-w-prose list-disc space-y-0.5 pl-4 text-[13px] leading-5"
+							>
 								{#each group.notes as note}
 									<li>{note}</li>
 								{/each}
 							</ul>
 						</div>
 					{/each}
-				</div>
+				</dd>
 			</div>
 		{/if}
-	</div>
+	</dl>
 {/snippet}
 
-<div class="space-y-6">
-	<Card.Card>
-		<Card.CardHeader class="px-5">
-			<div class="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-				<div>
-					<Card.CardTitle class="text-2xl">Explorador</Card.CardTitle>
-					<Card.CardDescription>
-						Elige un indicador y decide explícitamente cómo filtrar o desagregar sus observaciones.
-					</Card.CardDescription>
-				</div>
-				<Badge variant="outline">Prototipo paralelo</Badge>
-			</div>
-		</Card.CardHeader>
-		<Card.CardContent class="px-5 pb-5">
-			<div class="grid gap-5 lg:grid-cols-[200px_200px_minmax(0,1fr)_160px] lg:items-end">
-				<div class="space-y-2">
-					<Label id="data-source-label">Fuente de datos</Label>
+<div class="space-y-3">
+	<!-- Page title row: one compact line instead of a full card header. -->
+	<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-0.5">
+		<h1 class="text-lg font-semibold tracking-tight">Explorador</h1>
+		<p class="text-muted-foreground text-sm">
+			Elige indicadores y decide explícitamente cómo filtrar o desagregar sus observaciones.
+		</p>
+		<Badge variant="outline" class="ml-auto text-[11px]">Prototipo paralelo</Badge>
+	</div>
+
+	<!-- Discovery toolbar -->
+	<Card.Card size="sm" class="gap-0 py-0">
+		<Card.CardContent class="px-3 py-3">
+			<div
+				class="grid items-start gap-x-3 gap-y-2 md:grid-cols-2 lg:grid-cols-[minmax(160px,220px)_minmax(160px,220px)_minmax(0,1fr)_140px]"
+			>
+				<div class="space-y-1">
+					<Label id="data-source-label" class="text-muted-foreground text-xs">Fuente de datos</Label
+					>
 					<Select.Root
 						type="single"
 						value={data.state.dataSource || EMPTY_DATA_SOURCE}
 						onValueChange={handleDataSourceSelect}
 					>
-						<Select.Trigger aria-labelledby="data-source-label" class="h-9 w-full">
+						<Select.Trigger aria-labelledby="data-source-label" class="w-full">
 							<span class="truncate">{selectedDataSourceLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
-							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas las fuentes de datos">Todas las fuentes de datos</Select.Item>
+							<Select.Item value={EMPTY_DATA_SOURCE} label="Todas las fuentes de datos">
+								Todas las fuentes de datos
+							</Select.Item>
 							{#each data.dataSources as dataSource}
-								<Select.Item value={dataSource.code} label={dataSource.name}>{dataSource.name}</Select.Item>
+								<Select.Item value={dataSource.code} label={dataSource.name}>
+									{dataSource.name}
+								</Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
 				</div>
 
-				<div class="space-y-2">
-					<Label id="theme-label">Tema</Label>
+				<div class="space-y-1">
+					<Label id="theme-label" class="text-muted-foreground text-xs">Tema</Label>
 					<Select.Root
 						type="single"
 						value={data.state.theme || EMPTY_THEME}
 						onValueChange={handleThemeSelect}
 					>
-						<Select.Trigger aria-labelledby="theme-label" class="h-9 w-full">
+						<Select.Trigger aria-labelledby="theme-label" class="w-full">
 							<span class="truncate">{selectedThemeLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
@@ -523,16 +650,20 @@
 					</Select.Root>
 				</div>
 
-				<div class="space-y-2">
-					<Label id="indicator-label">Indicadores</Label>
+				<div class="space-y-1 md:col-span-2 lg:col-span-1">
+					<Label id="indicator-label" class="text-muted-foreground text-xs">
+						Indicadores
+						<span class="text-muted-foreground/70 font-normal tabular-nums">
+							· {indicatorsForDiscovery.length} disponibles
+						</span>
+					</Label>
 					<Popover.Root bind:open={indicatorPopoverOpen}>
 						<Popover.Trigger aria-labelledby="indicator-label">
 							{#snippet child({ props })}
 								<Button
 									{...props}
 									variant="outline"
-									size="lg"
-									class="w-full justify-between px-3 text-left font-normal"
+									class="w-full justify-between px-2.5 text-left font-normal"
 								>
 									<span class="truncate">{selectedIndicatorTitle}</span>
 									<ChevronsUpDown class="text-muted-foreground ml-2 size-4 shrink-0" />
@@ -564,11 +695,11 @@
 												]}
 												onSelect={() => selectIndicator(indicator)}
 											>
-												<div class="min-w-0 flex-1 py-1">
-													<div class="truncate font-medium">{indicator.name}</div>
+												<div class="min-w-0 flex-1 py-0.5">
+													<div class="truncate text-sm font-medium">{indicator.name}</div>
 													<div class="text-muted-foreground truncate text-xs">
-														{indicator.code} · {indicator.dataSource} · {indicator.theme}{indicator.group ===
-														indicator.theme
+														<span class="font-mono">{indicator.code}</span> · {indicator.dataSource} ·
+														{indicator.theme}{indicator.group === indicator.theme
 															? ''
 															: ` · ${indicator.group}`}
 													</div>
@@ -580,89 +711,103 @@
 							</Command.Root>
 						</Popover.Content>
 					</Popover.Root>
-					{#if data.selectedIndicators.length > 0}
-						<div class="flex flex-wrap gap-2">
-							{#each data.selectedIndicators as indicator}
-								<Badge variant="secondary" class="h-7 gap-1 pr-1">
-									<span class="max-w-56 truncate">{indicator.name}</span>
-									<button
-										type="button"
-										class="hover:bg-muted-foreground/10 rounded-full p-0.5"
-										aria-label={`Quitar ${indicator.name}`}
-										onclick={() => removeIndicator(indicator.code)}
-									>
-										<X class="size-3" />
-									</button>
-								</Badge>
-							{/each}
-						</div>
-					{/if}
 				</div>
 
-				<div class="space-y-2">
-					<Label id="freq-label">Frecuencia</Label>
+				<div class="space-y-1">
+					<Label id="freq-label" class="text-muted-foreground text-xs">Frecuencia</Label>
 					<Select.Root
 						type="single"
 						value={data.state.freq || EMPTY_FREQ}
 						disabled={data.selectedIndicators.length === 0 || data.commonFrequencies.length === 0}
 						onValueChange={handleFrequencySelect}
 					>
-						<Select.Trigger aria-labelledby="freq-label" class="h-9 w-full">
+						<Select.Trigger aria-labelledby="freq-label" class="w-full">
 							<span class="truncate">{selectedFrequencyLabel}</span>
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value={EMPTY_FREQ} label="Selecciona">Selecciona</Select.Item>
 							{#each data.commonFrequencies as freq}
-								<Select.Item value={freq} label={frequencyLabel(freq)}>{frequencyLabel(freq)}</Select.Item>
+								<Select.Item value={freq} label={frequencyLabel(freq)}>
+									{frequencyLabel(freq)}
+								</Select.Item>
 							{/each}
 						</Select.Content>
 					</Select.Root>
 				</div>
+
+				{#if data.selectedIndicators.length > 0}
+					<!-- Chips live on their own row so they never push the field row out of alignment. -->
+					<div class="flex flex-wrap items-center gap-1.5 md:col-span-full">
+						{#each data.selectedIndicators as indicator}
+							<Badge variant="secondary" class="h-6 gap-1 pr-0.5 pl-2 text-xs font-normal">
+								<span class="text-muted-foreground font-mono text-[11px]">{indicator.code}</span>
+								<span class="max-w-72 truncate">{indicator.name}</span>
+								<button
+									type="button"
+									class="hover:bg-foreground/10 rounded-full p-0.5"
+									aria-label={`Quitar ${indicator.name}`}
+									onclick={() => removeIndicator(indicator.code)}
+								>
+									<X class="size-3" />
+								</button>
+							</Badge>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</Card.CardContent>
 	</Card.Card>
 
 	{#if data.warnings.length > 0}
-		<Alert>
+		<Alert class="py-2.5">
 			<AlertCircle class="size-4" />
 			<AlertTitle>Estado de URL ajustado</AlertTitle>
 			<AlertDescription>{data.warnings.join(' ')}</AlertDescription>
 		</Alert>
 	{/if}
 
-	<div class="grid gap-6 lg:grid-cols-[340px_1fr]">
-		<Card.Card class="h-fit">
-			<Card.CardHeader class="px-5">
-				<Card.CardTitle class="flex items-center gap-2 text-base">
-					<SlidersHorizontal class="size-4" />
-					Controles de visualización
+	<div class="grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+		<!-- Visualization controls -->
+		<Card.Card size="sm" class="h-fit gap-0 py-0 lg:sticky lg:top-14">
+			<Card.CardHeader
+				class="flex flex-row items-center justify-between gap-2 border-b px-3 py-2.5"
+			>
+				<Card.CardTitle class="flex items-center gap-1.5 text-sm">
+					<SlidersHorizontal class="text-muted-foreground size-3.5" />
+					Visualización
 				</Card.CardTitle>
-				<Card.CardDescription>Filtra o desagrega cada dimensión multi-valor.</Card.CardDescription>
+				{#if canClearVisualization}
+					<Button href={clearVisualizationHref()} variant="ghost" size="xs" class="-mr-1">
+						Limpiar
+					</Button>
+				{/if}
 			</Card.CardHeader>
-			<Card.CardContent class="space-y-6 px-5 pb-5">
+			<Card.CardContent class="space-y-4 px-3 py-3">
 				{#if data.selectedIndicators.length === 0 || !data.state.freq}
-					<p class="text-muted-foreground text-sm">
+					<p class="text-muted-foreground text-[13px] leading-5">
 						Selecciona uno o más indicadores y una frecuencia común para ver sus dimensiones.
 					</p>
 				{:else if data.dimensions.length === 0}
-					<p class="text-muted-foreground text-sm">
+					<p class="text-muted-foreground text-[13px] leading-5">
 						{data.selectedIndicators.length > 1
 							? 'Estos indicadores no tienen dimensiones comunes para esta frecuencia.'
 							: 'Este indicador no tiene dimensiones registradas para esta frecuencia.'}
 					</p>
 				{:else}
-					<div class="space-y-2">
-						<Label id="by-label">Desagregar por</Label>
+					<div class="space-y-1">
+						<Label id="by-label" class="text-xs">Desagregar por</Label>
 						<Select.Root
 							type="single"
 							value={data.state.by || EMPTY_BY}
 							onValueChange={handleSplitSelect}
 						>
-							<Select.Trigger aria-labelledby="by-label" class="h-9 w-full">
+							<Select.Trigger aria-labelledby="by-label" class="w-full">
 								<span class="truncate">{selectedSplitLabel}</span>
 							</Select.Trigger>
 							<Select.Content>
-								<Select.Item value={EMPTY_BY} label="Sin desagregación">Sin desagregación</Select.Item>
+								<Select.Item value={EMPTY_BY} label="Sin desagregación"
+									>Sin desagregación</Select.Item
+								>
 								{#each data.dimensions as dimension}
 									<Select.Item
 										value={dimension.code}
@@ -679,12 +824,20 @@
 						</Select.Root>
 					</div>
 
-					<div class="space-y-5">
+					<div class="space-y-2.5 border-t pt-3">
+						{@render eyebrow('Filtros por dimensión')}
 						{#each data.dimensions as dimension}
-							<div class="space-y-2">
+							<div class="space-y-1">
 								<div class="flex items-center justify-between gap-2">
-									<Label id={`filter-${dimension.code}-label`}>{dimension.name}</Label>
-									<Badge variant={badgeVariant(dimension.state)}>{stateLabel(dimension.state)}</Badge>
+									<Label id={`filter-${dimension.code}-label`} class="truncate text-xs">
+										{dimension.name}
+									</Label>
+									<Badge
+										variant={badgeVariant(dimension.state)}
+										class="h-[18px] px-1.5 text-[10px] tracking-wide uppercase"
+									>
+										{stateLabel(dimension.state)}
+									</Badge>
 								</div>
 								<Select.Root
 									type="single"
@@ -694,7 +847,7 @@
 										dimension.state === 'empty'}
 									onValueChange={(value) => handleFilterSelect(dimension.code, value)}
 								>
-									<Select.Trigger aria-labelledby={`filter-${dimension.code}-label`} class="h-9 w-full">
+									<Select.Trigger aria-labelledby={`filter-${dimension.code}-label`} class="w-full">
 										<span class="truncate">
 											{dimension.values.find((value) => value.code === dimension.selectedValue)
 												?.label || 'Todos los valores'}
@@ -705,7 +858,8 @@
 											Todos los valores
 										</Select.Item>
 										{#each dimension.values as value}
-											<Select.Item value={value.code} label={value.label}>{value.label}</Select.Item>
+											<Select.Item value={value.code} label={value.label}>{value.label}</Select.Item
+											>
 										{/each}
 									</Select.Content>
 								</Select.Root>
@@ -714,124 +868,144 @@
 					</div>
 				{/if}
 
-				<div class="flex flex-wrap gap-2 border-t pt-4">
-					<Button href={clearVisualizationHref()} variant="outline">Limpiar visualización</Button>
-				</div>
+				{#if data.fixedDimensions.length > 0}
+					<!-- Fixed dimensions are read-only state of the same list; they belong with the
+					     controls, not in a separate card that is usually empty. -->
+					<div class="space-y-1.5 border-t pt-3">
+						{@render eyebrow('Dimensiones fijas')}
+						<dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 text-xs">
+							{#each data.fixedDimensions as dimension}
+								<dt class="text-muted-foreground truncate">{dimension.name}</dt>
+								<dd class="max-w-40 truncate text-right font-medium">
+									{dimension.values[0]?.label}
+								</dd>
+							{/each}
+						</dl>
+					</div>
+				{/if}
 			</Card.CardContent>
 		</Card.Card>
 
-		<div class="space-y-6">
-			<Card.Card>
-				<Card.CardHeader>
-					<div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-						<div>
-							<Card.CardTitle>
-								{#if data.selectedIndicators.length > 1}
-									Comparación de {data.selectedIndicators.length} indicadores
-								{:else}
-									{data.selectedIndicator?.name || 'Selecciona un indicador'}
-								{/if}
-							</Card.CardTitle>
-							<Card.CardDescription>
-								{#if data.selectedIndicators.length > 1}
+		<div class="min-w-0 space-y-3">
+			<!-- Chart -->
+			<Card.Card size="sm" class="gap-0 py-0">
+				<Card.CardHeader
+					class="flex flex-row flex-wrap items-start justify-between gap-x-4 gap-y-2 border-b px-4 py-2.5"
+				>
+					<div class="min-w-0 flex-1">
+						<Card.CardTitle class="truncate text-base leading-6">
+							{#if data.selectedIndicators.length > 1}
+								Comparación de {data.selectedIndicators.length} indicadores
+							{:else}
+								{data.selectedIndicator?.name || 'Selecciona un indicador'}
+							{/if}
+						</Card.CardTitle>
+						<Card.CardDescription class="truncate text-xs leading-4">
+							{#if data.selectedIndicators.length > 1}
+								<span class="font-mono">
 									{data.selectedIndicators.map((indicator) => indicator.code).join(' · ')}
-								{:else if data.selectedIndicator}
-									{data.selectedIndicator.code} · {data.selectedIndicator.dataSource} · {data
-										.selectedIndicator.group}
-								{:else}
-									Comienza con los controles de descubrimiento.
-								{/if}
-							</Card.CardDescription>
-						</div>
-						<div class="grid gap-3 sm:grid-cols-[170px_170px] sm:items-end">
-							<div class="space-y-2">
-								<Label id="start-label">Inicio</Label>
-								<Select.Root
-									type="single"
-									value={data.timeAxis.start || EMPTY_START}
-									disabled={data.timeAxis.periods.length === 0}
-									onValueChange={handleStartSelect}
+								</span>
+							{:else if data.selectedIndicator}
+								<span class="font-mono">{data.selectedIndicator.code}</span>
+								· {data.selectedIndicator.dataSource} · {data.selectedIndicator.group}
+							{:else}
+								Comienza con la barra de descubrimiento.
+							{/if}
+							{#if data.chart.status === 'chartable'}
+								<span class="text-muted-foreground/70 tabular-nums">
+									· {data.chart.series.length}
+									{data.chart.series.length === 1 ? 'serie' : 'series'} · {seriesPointCount.toLocaleString(
+										'es-CO'
+									)} puntos
+								</span>
+							{/if}
+						</Card.CardDescription>
+					</div>
+
+					<div class="flex items-center gap-1.5">
+						<span id="range-label" class="text-muted-foreground mr-1 text-xs">Periodo</span>
+						<Select.Root
+							type="single"
+							value={data.timeAxis.start || EMPTY_START}
+							disabled={data.timeAxis.periods.length === 0}
+							onValueChange={handleStartSelect}
+						>
+							<Select.Trigger aria-label="Inicio del periodo" class="w-[150px]">
+								<span class="truncate">{selectedStartLabel}</span>
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item
+									value={EMPTY_START}
+									label="Desde el inicio"
+									onclick={() => handleStartSelect(EMPTY_START)}
 								>
-									<Select.Trigger aria-labelledby="start-label" class="h-9 w-full">
-										<span class="truncate">{selectedStartLabel}</span>
-									</Select.Trigger>
-									<Select.Content>
-										<Select.Item
-											value={EMPTY_START}
-											label="Desde el inicio"
-											onclick={() => handleStartSelect(EMPTY_START)}
-										>
-											Desde el inicio
-										</Select.Item>
-										{#each data.timeAxis.periods as period}
-											<Select.Item
-												value={period.value}
-												label={period.label}
-												disabled={Boolean(data.timeAxis.end && period.value > data.timeAxis.end)}
-												onclick={() => handleStartSelect(period.value)}
-											>
-												{period.label}
-											</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
-							</div>
-							<div class="space-y-2">
-								<Label id="end-label">Fin</Label>
-								<Select.Root
-									type="single"
-									value={data.timeAxis.end || EMPTY_END}
-									disabled={data.timeAxis.periods.length === 0}
-									onValueChange={handleEndSelect}
+									Desde el inicio
+								</Select.Item>
+								{#each data.timeAxis.periods as period}
+									<Select.Item
+										value={period.value}
+										label={period.label}
+										disabled={Boolean(data.timeAxis.end && period.value > data.timeAxis.end)}
+										onclick={() => handleStartSelect(period.value)}
+									>
+										{period.label}
+									</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
+						<span class="text-muted-foreground text-xs" aria-hidden="true">–</span>
+						<Select.Root
+							type="single"
+							value={data.timeAxis.end || EMPTY_END}
+							disabled={data.timeAxis.periods.length === 0}
+							onValueChange={handleEndSelect}
+						>
+							<Select.Trigger aria-label="Fin del periodo" class="w-[150px]">
+								<span class="truncate">{selectedEndLabel}</span>
+							</Select.Trigger>
+							<Select.Content>
+								<Select.Item
+									value={EMPTY_END}
+									label="Hasta el final"
+									onclick={() => handleEndSelect(EMPTY_END)}
 								>
-									<Select.Trigger aria-labelledby="end-label" class="h-9 w-full">
-										<span class="truncate">{selectedEndLabel}</span>
-									</Select.Trigger>
-									<Select.Content>
-										<Select.Item
-											value={EMPTY_END}
-											label="Hasta el final"
-											onclick={() => handleEndSelect(EMPTY_END)}
-										>
-											Hasta el final
-										</Select.Item>
-										{#each data.timeAxis.periods as period}
-											<Select.Item
-												value={period.value}
-												label={period.label}
-												disabled={Boolean(data.timeAxis.start && period.value < data.timeAxis.start)}
-												onclick={() => handleEndSelect(period.value)}
-											>
-												{period.label}
-											</Select.Item>
-										{/each}
-									</Select.Content>
-								</Select.Root>
-							</div>
-						</div>
+									Hasta el final
+								</Select.Item>
+								{#each data.timeAxis.periods as period}
+									<Select.Item
+										value={period.value}
+										label={period.label}
+										disabled={Boolean(data.timeAxis.start && period.value < data.timeAxis.start)}
+										onclick={() => handleEndSelect(period.value)}
+									>
+										{period.label}
+									</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
 					</div>
 				</Card.CardHeader>
-				<Card.CardContent>
+				<Card.CardContent class="px-2 pt-2 pb-1">
 					{#if data.chart.status === 'chartable'}
-						<div class="h-[520px]">
+						<div class="h-[clamp(360px,58vh,640px)]">
 							{#key data.canonicalSearch}
-								<PlotlyChart data={plotlyData} layout={chartLayout} />
+								<PlotlyChart data={plotlyData} layout={chartLayout} config={chartConfig} />
 							{/key}
 						</div>
 					{:else}
 						<div
-							class="flex min-h-[420px] items-center justify-center rounded-xl border border-dashed p-8 text-center"
+							class="m-1 flex h-[clamp(240px,36vh,400px)] items-center justify-center rounded-lg border border-dashed p-6 text-center"
 						>
-							<div class="max-w-xl space-y-4">
-								<AlertCircle class="text-muted-foreground mx-auto size-10" />
+							<div class="max-w-lg space-y-3">
+								<AlertCircle class="text-muted-foreground mx-auto size-7" />
 								<div>
-									<h2 class="text-lg font-semibold">La selección todavía no es graficable</h2>
-									<p class="text-muted-foreground mt-2 text-sm">
+									<h2 class="text-sm font-semibold">La selección todavía no es graficable</h2>
+									<p class="text-muted-foreground mt-1 text-[13px] leading-5">
 										{data.chart.messages.join(' ')}
 									</p>
 								</div>
 								{#if data.unresolvedDimensions.length > 0}
-									<div class="flex flex-wrap justify-center gap-2">
+									<div class="flex flex-wrap justify-center gap-1.5">
 										{#each data.unresolvedDimensions as dimension}
 											<Badge variant="destructive">{dimension.name}</Badge>
 										{/each}
@@ -843,68 +1017,50 @@
 				</Card.CardContent>
 			</Card.Card>
 
-			<div class="grid gap-6 xl:grid-cols-2">
-				<Card.Card>
-					<Card.CardHeader>
-						<Card.CardTitle class="text-base">Dimensiones fijas</Card.CardTitle>
-						<Card.CardDescription>
-							Valores con una sola opción para la selección actual.
-						</Card.CardDescription>
-					</Card.CardHeader>
-					<Card.CardContent>
-						{#if data.fixedDimensions.length === 0}
-							<p class="text-muted-foreground text-sm">No hay dimensiones fijas.</p>
-						{:else}
-							<div class="space-y-2">
-								{#each data.fixedDimensions as dimension}
-									<div class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
-										<span>{dimension.name}</span>
-										<Badge variant="secondary">{dimension.values[0]?.label}</Badge>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</Card.CardContent>
-				</Card.Card>
-
-				<Card.Card>
-					<Card.CardHeader>
-						<Card.CardTitle class="flex items-center gap-2 text-base">
-							<CheckCircle2 class="size-4" />
-							Contexto del indicador
-						</Card.CardTitle>
-					</Card.CardHeader>
-					<Card.CardContent class="space-y-3 text-sm">
-						{#if data.metadatas.length > 1}
-							<div>
-								<div class="text-muted-foreground text-xs uppercase">Unidad compartida</div>
-								<div>
-									{#if data.measurementCompatibility.compatible}
-										{data.measurementCompatibility.unit || 'Sin unidad registrada'}
-									{:else}
-										<span class="text-destructive">Unidades incompatibles</span>
-									{/if}
-								</div>
-							</div>
-							<div class="space-y-3">
-								{#each data.metadatas as metadata}
-									<div class="space-y-3 rounded-lg border px-3 py-3">
-										<div class="font-medium">{metadata.name || metadata.shortName}</div>
-										<div class="text-muted-foreground text-xs">
+			<!-- Indicator context -->
+			<Card.Card size="sm" class="gap-0 py-0">
+				<Card.CardHeader
+					class="flex flex-row items-center justify-between gap-2 border-b px-4 py-2.5"
+				>
+					<Card.CardTitle class="flex items-center gap-1.5 text-sm">
+						<Info class="text-muted-foreground size-3.5" />
+						Contexto del indicador
+					</Card.CardTitle>
+					{#if data.metadatas.length > 1}
+						<div class="flex items-center gap-2 text-xs">
+							{@render eyebrow('Unidad compartida')}
+							{#if data.measurementCompatibility.compatible}
+								<span class="font-medium">{unitLabel(data.measurementCompatibility.unit)}</span>
+							{:else}
+								<span class="text-destructive font-medium">Unidades incompatibles</span>
+							{/if}
+						</div>
+					{/if}
+				</Card.CardHeader>
+				<Card.CardContent class="px-4 py-3">
+					{#if data.metadatas.length > 1}
+						<div class="grid gap-3 2xl:grid-cols-2">
+							{#each data.metadatas as metadata}
+								<div class="space-y-3 rounded-lg border px-3 py-3">
+									<div class="flex flex-wrap items-baseline gap-x-2">
+										<div class="text-sm font-medium">{metadata.name || metadata.shortName}</div>
+										<div class="text-muted-foreground font-mono text-xs">
 											{metadata.code} · {metadata.unit || 'Sin unidad'}
 										</div>
-										{@render contextDetails(metadata, false)}
 									</div>
-								{/each}
-							</div>
-						{:else if data.metadata}
-							{@render contextDetails(data.metadata, true)}
-						{:else}
-							<p class="text-muted-foreground">Selecciona un indicador para ver su contexto.</p>
-						{/if}
-					</Card.CardContent>
-				</Card.Card>
-			</div>
+									{@render contextDetails(metadata, false)}
+								</div>
+							{/each}
+						</div>
+					{:else if data.metadata}
+						{@render contextDetails(data.metadata, true)}
+					{:else}
+						<p class="text-muted-foreground text-[13px]">
+							Selecciona un indicador para ver su contexto.
+						</p>
+					{/if}
+				</Card.CardContent>
+			</Card.Card>
 		</div>
 	</div>
 </div>

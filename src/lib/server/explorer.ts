@@ -59,6 +59,8 @@ export interface ExplorerDimension {
 	isSplitable: boolean;
 	state: ExplorerDimensionState;
 	selectedValue: string | null;
+	/** Value the server falls back to when the dimension is neither filtered nor split. */
+	defaultValue: string | null;
 	values: ExplorerDimensionValue[];
 }
 
