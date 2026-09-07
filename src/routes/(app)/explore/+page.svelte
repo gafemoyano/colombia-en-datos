@@ -59,11 +59,15 @@
 			data.selectedIndicators.length === 1 && prefix && name.startsWith(prefix)
 				? name.slice(prefix.length)
 				: name;
+		return plotlyLabel(label, 40);
+	}
+
+	function plotlyLabel(label: string, width: number): string {
 		return label
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;')
-			.replace(/(.{1,40})(\s+|$)/g, '$1<br>')
+			.replace(new RegExp(`(.{1,${width}})(\\s+|$)`, 'g'), '$1<br>')
 			.replace(/<br>$/, '');
 	}
 
@@ -142,18 +146,23 @@
 		return {
 			font: { family: 'Inter Variable, sans-serif', size: 12 },
 			title: {
-				text:
+				text: plotlyLabel(
 					data.selectedIndicators.length > 1
 						? 'Comparación de indicadores'
-						: data.selectedIndicator?.name || data.selectedIndicator?.shortName || 'Explorador'
+						: data.selectedIndicator?.name || data.selectedIndicator?.shortName || 'Explorador',
+					viewportWidth < 640 ? 28 : 70
+				),
+				font: { size: 12 },
+				y: 0.92,
+				yanchor: 'top'
 			},
 			xaxis: { title: { text: 'Periodo' } },
 			yaxis: { title: { text: unitLabel }, automargin: true },
 			legend:
 				viewportWidth >= 1280
 					? { orientation: 'v', x: 1.02, y: 1, font: { size: 11 } }
-					: { orientation: 'h', font: { size: 11 } },
-			margin: { l: 64, r: 24, t: 60, b: 60 }
+					: { orientation: 'h', y: -0.4, yanchor: 'top', font: { size: 11 } },
+			margin: { l: 64, r: 24, t: viewportWidth < 640 ? 120 : 80, b: 60 }
 		};
 	});
 
