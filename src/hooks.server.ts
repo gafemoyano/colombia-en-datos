@@ -3,6 +3,8 @@ import { dev } from '$app/environment';
 import type { Handle } from '@sveltejs/kit';
 import { existsSync, copyFileSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
+import { createRequestTrace, serverTiming, withRequestTrace } from '$lib/server/performance';
+import { performance } from 'node:perf_hooks';
 
 function unauthorized() {
 	return new Response('Authentication required', {
@@ -66,5 +68,55 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return unauthorized();
 	}
 
-	return resolve(event);
+	if (env.PERFORMANCE_TRACING !== '1' || event.route.id !== '/(app)/explore') {
+		return resolve(event);
+	}
+
+	const trace = createRequestTrace();
+	const cpuStart = process.cpuUsage();
+	const eluStart = performance.eventLoopUtilization();
+	console.info(
+		JSON.stringify({
+			type: 'explorer-performance-start',
+			requestId: trace.requestId,
+			timestamp: new Date().toISOString(),
+			machine: env.FLY_MACHINE_ID ?? null
+		})
+	);
+	let status = 500;
+	return withRequestTrace(trace, async () => {
+		try {
+			const response = await resolve(event);
+			status = response.status;
+			// A redirect response can have immutable headers.
+			const headers = new Headers(response.headers);
+			headers.set('Server-Timing', serverTiming(trace));
+			headers.set('X-Request-ID', trace.requestId);
+			return new Response(response.body, { status, statusText: response.statusText, headers });
+		} finally {
+			const cpu = process.cpuUsage(cpuStart);
+			console.info(
+				JSON.stringify({
+					type: 'explorer-performance',
+					requestId: trace.requestId,
+					timestamp: new Date().toISOString(),
+					route: event.route.id,
+					dataRequest: event.isDataRequest,
+					status,
+					durationMs: performance.now() - trace.started,
+					machine: env.FLY_MACHINE_ID ?? null,
+					region: env.FLY_REGION ?? null,
+					version: env.FLY_IMAGE_REF ?? null,
+					process: {
+						rssBytes: process.memoryUsage.rss(),
+						cpuUserMs: cpu.user / 1000,
+						cpuSystemMs: cpu.system / 1000,
+						eventLoopUtilization: performance.eventLoopUtilization(eluStart).utilization
+					},
+					spans: trace.spans,
+					droppedSpans: trace.droppedSpans
+				})
+			);
+		}
+	});
 };

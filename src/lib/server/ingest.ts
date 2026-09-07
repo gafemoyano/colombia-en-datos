@@ -12,6 +12,7 @@ import {
 	indicators
 } from '$lib/db/schema';
 import { runCanonicalQuery } from '$lib/server/duckdb';
+import { invalidateExplorerCatalog } from './explorer-catalog-cache';
 
 const REQUIRED_COLUMNS = ['indicator_code', 'freq', 'ref_area', 'time_period', 'obs_value'];
 const OPTIONAL_CANONICAL_COLUMNS = [
@@ -478,7 +479,25 @@ async function publishUploadNow(uploadId: string): Promise<PublishUploadResult> 
 			manifest.freq
 		);
 		await runCanonicalQuery(buildInsertSelect(manifest));
+		// Keep the build's observed-frequency summary in the same transaction as the slice.
+		await runCanonicalQuery(
+			`INSERT INTO indicator_meta (indicator_code, dataflow, survey)
+			 SELECT indicator_code, any_value(dataflow), 'upload' FROM observations
+			 WHERE indicator_code = ?
+			 AND NOT EXISTS (SELECT 1 FROM indicator_meta WHERE indicator_code = ?)
+			 GROUP BY indicator_code`,
+			manifest.indicatorCode,
+			manifest.indicatorCode
+		);
+		await runCanonicalQuery(
+			`UPDATE indicator_meta SET freqs = (
+				SELECT string_agg(DISTINCT freq, ',') FROM observations WHERE indicator_code = ?
+			) WHERE indicator_code = ?`,
+			manifest.indicatorCode,
+			manifest.indicatorCode
+		);
 		await runCanonicalQuery('COMMIT');
+		invalidateExplorerCatalog();
 	} catch (error) {
 		await runCanonicalQuery('ROLLBACK').catch(() => undefined);
 		throw error;
@@ -563,6 +582,7 @@ async function publishUploadNow(uploadId: string): Promise<PublishUploadResult> 
 
 		return createdRelease;
 	});
+	invalidateExplorerCatalog();
 
 	manifest.status = 'published';
 	manifest.releaseId = release.id;

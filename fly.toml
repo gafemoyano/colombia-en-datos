@@ -13,6 +13,8 @@ primary_region = 'iad'
   DATA_PATH = '/data'
   NODE_ENV = 'production'
   PORT = '8080'
+  # Enabled for the performance baseline; disable after the measurement window.
+  PERFORMANCE_TRACING = '1'
 
 # Set these as Fly secrets:
 #   fly secrets set DATABASE_URL="libsql://..." TURSO_AUTH_TOKEN="..."

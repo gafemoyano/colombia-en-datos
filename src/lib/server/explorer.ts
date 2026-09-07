@@ -11,6 +11,8 @@ import {
 	indicators
 } from '$lib/db/schema';
 import { getPublishedFrequenciesByIndicator, runCanonicalQuery } from '$lib/server/duckdb';
+import { measure } from './performance';
+import { cachedExplorerCatalog } from './explorer-catalog-cache';
 
 // Dimension code -> canonical observations column.
 //
@@ -309,6 +311,10 @@ async function loadCatalog(): Promise<{
 	themes: string[];
 	indicators: ExplorerCatalogIndicator[];
 }> {
+	return cachedExplorerCatalog(readCatalog);
+}
+
+async function readCatalog() {
 	const db = getDb();
 	const rows = await db
 		.select({
@@ -834,7 +840,7 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		dataSources: dataSourceOptions,
 		themes: themeOptions,
 		indicators: catalog
-	} = await loadCatalog();
+	} = await measure('catalog', loadCatalog);
 
 	if (state.dataSource && !dataSourceOptions.some((option) => option.code === state.dataSource)) {
 		warnings.push('Se ignoró la fuente de datos porque no existe en el catálogo.');
@@ -876,7 +882,9 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 
 	const selectedIndicator = selectedIndicators[0] || null;
 	const metadatas = (
-		await Promise.all(selectedIndicators.map((indicator) => loadMetadata(indicator.code)))
+		await Promise.all(
+			selectedIndicators.map((indicator) => measure('metadata', () => loadMetadata(indicator.code)))
+		)
 	).filter((metadata): metadata is ExplorerMetadata => Boolean(metadata));
 	const metadata = metadatas[0] || null;
 	const measurementCompatibility = resolveMeasurementCompatibility(metadatas);
@@ -951,20 +959,25 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		};
 	}
 
-	const timeAxis = await loadTimeAxis({
-		indicatorCodes: selectedIndicators.map((indicator) => indicator.code),
-		freq: state.freq,
-		start: state.start,
-		end: state.end,
-		warnings
-	});
+	const freq = state.freq;
+	const timeAxis = await measure('time_axis', () =>
+		loadTimeAxis({
+			indicatorCodes: selectedIndicators.map((indicator) => indicator.code),
+			freq,
+			start: state.start,
+			end: state.end,
+			warnings
+		})
+	);
 	state.start = timeAxis.start || '';
 	state.end = timeAxis.end || '';
 
 	const registeredResults = await Promise.all(
 		selectedIndicators.map(async (indicator) => ({
 			indicator,
-			result: await loadRegisteredDimensions(indicator.code, state.freq as string)
+			result: await measure('dimension_registry', () =>
+				loadRegisteredDimensions(indicator.code, state.freq as string)
+			)
 		}))
 	);
 	const registryWarning = registeredResults.find((entry) => entry.result.warning)?.result.warning;
@@ -1052,10 +1065,12 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 
 	const commonAvailableValueMaps = await Promise.all(
 		selectedIndicators.map((indicator) =>
-			loadAvailableValues({
-				indicatorCode: indicator.code,
-				dimensions: commonRegisteredDimensions
-			})
+			measure('common_values', () =>
+				loadAvailableValues({
+					indicatorCode: indicator.code,
+					dimensions: commonRegisteredDimensions
+				})
+			)
 		)
 	);
 	const commonAvailableValues = intersectValueMaps(commonAvailableValueMaps, commonDimensionCodes);
@@ -1074,10 +1089,12 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 			)
 		)
 	);
-	const valueLabels = await loadValueLabels(
-		allRegisteredCodes,
-		selectedIndicators.map((indicator) => indicator.code),
-		warnings
+	const valueLabels = await measure('value_labels', () =>
+		loadValueLabels(
+			allRegisteredCodes,
+			selectedIndicators.map((indicator) => indicator.code),
+			warnings
+		)
 	);
 	const dimensions = resolveDimensions({
 		registeredDimensions: commonRegisteredDimensions,
@@ -1097,10 +1114,12 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 		);
 		if (privateRegisteredDimensions.length === 0) continue;
 
-		const availableValues = await loadAvailableValues({
-			indicatorCode: indicator.code,
-			dimensions: privateRegisteredDimensions
-		});
+		const availableValues = await measure('private_values', () =>
+			loadAvailableValues({
+				indicatorCode: indicator.code,
+				dimensions: privateRegisteredDimensions
+			})
+		);
 		const defaults = loadEffectiveFilters({
 			dimensions: privateRegisteredDimensions,
 			filters: {},
@@ -1163,16 +1182,18 @@ export async function getExplorerPageModel(url: URL): Promise<ExplorerPageModel>
 										: 'Selecciona un valor en los filtros pendientes para ver una serie. Desagregar es opcional y sirve para comparar varios valores.'
 								]
 							}
-						: await queryChart({
-								indicators: selectedIndicators,
-								freq: state.freq,
-								by: state.by,
-								filters: effectiveFilters,
-								privateFilters,
-								start: state.start,
-								end: state.end,
-								dimensions
-							});
+						: await measure('chart', () =>
+								queryChart({
+									indicators: selectedIndicators,
+									freq,
+									by: state.by,
+									filters: effectiveFilters,
+									privateFilters,
+									start: state.start,
+									end: state.end,
+									dimensions
+								})
+							);
 
 	return {
 		state,

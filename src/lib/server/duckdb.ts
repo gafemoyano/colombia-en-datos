@@ -13,6 +13,7 @@ import {
 } from '$lib/db/schema';
 import { eq, and, inArray, or } from 'drizzle-orm';
 import { join, resolve } from 'path';
+import { measure, traced } from './performance';
 
 export const CANONICAL_SCHEMA_VERSION = 2;
 
@@ -118,9 +119,11 @@ function runStmt<T = any>(stmt: DuckDbStatement, ...params: any[]): Promise<T[]>
 }
 
 export async function runCanonicalQuery<T = any>(query: string, ...params: any[]): Promise<T[]> {
-	const duckDb = await getCanonicalDuckDB();
-	const stmt = duckDb.prepare(query);
-	return runStmt<T>(stmt, ...params);
+	const duckDb = canonicalDb ?? (await measure('duckdb_initialize', getCanonicalDuckDB));
+	return measure('duckdb_query', () => {
+		const stmt = duckDb.prepare(query);
+		return runStmt<T>(stmt, ...params);
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -425,86 +428,88 @@ export async function getIndicatorMetadata(
 // Legacy helpers (kept for backward compatibility during transition)
 // ---------------------------------------------------------------------------
 
-export async function getAvailableFrequenciesByIndicator(
-	indicatorCodes?: string[]
-): Promise<Map<string, string[]>> {
-	if (indicatorCodes && indicatorCodes.length === 0) return new Map();
+export const getAvailableFrequenciesByIndicator = traced(
+	'observed_frequencies',
+	async function (indicatorCodes?: string[]): Promise<Map<string, string[]>> {
+		if (indicatorCodes && indicatorCodes.length === 0) return new Map();
 
-	try {
-		const conditions: string[] = [];
-		const params: string[] = [];
+		try {
+			const conditions: string[] = [];
+			const params: string[] = [];
 
-		if (indicatorCodes) {
-			conditions.push(`indicator_code IN (${indicatorCodes.map(() => '?').join(', ')})`);
-			params.push(...indicatorCodes);
-		}
+			if (indicatorCodes) {
+				conditions.push(`indicator_code IN (${indicatorCodes.map(() => '?').join(', ')})`);
+				params.push(...indicatorCodes);
+			}
 
-		const rows = await runCanonicalQuery<{ indicator_code: string; freq: string }>(
-			`
-				SELECT DISTINCT indicator_code, freq
-				FROM observations
+			const rows = await runCanonicalQuery<{ indicator_code: string; freq: string }>(
+				`
+				SELECT DISTINCT indicator_code, unnest(string_split(freqs, ',')) AS freq
+				FROM indicator_meta
 				${conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''}
 				ORDER BY indicator_code, freq
 			`,
-			...params
-		);
+				...params
+			);
 
-		const frequencies = new Map<string, string[]>();
-		for (const row of rows) {
-			const current = frequencies.get(row.indicator_code) || [];
-			if (!current.includes(row.freq)) current.push(row.freq);
-			frequencies.set(row.indicator_code, current);
-		}
+			const frequencies = new Map<string, string[]>();
+			for (const row of rows) {
+				const current = frequencies.get(row.indicator_code) || [];
+				if (!current.includes(row.freq)) current.push(row.freq);
+				frequencies.set(row.indicator_code, current);
+			}
 
-		return frequencies;
-	} catch (error) {
-		console.warn('[DuckDB] Could not load available frequencies from canonical store:', error);
-		return new Map();
-	}
-}
-
-export async function getPublishedFrequenciesByIndicator(
-	indicatorCodes?: string[]
-): Promise<Map<string, string[]>> {
-	if (indicatorCodes && indicatorCodes.length === 0) return new Map();
-
-	const pgDb = getDb();
-	const metadataRows = await pgDb
-		.select({
-			indicatorCode: indicators.code,
-			freq: indicatorDataSources.freq
-		})
-		.from(indicatorDataSources)
-		.innerJoin(indicators, eq(indicatorDataSources.indicatorId, indicators.id))
-		.innerJoin(dataReleases, eq(indicatorDataSources.releaseId, dataReleases.id))
-		.where(
-			and(
-				eq(dataReleases.status, 'published'),
-				indicatorCodes ? inArray(indicators.code, indicatorCodes) : undefined
-			)
-		);
-
-	if (metadataRows.length === 0) return new Map();
-
-	const metadataPairs = new Set(
-		metadataRows.map((row) => `${row.indicatorCode}\u0000${row.freq}`)
-	);
-	const observedFrequencies = await getAvailableFrequenciesByIndicator(
-		[...new Set(metadataRows.map((row) => row.indicatorCode))]
-	);
-	const result = new Map<string, string[]>();
-
-	for (const [indicatorCode, frequencies] of observedFrequencies.entries()) {
-		for (const freq of frequencies) {
-			if (!metadataPairs.has(`${indicatorCode}\u0000${freq}`)) continue;
-			const current = result.get(indicatorCode) || [];
-			if (!current.includes(freq)) current.push(freq);
-			result.set(indicatorCode, current);
+			return frequencies;
+		} catch (error) {
+			console.warn('[DuckDB] Could not load available frequencies from canonical store:', error);
+			throw error;
 		}
 	}
+);
 
-	return result;
-}
+export const getPublishedFrequenciesByIndicator = traced(
+	'published_frequencies',
+	async function (indicatorCodes?: string[]): Promise<Map<string, string[]>> {
+		if (indicatorCodes && indicatorCodes.length === 0) return new Map();
+
+		const pgDb = getDb();
+		const metadataRows = await pgDb
+			.selectDistinct({
+				indicatorCode: indicators.code,
+				freq: indicatorDataSources.freq
+			})
+			.from(indicatorDataSources)
+			.innerJoin(indicators, eq(indicatorDataSources.indicatorId, indicators.id))
+			.innerJoin(dataReleases, eq(indicatorDataSources.releaseId, dataReleases.id))
+			.where(
+				and(
+					eq(dataReleases.status, 'published'),
+					indicatorCodes ? inArray(indicators.code, indicatorCodes) : undefined
+				)
+			);
+
+		if (metadataRows.length === 0) return new Map();
+
+		const metadataPairs = new Set(
+			metadataRows.map((row) => `${row.indicatorCode}\u0000${row.freq}`)
+		);
+		const observedFrequencies = await getAvailableFrequenciesByIndicator([
+			...new Set(metadataRows.map((row) => row.indicatorCode))
+		]);
+		const result = new Map<string, string[]>();
+
+		for (const [indicatorCode, frequencies] of observedFrequencies.entries()) {
+			for (const freq of frequencies) {
+				if (!metadataPairs.has(`${indicatorCode}\u0000${freq}`)) continue;
+				const current = result.get(indicatorCode) || [];
+				if (!current.includes(freq)) current.push(freq);
+				result.set(indicatorCode, current);
+			}
+		}
+
+		return result;
+	}
+);
 
 export async function getAvailableIndicators(): Promise<
 	Array<{

@@ -110,6 +110,18 @@ describe.skipIf(!ready)('registry importer', () => {
 });
 
 describe.skipIf(!ready)('canonical store', () => {
+	it('precomputed frequencies exactly match all observed indicator/frequency pairs', async () => {
+		const { runCanonicalQuery, getAvailableFrequenciesByIndicator } = await import('./duckdb');
+		const rows = await runCanonicalQuery<{ indicator_code: string; freq: string }>(
+			'SELECT DISTINCT indicator_code, freq FROM observations ORDER BY indicator_code, freq'
+		);
+		const observed = new Map<string, string[]>();
+		for (const row of rows) {
+			observed.set(row.indicator_code, [...(observed.get(row.indicator_code) || []), row.freq]);
+		}
+		expect(await getAvailableFrequenciesByIndicator()).toEqual(observed);
+	});
+
 	it('carries every survey through one schema', async () => {
 		const { runCanonicalQuery } = await import('$lib/server/duckdb');
 		const rows = await runCanonicalQuery<{ survey: string; n: number }>(

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type * as PlotlyTypes from 'plotly.js';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import AlertCircle from '@lucide/svelte/icons/alert-circle';
 	import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
@@ -10,6 +10,12 @@
 	import PlotlyChart from '$lib/components/PlotlyChart.svelte';
 	import ExplorerExport from '$lib/components/ExplorerExport.svelte';
 	import { explorerUnitLabel } from '$lib/explorer-format';
+	import {
+		createNavigationId,
+		performanceMark,
+		performanceMeasure,
+		type ExplorerPerformanceContext
+	} from '$lib/explorer-performance';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -21,6 +27,54 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	let performanceNavigationId = $state<string | null>(createNavigationId());
+	let pendingNavigation:
+		| { navigation: object; navigationId: string; startMark: string; requestId: string }
+		| undefined;
+
+	beforeNavigate((navigation) => {
+		const requestId = data.performanceRequestId;
+		if (!requestId) return;
+		if (pendingNavigation) {
+			const previous: ExplorerPerformanceContext = pendingNavigation;
+			performanceMark(previous, 'explorer', 'navigation-cancelled', 'cancelled');
+		}
+		const navigationId = createNavigationId();
+		performanceNavigationId = navigationId;
+		const context = { navigationId, requestId };
+		pendingNavigation = {
+			navigation: navigation.complete,
+			...context,
+			startMark: performanceMark(context, 'explorer', 'navigation-start')
+		};
+	});
+
+	afterNavigate((navigation) => {
+		const requestId = data.performanceRequestId;
+		if (!requestId) {
+			pendingNavigation = undefined;
+			performanceNavigationId = null;
+			return;
+		}
+
+		const pending =
+			pendingNavigation?.navigation === navigation.complete ? pendingNavigation : undefined;
+		const navigationId = pending?.navigationId ?? performanceNavigationId ?? createNavigationId();
+		const context = { navigationId, requestId };
+		const startMark = pending?.startMark ?? (navigation.type === 'enter' ? 0 : undefined);
+		const readyMark = performanceMark(context, 'explorer', 'data-ready');
+		if (startMark !== undefined) {
+			performanceMeasure(
+				context,
+				'explorer',
+				navigation.type === 'enter' ? 'initial-load-to-data-ready' : 'navigation-to-data-ready',
+				startMark,
+				readyMark
+			);
+		}
+		pendingNavigation = undefined;
+		performanceNavigationId = navigationId;
+	});
 
 	const EMPTY_DATA_SOURCE = '__data_source_all__';
 	const EMPTY_THEME = '__theme_all__';
@@ -892,7 +946,12 @@
 					{#if data.chart.status === 'chartable'}
 						<div class="h-[540px] min-w-0 2xl:h-[600px]">
 							{#key data.canonicalSearch}
-								<PlotlyChart data={plotlyData} layout={chartLayout} />
+								<PlotlyChart
+									data={plotlyData}
+									layout={chartLayout}
+									performanceRequestId={data.performanceRequestId}
+									{performanceNavigationId}
+								/>
 							{/key}
 						</div>
 					{:else}
