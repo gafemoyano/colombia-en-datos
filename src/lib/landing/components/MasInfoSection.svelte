@@ -63,7 +63,7 @@
 				personaRol: form.personaRol || '(no especificado)',
 				acepta: form.acepta ? 'sí' : 'no',
 				interesFinanciar: form.interesFinanciar ? 'sí' : 'no',
-				_subject: 'Nueva solicitud de información - ColombianDatos',
+				_subject: 'Nueva solicitud de información - Colombian Datos',
 				_gotcha: form._gotcha,
 				_page: typeof window !== 'undefined' ? window.location.href : ''
 			};
@@ -158,7 +158,7 @@
 
 				<div>
 					<label for="motivo" class="block text-sm font-medium"
-						>¿Qué te interesa de ColombianDatos?*</label
+						>¿Qué te interesa de Colombian Datos?*</label
 					>
 					<textarea
 						id="motivo"

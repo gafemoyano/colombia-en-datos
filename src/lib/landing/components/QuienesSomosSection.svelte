@@ -20,7 +20,7 @@
 	<div class="mx-auto max-w-5xl px-6 py-20 text-center">
 		<h2 class="text-3xl font-bold text-slate-900 md:text-4xl">¿Quiénes somos?</h2>
 		<p class="mt-3 text-lg text-slate-600 max-w-3xl mx-auto">
-			ColombianDatos es un equipo de expertos que quiere que en Colombia las ideas, programas y
+			Colombian Datos es un equipo de expertos que quiere que en Colombia las ideas, programas y
 			políticas se discutan con datos verificables y fáciles de explicar. Queremos poner la
 			información al alcance de cualquier persona para que argumente mejor, compare información y
 			tome mejores decisiones.

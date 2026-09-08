@@ -22,7 +22,7 @@
 					? 'text-lg font-semibold tracking-tight text-gray-900'
 					: 'text-3xl font-bold text-gray-900'}
 			>
-				Colombia en Datos
+				Colombian Datos
 			</h1>
 			{#if exploring}<span class="border-l pl-4 text-sm text-muted-foreground">Explorador</span
 				>{/if}

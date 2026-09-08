@@ -492,7 +492,7 @@
 </script>
 
 <svelte:head>
-	<title>Explorar datos · Colombia en Datos</title>
+	<title>Explorar datos · Colombian Datos</title>
 </svelte:head>
 <svelte:window bind:innerWidth={viewportWidth} />
 

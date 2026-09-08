@@ -10,7 +10,7 @@
 </script>
 
 <svelte:head>
-	<title>ColombianDatos</title>
+	<title>Colombian Datos</title>
 	<meta
 		name="description"
 		content="Indicadores públicos de Colombia calculados, explicados y listos para visualizar, descargar o integrar."
@@ -22,7 +22,7 @@
 		<div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
 			<a href="#inicio" class="flex items-center gap-2 font-semibold">
 				<Icon name="sparkles" className="h-5 w-5" ariaHidden="true" />
-				<span>ColombianDatos</span>
+				<span>Colombian Datos</span>
 			</a>
 			<nav class="hidden md:flex gap-6 text-sm">
 				<a class="hover:opacity-70" href="#que-hacemos">¿Qué hacemos?</a>
@@ -51,7 +51,7 @@
 	<footer class="py-10 border-t border-slate-200 bg-white">
 		<div class="mx-auto max-w-6xl px-4 grid md:grid-cols-3 gap-6 items-center">
 			<p class="text-sm text-slate-500">
-				© {currentYear} ColombianDatos. Todos los derechos reservados.
+				© {currentYear} Colombian Datos. Todos los derechos reservados.
 			</p>
 			<div class="flex items-center gap-3 text-sm justify-center md:justify-center">
 				<Icon name="mail" className="h-4 w-4" ariaHidden="true" />

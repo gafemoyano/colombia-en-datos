@@ -16,7 +16,7 @@
 					<Shield class="h-4 w-4" />
 				</div>
 				<div>
-					<div class="text-sm font-semibold leading-none">Colombia en Datos</div>
+					<div class="text-sm font-semibold leading-none">Colombian Datos</div>
 					<div class="text-xs text-slate-500">Administración</div>
 				</div>
 			</a>

@@ -10,7 +10,7 @@ function unauthorized() {
 	return new Response('Authentication required', {
 		status: 401,
 		headers: {
-			'WWW-Authenticate': 'Basic realm="Colombia en Datos Admin"'
+			'WWW-Authenticate': 'Basic realm="Colombian Datos Admin"'
 		}
 	});
 }
