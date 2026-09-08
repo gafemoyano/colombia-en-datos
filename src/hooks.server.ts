@@ -95,6 +95,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 			return new Response(response.body, { status, statusText: response.statusText, headers });
 		} finally {
 			const cpu = process.cpuUsage(cpuStart);
+			const memory = process.memoryUsage();
 			console.info(
 				JSON.stringify({
 					type: 'explorer-performance',
@@ -108,7 +109,11 @@ export const handle: Handle = async ({ event, resolve }) => {
 					region: env.FLY_REGION ?? null,
 					version: env.FLY_IMAGE_REF ?? null,
 					process: {
-						rssBytes: process.memoryUsage.rss(),
+						rssBytes: memory.rss,
+						heapUsedBytes: memory.heapUsed,
+						heapTotalBytes: memory.heapTotal,
+						externalBytes: memory.external,
+						arrayBuffersBytes: memory.arrayBuffers,
 						cpuUserMs: cpu.user / 1000,
 						cpuSystemMs: cpu.system / 1000,
 						eventLoopUtilization: performance.eventLoopUtilization(eluStart).utilization

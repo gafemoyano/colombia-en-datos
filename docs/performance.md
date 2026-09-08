@@ -22,7 +22,10 @@ encoded in a successful HTTP response: `status` is the HTTP status, not a claim
 that the chart is valid or that no redirect occurred.
 
 Logs include route, data-request flag, machine, region, Fly image reference,
-elapsed milliseconds, process RSS, process CPU deltas and event-loop utilization.
+elapsed milliseconds, process RSS, V8 heap used/total, external memory, array-buffer
+memory, process CPU deltas and event-loop utilization. Memory values are end-of-request
+snapshots, not per-request allocations. Array-buffer memory is included in external
+memory; neither external memory nor RSS minus heap is a DuckDB-specific measurement.
 **Process metrics cover all work during the interval**, including overlapping
 requests; they are not exclusive resource usage for one request.
 
