@@ -20,11 +20,19 @@
 <div class="min-h-screen bg-[var(--c-page)] text-[var(--c-ink)]">
 	<header class="sticky top-0 z-40 backdrop-blur bg-white/85 border-b border-[var(--c-border)]">
 		<div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-			<a href="#inicio" class="flex items-center gap-2 font-semibold">
-				<Icon name="sparkles" className="h-5 w-5" ariaHidden="true" />
-				<span>Colombian Datos</span>
+			<a
+				href="#inicio"
+				class="shrink-0 rounded focus-visible:outline-2 focus-visible:outline-offset-4"
+			>
+				<img
+					src="/brand/primary-light.svg"
+					alt="Colombian Datos — Inicio"
+					width="330"
+					height="64"
+					class="h-auto w-[180px] lg:w-[206px]"
+				/>
 			</a>
-			<nav class="hidden md:flex gap-6 text-sm">
+			<nav class="hidden lg:flex gap-6 text-sm">
 				<a class="hover:opacity-70" href="#que-hacemos">¿Qué hacemos?</a>
 				<a class="hover:opacity-70" href="#necesidad">¿Por qué lo hacemos?</a>
 				<a class="hover:opacity-70" href="#quienes-somos">¿Quiénes somos?</a>
@@ -50,9 +58,19 @@
 
 	<footer class="py-10 border-t border-slate-200 bg-white">
 		<div class="mx-auto max-w-6xl px-4 grid md:grid-cols-3 gap-6 items-center">
-			<p class="text-sm text-slate-500">
-				© {currentYear} Colombian Datos. Todos los derechos reservados.
-			</p>
+			<div>
+				<img
+					src="/brand/mono-navy.svg"
+					alt="Colombian Datos"
+					width="330"
+					height="64"
+					class="mb-3 h-auto w-[180px]"
+					loading="lazy"
+				/>
+				<p class="text-sm text-slate-500">
+					© {currentYear} Colombian Datos. Todos los derechos reservados.
+				</p>
+			</div>
 			<div class="flex items-center gap-3 text-sm justify-center md:justify-center">
 				<Icon name="mail" className="h-4 w-4" ariaHidden="true" />
 				<span>jortiz.serranoc@gmail.com</span>
